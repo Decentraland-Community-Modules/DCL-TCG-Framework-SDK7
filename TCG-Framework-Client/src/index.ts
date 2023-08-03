@@ -7,10 +7,10 @@ import { DeckManager } from "./tcg-framework/tcg-deck-manager";
  */
 export function main() 
 {
-  //DeckManager.SetPosition({ x:8, y:0, z:8 });
+  DeckManager.SetPosition({ x:8, y:0, z:8 });
 
   //const card = CardObject.Create("tcg-0");
   //Transform.getMutable(card.entityFrame).position = { x:8, y:1.5, z:8 };
 
-  TEST_CARD_OBJECT_CREATE(4);
+  //TEST_CARD_OBJECT_CREATE(4);
 }

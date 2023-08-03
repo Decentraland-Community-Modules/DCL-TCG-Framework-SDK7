@@ -1,6 +1,7 @@
 import { Animator, ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardObject, CardObjectData } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
+import { CardData } from "./data/tcg-card-data";
 
 /** object model location */
 const deckManObjectFrameModelLocation:string = 'models/tcg-framework/tcg-deck-manager.glb';
@@ -177,7 +178,9 @@ export module DeckManager
         for(let x = 0; x < cardGridSizeX; x++) {
             for(let y = 0; y < cardGridSizeY; y++) {
                 //create new card object
-                const cardObject = CardObject.Create("dm-"+x+"-"+y);
+                var index:number = x+(y*cardGridSizeX);
+                if(index >= CardData.length) index = 0;
+                const cardObject = CardObject.Create(CardData[index], "dm-"+x+"-"+y);
                 //manipulate object transform
                 const cardTransform = Transform.getMutable(cardObject.entityFrame);
                 cardTransform.parent = instance;
