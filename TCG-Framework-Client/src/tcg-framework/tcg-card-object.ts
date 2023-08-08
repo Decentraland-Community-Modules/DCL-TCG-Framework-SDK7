@@ -1,13 +1,13 @@
-
-import { ColliderLayer, Entity, GltfContainer, InputAction, Material, MaterialTransparencyMode, MeshRenderer, Schemas, TextAlignMode, TextShape, TextureWrapMode, Transform, engine, pointerEventsSystem } from "@dcl/sdk/ecs";
+import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode } from "@dcl/sdk/ecs";
+import { Color4 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
-import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
-import { PlayerCardRegistry } from "./tcg-card-registry";
+import { CardDataObject, CardTextureDataObject, CardData } from "./data/tcg-card-data";
 import { CARD_FACTION_TYPE, CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-card-faction-data";
-import { CardData, CardDataObject, CardTextureDataObject } from "./data/tcg-card-data";
+import { PlayerCardRegistry } from "./tcg-card-registry";
+
 
 /** object model location */
-const cardObjectFrameModelLocation:string = 'models/tcg-framework/tcg-card-debugging.glb';
+const cardObjectFrameModelLocation:string = 'models/tcg-framework/tcg-card-border-R1.glb';
 
 /** default frame object size */
 const cardObjectSize = {x:0.25, y:0.25, z:0.25};
@@ -18,16 +18,16 @@ const cardObjectBackgroundScale = {x:2, y:3, z:1};
 const cardObjectCharacterPos = {x:0, y:0, z:-0.036};
 const cardObjectCharacterScale = {x:1.4, y:2.3, z:1};
 /** cost text transform */
-const cardTextCostPos = {x:0.80, y:1.3, z:-0.07};
+const cardTextCostPos = {x:1.08, y:1.45, z:-0.12};
 const cardTextCostScale = {x:0.25, y:0.25, z:0.25};
 /** health text transform */
-const cardTextHealthPos = {x:0.0, y:-1.15, z:-0.07};
-const cardTextHealthScale = {x:0.4, y:0.4, z:0.4};
+const cardTextHealthPos = {x:0.01, y:-1.27, z:-0.14};
+const cardTextHealthScale = {x:0.3, y:0.3, z:0.3};
 /** attack text transform */
-const cardTextAttackPos = {x:-0.8, y:-1.3, z:-0.07};
+const cardTextAttackPos = {x:-0.88, y:-1.35, z:-0.12};
 const cardTextAttackScale = {x:0.25, y:0.25, z:0.25};
 /** armour text transform */
-const cardTextArmourPos = {x:0.8, y:-1.3, z:-0.07};
+const cardTextArmourPos = {x:0.88, y:-1.35, z:-0.12};
 const cardTextArmourScale = {x:0.25, y:0.25, z:0.25};
 
 /** draw points for plane vectors */
@@ -147,6 +147,7 @@ export class CardObjectData {
         });
         
         //primary action -> interact with card
+        /*
         pointerEventsSystem.onPointerDown(
             {
                 entity: this.entityFrame,
@@ -161,14 +162,14 @@ export class CardObjectData {
                 //if(e.button == InputAction.IA_PRIMARY || e.button == InputAction.IA_POINTER) this.Interact();
             }
         );
-
+        */
         //create cost text
         this.entityTextCost = engine.addEntity();
         Transform.create(this.entityTextCost, { parent: this.entityFrame, 
             position: cardTextCostPos, scale: cardTextCostScale 
         });
-        TextShape.create(this.entityTextCost, { text: "99", 
-            textColor: Color4.Blue(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
+        TextShape.create(this.entityTextCost, { text: "3", 
+            textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
         });
         
         //create health text
@@ -176,8 +177,8 @@ export class CardObjectData {
         Transform.create(this.entityTextHealth, { parent: this.entityFrame, 
             position: cardTextHealthPos, scale: cardTextHealthScale 
         });
-        TextShape.create(this.entityTextHealth, { text: "99", 
-            textColor: Color4.Red(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
+        TextShape.create(this.entityTextHealth, { text: "10", 
+            textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
         });
         
         //create attack text
@@ -185,17 +186,17 @@ export class CardObjectData {
         Transform.create(this.entityTextAttack, { parent: this.entityFrame, 
             position: cardTextAttackPos, scale: cardTextAttackScale
         });
-        TextShape.create(this.entityTextAttack, { text: "99", 
-            textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
+        TextShape.create(this.entityTextAttack, { text: "4", 
+            textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
         });
 
-        //create armour text
+        //create armour textA
         this.entityTextArmour = engine.addEntity();
         Transform.create(this.entityTextArmour, { parent: this.entityFrame, 
             position: cardTextArmourPos, scale: cardTextArmourScale 
         });
-        TextShape.create(this.entityTextArmour, { text: "99", 
-            textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
+        TextShape.create(this.entityTextArmour, { text: "2", 
+            textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
         });
     }
 }
@@ -311,7 +312,7 @@ export module CardObject
         const factionSheet: CardFactionTextureDataObject = PlayerCardRegistry.Instance.GetFactionTexture(cardDef.faction);
         //get card sheet
         const cardSheet: CardTextureDataObject = PlayerCardRegistry.Instance.GetCardTexture(cardDef.id);
-
+        
         //TODO: when the SDK7 is fix and mutable materials actually work we can simplify this
         //set card details
         //  background image

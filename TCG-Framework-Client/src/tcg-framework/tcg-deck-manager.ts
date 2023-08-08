@@ -1,7 +1,7 @@
 import { Animator, ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardObject, CardObjectData } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
-import { CardData } from "./data/tcg-card-data";
+import { PlayerCardRegistry } from "./tcg-card-registry";
 
 /** object model location */
 const deckManObjectFrameModelLocation:string = 'models/tcg-framework/tcg-deck-manager.glb';
@@ -18,11 +18,11 @@ const deckSizeMax = 32;
 const cardObjectOffset = { x:0.0, y:1.15, z:0.0 };
 const cardObjectScale = { x:0.125, y:0.125, z:0.125 };
 /* number of cards in the display */
-const cardGridSizeX:number = 8;
-const cardGridSizeY:number = 3;
+const cardGridSizeX:number = 1;
+const cardGridSizeY:number = 1;
 /* size of cards */
-const cardSizeX:number = 0.3;
-const cardSizeY:number = 0.425;
+const cardSizeX:number = 0.45;
+const cardSizeY:number = 0.6;
 
 /** animation keys */
 const animKeysDeckManagerObject:string[] = [
@@ -121,7 +121,7 @@ export module DeckManager
         });
         //add trigger entry trigger
         utils.triggers.addTrigger(entityFrame, utils.NO_LAYERS, utils.LAYER_1, 
-            [{type: 'box', position: {x:0,y:1.5,z:-2}, scale: {x:3,y:3,z:6}}],
+            [{type: 'box', position: {x:0,y:1.5,z:-2}, scale: {x:16,y:16,z:16}}],
             OnTriggerEntry,
             OnTriggerExit
         );
@@ -178,9 +178,7 @@ export module DeckManager
         for(let x = 0; x < cardGridSizeX; x++) {
             for(let y = 0; y < cardGridSizeY; y++) {
                 //create new card object
-                var index:number = x+(y*cardGridSizeX);
-                if(index >= CardData.length) index = 0;
-                const cardObject = CardObject.Create(CardData[index], "dm-"+x+"-"+y);
+                const cardObject = CardObject.Create(PlayerCardRegistry.Instance.GetEntryByPos(0).DataDef,"dm-"+x+"-"+y);
                 //manipulate object transform
                 const cardTransform = Transform.getMutable(cardObject.entityFrame);
                 cardTransform.parent = instance;
