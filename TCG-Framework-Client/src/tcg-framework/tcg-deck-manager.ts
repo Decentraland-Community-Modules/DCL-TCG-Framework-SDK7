@@ -1,36 +1,9 @@
 import { Animator, ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
-import { CardObject, CardObjectData } from "./tcg-card-object";
+import { CardObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { PlayerCardRegistry } from "./tcg-card-registry";
-
-/** object model location */
-const deckManObjectFrameModelLocation:string = 'models/tcg-framework/tcg-deck-manager.glb';
-
-/** default size for the deck manager object */
-const deckManagerScale = { x:0.8, y:0.8, z:0.8 };
-
-/* min number of cards in a viable deck */
-const deckSizeMin = 24;
-/* max number of cards in a viable deck */
-const deckSizeMax = 32;
-
-/** default size for the deck manager object */
-const cardObjectOffset = { x:0.0, y:1.15, z:0.0 };
-const cardObjectScale = { x:0.125, y:0.125, z:0.125 };
-/* number of cards in the display */
-const cardGridSizeX:number = 1;
-const cardGridSizeY:number = 1;
-/* size of cards */
-const cardSizeX:number = 0.45;
-const cardSizeY:number = 0.6;
-
-/** animation keys */
-const animKeysDeckManagerObject:string[] = [
-    "state_inactive",
-    "anim_activate",
-    "anim_deactivate"
-];
-
+import { CardCharacterObject } from "./tcg-card-character-object";
+import { CardData } from "./data/tcg-card-data";
 /*      TRADING CARD GAME - DECK MANAGER
     all utilities for creating & managing a decks of cards, this includes 
     creating new decks, adding/removing cards from a deck, and viewing available
@@ -47,15 +20,15 @@ export module DeckManager
 {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = true;
+    /** hard-coded tag for module, helps log search functionality */
+    const debugTag:string = "TCG Deck Manager: ";
 
     /** parental instance for all */
     var instance:undefined|Entity = undefined;
     /** instance pocketing for deck manager object, ensures initialization */
-    function Instance():Entity
-    {
+    function Instance():Entity {
         //ensure instance is set
-        if(instance === undefined)
-        {
+        if(instance === undefined) {
             //create class
             instance = engine.addEntity();
             Transform.create(instance);
@@ -65,6 +38,37 @@ export module DeckManager
         return instance;
     }
 
+    /** display location for card characters */
+    const displayPedistal:Entity = engine.addEntity();
+    Transform.create(displayPedistal, { position: {x:8, y:0, z:12} });
+
+    /** default size for the deck manager object */
+    const deckManagerScale = { x:0.8, y:0.8, z:0.8 };
+    
+    /* min number of cards in a viable deck */
+    const deckSizeMin = 24;
+    /* max number of cards in a viable deck */
+    const deckSizeMax = 32;
+    
+    /** default size for the deck manager object */
+    const cardObjectOffset = { x:0.0, y:1.75, z:0.0 };
+    const cardObjectScale = { x:0.125, y:0.125, z:0.125 };
+    /* number of cards in the display */
+    const cardGridSizeX:number = 5;
+    const cardGridSizeY:number = 3;
+    /* size of cards */
+    const cardSizeX:number = 0.45;
+    const cardSizeY:number = 0.6;
+
+    /** object model location */
+    const deckManObjectFrameModelLocation:string = 'models/tcg-framework/deck-manager/tcg-deck-manager-prototype.glb';
+    /** animation keys */
+    const animKeysDeckManagerObject:string[] = [
+        "state_inactive",
+        "anim_activate",
+        "anim_deactivate"
+    ];
+    
     /** true when this object can be interacted with */
     var isInteractable:boolean = false;
 
@@ -92,7 +96,7 @@ export module DeckManager
 
     //### DISPLAYED CARD PAGE DETAILS 
     /** references to all cards being used to display the current card page */
-    var entityGridCards:CardObjectData[] = [];
+    var entityGridCards:CardObject.CardObject[] = [];
     /** display page current/count text */
     /** display page next */
     /** display page prev */
@@ -157,21 +161,23 @@ export module DeckManager
 
     /** triggered when player enters the area */
     function OnTriggerEntry() {
-        console.log("Deck Manager: trigger entered");
+        console.log(debugTag+"trigger entered");
         SetAnimation(1);
         DisplayCards();
+        //claim callback functionality for card objects
+        CardObject.callbackInteract = CardInteraction;
     }
 
     /** triggered when player exits the area */
     function OnTriggerExit() { 
-        console.log("Deck Manager: trigger exit"); 
+        console.log(debugTag+"trigger exit"); 
         SetAnimation(2);
         ReleaseCardObjects();
     }
 
     /** displays a list of cards in the game, based on the current filters/page  */
     function DisplayCards() {
-        console.log("Deck Manager: redrawing card display..."); 
+        console.log(debugTag+"redrawing card display..."); 
         //populate card grid display
         const invTotalX = cardSizeX * (cardGridSizeX - 1);
         const invTotalY = cardSizeY * (cardGridSizeY - 1);
@@ -185,24 +191,39 @@ export module DeckManager
                 cardTransform.scale = cardObjectScale;
                 cardTransform.position = { 
                     x:cardObjectOffset.x + (x * cardSizeX) - (invTotalX / 2), 
-                    y:cardObjectOffset.y - (y * cardSizeY) + invTotalY, 
+                    y:cardObjectOffset.y - (y * cardSizeY) + (invTotalY / 2), 
                     z:cardObjectOffset.z 
                 };
                 //assign in collection
                 entityGridCards.push(cardObject);
             }
         }
-        console.log("Deck Manager: redrew display cards with "+entityGridCards.length); 
+        console.log(debugTag+"redrew display cards with "+entityGridCards.length); 
     }
 
     /** releases all card objects in the current display grid */
     function ReleaseCardObjects() {
-        console.log("Deck Manager: releasing display card, count="+entityGridCards.length); 
+        console.log(debugTag+"releasing display card, count="+entityGridCards.length); 
         while(entityGridCards.length > 0) {
             const card = entityGridCards.pop();
             if(card) CardObject.Disable(card);
         }
-        console.log("Deck Manager: released display card, remaining="+entityGridCards.length); 
+        console.log(debugTag+"released display card, remaining="+entityGridCards.length); 
+    }
+
+    /** called when a card is interacted with */
+    function CardInteraction(object:CardObject.CardObject) {
+        console.log(debugTag+"player interacted with card, key="+object.ID); 
+
+        //create character display model
+        CardCharacterObject.Create({
+            key: "tcg-dm",
+		    model: CardData[0].objPath,
+            parent: displayPedistal, 
+            position: { x:0, y:0, z:0, },
+            scale: { x:1, y:1, z:1, },
+            rotation: { x:0, y:0, z:0, }
+        });
     }
 }
 
