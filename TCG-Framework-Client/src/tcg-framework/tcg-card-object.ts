@@ -1,5 +1,5 @@
-import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction } from "@dcl/sdk/ecs";
-import { Color4 } from "@dcl/sdk/math";
+import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator } from "@dcl/sdk/ecs";
+import { Color4, Quaternion } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
 import { CardDataObject, CardTextureDataObject, CardData } from "./data/tcg-card-data";
 import { CARD_FACTION_TYPE, CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-card-faction-data";
@@ -23,6 +23,15 @@ export module CardObject
     const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Object: ";
+
+    /** object model location */
+    const MODEL_CARD_FRAME:string = 'models/tcg-framework/card-core/tcg-card-prototype.glb';
+    /** animation key tags (FOR CARD) */
+    const ANIM_KEYS_CARD:string[] = [
+        "anim_grow", //selected/played
+        "anim_shrink", //unselected
+        "anim_hover", //mouse-over
+    ];
 
     /** provides a unique ID every time it is called */
     function nextID():number { return idCount++; } 
@@ -49,15 +58,6 @@ export module CardObject
     const cardTextArmourPos = {x:0.87, y:-1.32, z:-0.08};
     const cardTextArmourScale = {x:0.25, y:0.25, z:0.25};
 
-    /** object model location */
-    const cardObjectFrameModelLocation:string = 'models/tcg-framework/card-core/tcg-card-prototype.glb';
-    /** animation key tags (FOR CARD) */
-    const cardObjectAnimationKeys:string[] = [
-        "anim_grow", //selected/played
-        "anim_shrink", //unselected
-        "anim_hover", //mouse-over
-    ];
-
 
 
     /** pool of ALL existing objects */
@@ -72,12 +72,15 @@ export module CardObject
     //TODO: migrate to creation data system (pass all details to create a card in a single data object)
 	/** object interface used to define all data required to create a new object */
 	export interface CardObjectCreationData {
-        //indexing
+        //index
         key: string; //key to register this object at (overwrites if key already exists)
-        //positioning
+        //target
+        def: CardDataObject,
+        //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
 		scale: { x:number; y:number; z:number; }; //new scale for object
+		rotation: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
 	}
 
     /** defines the blueprint for callbacks made from a card when it is clicked/selected */
@@ -147,7 +150,7 @@ export module CardObject
             });
             //  add custom model
             GltfContainer.create(this.entityFrame, {
-                src: cardObjectFrameModelLocation,
+                src: MODEL_CARD_FRAME,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
@@ -236,13 +239,46 @@ export module CardObject
                 textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
             });
         }
-    }
 
-    /** creates a card based given a faction and positional index */
-    export function CreateByFaction(faction:CARD_FACTION_TYPE, index:number, key:string):CardObject {
-        return Create(PlayerCardRegistry.Instance.GetEntryByFaction(faction, index).DataDef, key);
-    }
+        /** initializes the  */
+        public Intialize(data: CardObjectCreationData) {
+            //update object
+            //  key
+            this.key = data.key;
+            //  component defaults
+            this.isActive = false;
+            this.isInteractable = false;
+            this.isSelected = false;
+            //  transform 
+            const transform = Transform.getOrCreateMutable(this.entityFrame);
+            transform.parent = data.parent;
+            transform.position = data.position;
+            transform.scale = data.scale;
+            transform.rotation = Quaternion.fromEulerDegrees(data.rotation.x,data.rotation.y,data.rotation.z);
+            //  animations (must be reasserted whenever model is replaced)
+            /*Animator.createOrReplace(this.entityFrame, {
+                states:[
+                    {name: ANIM_KEYS_CARD[0], clip: ANIM_KEYS_CARD[0], playing: true, loop: false},
+                    {name: ANIM_KEYS_CARD[1], clip: ANIM_KEYS_CARD[1], playing: false, loop: false},
+                    {name: ANIM_KEYS_CARD[2], clip: ANIM_KEYS_CARD[2], playing: false, loop: false},
+                ]
+            });
+            //halt any animations
+            this.SetAnimation(-1);*/
+            //
+        }
 
+        /** plays the given animation on the character */
+        public SetAnimation(index:number) {
+            //turn off all animations
+            for(let i = 0; i < ANIM_KEYS_CARD.length; i++) {
+                Animator.getClip(this.entityFrame, ANIM_KEYS_CARD[i]).playing = false;
+            }
+            //turn on targeted animation
+            if(index != -1) Animator.getClip(this.entityFrame, ANIM_KEYS_CARD[index]).playing = true;
+        }
+    }
+    
     /** provides a new card object (either pre-existing & un-used or entirely new)
      * 
      *  TODO: (most of this stuff will be done via rebinding UVs & texture swapping)
@@ -255,48 +291,42 @@ export module CardObject
      *  @param key unique id of card object, used for access
      *  @returns: card object data 
      */
-    export function Create(cardDef:CardDataObject, key:string):CardObject {
-        if(isDebugging) console.log(debugTag+"attempting to create object, key="+key);
+    export function Create(data:CardObjectCreationData):CardObject {
+        if(isDebugging) console.log(debugTag+"attempting to create object, key="+data.key);
         
-        //if a card under the requested key is already active, hand that back
-        if(pooledObjectsRegistry.containsKey(key)) {
-            console.log(debugTag+" <WARNING> requesting pre-existing object (use get instead), key="+key);
-            return pooledObjectsRegistry.getItem(key);
+        var object:undefined|CardObject = undefined;
+        
+        //if an object under the requested key is already active, hand that back
+        if(pooledObjectsRegistry.containsKey(data.key)) {
+            console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+data.key);
+            object = pooledObjectsRegistry.getItem(data.key);
         } 
-
-        //prepare object
-        var cardObject:undefined|CardObject = undefined;
         //  attempt to find an existing unused object
         if(pooledObjectsInactive.size() > 0) {
             //grab entity from (grabbing from back is a slight opt)
-            cardObject = pooledObjectsInactive.getItem(pooledObjectsInactive.size()-1);
+            object = pooledObjectsInactive.getItem(pooledObjectsInactive.size()-1);
             //  remove from inactive listing
-            pooledObjectsInactive.removeItem(cardObject);
-            
-            //set default object size
-            Transform.getMutable(cardObject.entityFrame).parent = undefined; 
-            Transform.getMutable(cardObject.entityFrame).scale = cardObjectSize; 
+            pooledObjectsInactive.removeItem(object);
         }
         //  if not recycling unused object
-        if(cardObject == undefined) {
+        if(object == undefined) {
             //create card object frame
             //  create data object (initializes all sub-components)
-            cardObject = new CardObject();
+            object = new CardObject();
             //  add to overhead collection
-            pooledObjectsAll.addItem(cardObject);
+            pooledObjectsAll.addItem(object);
         }
 
         //get faction def
-        const factionDef: CardFactionDataObject = PlayerCardRegistry.Instance.GetFaction(cardDef.faction);
+        const factionDef: CardFactionDataObject = PlayerCardRegistry.Instance.GetFaction(data.def.faction);
         //get faction sheet
-        const factionSheet: CardFactionTextureDataObject = PlayerCardRegistry.Instance.GetFactionTexture(cardDef.faction);
+        const factionSheet: CardFactionTextureDataObject = PlayerCardRegistry.Instance.GetFactionTexture(data.def.faction);
         //get card sheet
-        const cardSheet: CardTextureDataObject = PlayerCardRegistry.Instance.GetCardTexture(cardDef.id);
+        const cardSheet: CardTextureDataObject = PlayerCardRegistry.Instance.GetCardTexture(data.def.id);
         
-        //TODO: when the SDK7 is fix and mutable materials actually work we can simplify this
         //set card details
         //  background image
-        MeshRenderer.setPlane(cardObject.entityBackgroundDisplay, GetCardDrawVectors(
+        MeshRenderer.setPlane(object.entityBackgroundDisplay, GetCardDrawVectors(
             factionSheet.sheetDetails.totalSizeX, 
             factionSheet.sheetDetails.totalSizeY, 
             factionSheet.sheetDetails.elementSizeX, 
@@ -304,7 +334,7 @@ export module CardObject
             factionDef.sheetData.posX, 
             factionDef.sheetData.posY
         ));
-        Material.setPbrMaterial(cardObject.entityBackgroundDisplay, {
+        Material.setPbrMaterial(object.entityBackgroundDisplay, {
             texture: Material.Texture.Common({
                 src: factionSheet.path,
                 wrapMode: TextureWrapMode.TWM_REPEAT
@@ -312,15 +342,15 @@ export module CardObject
             transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
         });
         //  character image
-        MeshRenderer.setPlane(cardObject.entityCharacterDisplay, GetCardDrawVectors(
+        MeshRenderer.setPlane(object.entityCharacterDisplay, GetCardDrawVectors(
             cardSheet.sheetDetails.totalSizeX, 
             cardSheet.sheetDetails.totalSizeY, 
             cardSheet.sheetDetails.elementSizeX, 
             cardSheet.sheetDetails.elementSizeY, 
-            cardDef.sheetData.posX, 
-            cardDef.sheetData.posY
+            data.def.sheetData.posX, 
+            data.def.sheetData.posY
         ));
-        Material.setPbrMaterial(cardObject.entityCharacterDisplay, {
+        Material.setPbrMaterial(object.entityCharacterDisplay, {
             texture: Material.Texture.Common({
                 src: cardSheet.path,
                 wrapMode: TextureWrapMode.TWM_REPEAT
@@ -328,24 +358,22 @@ export module CardObject
             transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
         });
 
-        //set component defaults
-        cardObject.isActive = false;
-        cardObject.isInteractable = false;
-        cardObject.isSelected = false;
+        //initialize object
+        object.Intialize(data);
 
         //TODO: redefined object based on given def/rarity; implement SetType
         
 
         //add object to active collection (ensure only 1 entry)
-        var posX = pooledObjectsActive.getItemPos(cardObject);
-        if(posX == -1) pooledObjectsActive.addItem(cardObject);
+        var posX = pooledObjectsActive.getItemPos(object);
+        if(posX == -1) pooledObjectsActive.addItem(object);
         //add to registry under given key
-        pooledObjectsRegistry.addItem(key, cardObject);
+        pooledObjectsRegistry.addItem(data.key, object);
 
-        if(isDebugging) console.log(debugTag+"created new collectible object, key="+key+
+        if(isDebugging) console.log(debugTag+"created new collectible object, key="+data.key+
             ", total="+pooledObjectsAll.size()+", active="+pooledObjectsActive.size()+", inactive="+pooledObjectsInactive.size());
         //provide entity reference
-        return cardObject;
+        return object;
     }
 
     /** called when a card is interacted with */
@@ -450,9 +478,14 @@ var testEntities:CardObject.CardObject[] = [];
 export function TEST_CARD_OBJECT_CREATE(count:number) {
     //create requested number of objects
     for(var i=0; i<count; i++) {
-        const cardObject = CardObject.Create(CardData[i], testEntities.length.toString());
-        testEntities.push(cardObject);
-        Transform.getMutable(cardObject.entityFrame).position = {x: (testEntities.length*0.65)-(count*0.65/2)+8, y:1.5, z:8};
+        testEntities.push(CardObject.Create({
+            key: testEntities.length.toString(),
+            def: CardData[i], 
+            parent: undefined,
+            position: { x:(testEntities.length*0.65)-(count*0.65/2)+8, y:1.5, z:8 },
+            scale: { x:1, y:1, z:1 },
+            rotation: { x:0, y:0, z:0 },
+        }));
     }
 }
 

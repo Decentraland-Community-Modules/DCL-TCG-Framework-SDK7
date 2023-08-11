@@ -20,7 +20,7 @@ export module CardCharacterObject
     const debugTag:string = "TCG Card Character Object: ";
 
     /** animation key tags (FOR CARD) */
-    const ANIM_KEYS:string[] = [
+    const ANIM_KEYS_CHARACTER:string[] = [
         "anim_spawn", // first created from card
         "anim_idle", // standing/no order
         "anim_attack", // attacks enemy
@@ -41,8 +41,11 @@ export module CardCharacterObject
 
 	/** object interface used to define all data required to create a new object */
 	export interface CardCharacterObjectCreationData {
+        //indexing
         key: string; //key to register this object at (overwrites if key already exists)
-		model: string; //type of object to create (linkage to def)
+		//targeting
+        model: string; //type of object to create (linkage to def)
+        //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
 		scale: { x:number; y:number; z:number; }; //new scale for object
@@ -79,29 +82,29 @@ export module CardCharacterObject
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
-            /*//  animations (must be reasserted whenever model is replaced)
+            //  animations (must be reasserted whenever model is replaced)
             Animator.createOrReplace(this.entity, {
                 states:[
-                    {name: ANIM_KEYS[0], clip: ANIM_KEYS[0], playing: true, loop: false},
-                    {name: ANIM_KEYS[1], clip: ANIM_KEYS[1], playing: false, loop: false},
-                    {name: ANIM_KEYS[2], clip: ANIM_KEYS[2], playing: false, loop: false},
-                    {name: ANIM_KEYS[3], clip: ANIM_KEYS[3], playing: false, loop: false},
-                    {name: ANIM_KEYS[4], clip: ANIM_KEYS[4], playing: false, loop: false},
-                    {name: ANIM_KEYS[5], clip: ANIM_KEYS[5], playing: false, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[0], clip: ANIM_KEYS_CHARACTER[0], playing: true, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[1], clip: ANIM_KEYS_CHARACTER[1], playing: false, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[2], clip: ANIM_KEYS_CHARACTER[2], playing: false, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[3], clip: ANIM_KEYS_CHARACTER[3], playing: false, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[4], clip: ANIM_KEYS_CHARACTER[4], playing: false, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[5], clip: ANIM_KEYS_CHARACTER[5], playing: false, loop: false},
                 ]
             });
             //halt any animations
-            this.SetAnimation(-1);*/
+            this.SetAnimation(-1);
         }
 
         /** plays the given animation on the character */
         public SetAnimation(index:number) {
             //turn off all animations
-            for(let i = 0; i < ANIM_KEYS.length; i++) {
-                Animator.getClip(this.entity, ANIM_KEYS[i]).playing = false;
+            for(let i = 0; i < ANIM_KEYS_CHARACTER.length; i++) {
+                Animator.getClip(this.entity, ANIM_KEYS_CHARACTER[i]).playing = false;
             }
             //turn on targeted animation
-            if(index != -1) Animator.getClip(this.entity, ANIM_KEYS[index]).playing = true;
+            if(index != -1) Animator.getClip(this.entity, ANIM_KEYS_CHARACTER[index]).playing = true;
         }
     }
 
@@ -114,44 +117,44 @@ export module CardCharacterObject
     export function Create(data:CardCharacterObjectCreationData):CardCharacterObject {
         if(isDebugging) console.log(debugTag+"attempting to create object, key="+data.key);
         
-        var characterObject:undefined|CardCharacterObject = undefined;
+        var object:undefined|CardCharacterObject = undefined;
         
         //if an object under the requested key is already active, hand that back
         if(pooledObjectsRegistry.containsKey(data.key)) {
             console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+data.key);
-            characterObject = pooledObjectsRegistry.getItem(data.key);
+            object = pooledObjectsRegistry.getItem(data.key);
         } 
         //  attempt to find an existing unused object
-        if(characterObject == undefined && pooledObjectsInactive.size() > 0) {
+        if(object == undefined && pooledObjectsInactive.size() > 0) {
             //grab entity from (grabbing from back is a slight opt)
-            characterObject = pooledObjectsInactive.getItem(pooledObjectsInactive.size()-1);
+            object = pooledObjectsInactive.getItem(pooledObjectsInactive.size()-1);
             //  remove from inactive listing
-            pooledObjectsInactive.removeItem(characterObject);
+            pooledObjectsInactive.removeItem(object);
         }
         //  if not recycling unused object
-        if(characterObject == undefined) {
+        if(object == undefined) {
             //create new object
-            characterObject = new CardCharacterObject();
+            object = new CardCharacterObject();
             //  add to overhead collection
-            pooledObjectsAll.addItem(characterObject);
+            pooledObjectsAll.addItem(object);
         }
 
         //prepare object for use
         //  state
-        characterObject.isActive = true;
+        object.isActive = true;
         //  initialize
-        characterObject.Intialize(data);
+        object.Intialize(data);
 
         //add object to active collection (ensure only 1 entry)
-        var posX = pooledObjectsActive.getItemPos(characterObject);
-        if(posX == -1) pooledObjectsActive.addItem(characterObject);
+        var posX = pooledObjectsActive.getItemPos(object);
+        if(posX == -1) pooledObjectsActive.addItem(object);
         //add to registry under given key
-        pooledObjectsRegistry.addItem(data.key, characterObject);
+        pooledObjectsRegistry.addItem(data.key, object);
         
         if(isDebugging) console.log(debugTag+"created new object, key="+data.key+
             ", total="+pooledObjectsAll.size()+", active="+pooledObjectsActive.size()+", inactive="+pooledObjectsInactive.size());
         //provide object reference
-        return characterObject;
+        return object;
     }
 
     /** attmepts to find an object of the given key. if no object is registered under the
