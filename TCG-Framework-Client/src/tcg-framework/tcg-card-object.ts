@@ -1,6 +1,6 @@
 import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator } from "@dcl/sdk/ecs";
 import { Color4, Quaternion } from "@dcl/sdk/math";
-import Dictionary, { List } from "../utilities/collections";
+import { Dictionary, List } from "../utilities/collections";
 import { CardDataObject, CardTextureDataObject, CardData } from "./data/tcg-card-data";
 import { CARD_FACTION_TYPE, CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-card-faction-data";
 import { PlayerCardRegistry } from "./tcg-card-registry";
@@ -57,8 +57,6 @@ export module CardObject
     /** armour text transform */
     const cardTextArmourPos = {x:0.87, y:-1.32, z:-0.08};
     const cardTextArmourScale = {x:0.25, y:0.25, z:0.25};
-
-
 
     /** pool of ALL existing objects */
     var pooledObjectsAll:List<CardObject> = new List<CardObject>();
@@ -241,7 +239,7 @@ export module CardObject
         }
 
         /** initializes the  */
-        public Intialize(data: CardObjectCreationData) {
+        public Initialize(data: CardObjectCreationData) {
             //update object
             //  key
             this.key = data.key;
@@ -359,7 +357,7 @@ export module CardObject
         });
 
         //initialize object
-        object.Intialize(data);
+        object.Initialize(data);
 
         //TODO: redefined object based on given def/rarity; implement SetType
         
