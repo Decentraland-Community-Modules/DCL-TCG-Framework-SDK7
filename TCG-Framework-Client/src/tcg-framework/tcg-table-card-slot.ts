@@ -157,7 +157,7 @@ export module TableCardSlot {
         /** applies a card to this card slot (displaying character or effect) */
         public ApplyCard(data:CardDataObject) {
             this.isActive = true;
-            this.slottedCard = data.id;
+            this.slottedCard = data.id.toString();
             //enable card parent
             const transformParent = Transform.getMutable(this.parentEntity);
             transformParent.scale = PARENT_SCALE_ON;

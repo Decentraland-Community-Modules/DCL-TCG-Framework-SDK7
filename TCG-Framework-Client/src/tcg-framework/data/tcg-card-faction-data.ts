@@ -54,11 +54,20 @@ export enum CARD_FACTION_TYPE {
     VOID,
     ELECTRIC
 }
+
+export enum CARD_FACTION_ID {
+    FACTION_NEUTRAL,
+    FACTION_FIRE,
+    FACTION_ICE,
+    FACTION_VOID,
+    FACTION_ELECTRIC,
+}
+
 /** data interface for defining a card */
 export interface CardFactionDataObject {
     //indexing
     type:CARD_FACTION_TYPE;    //card type
-    id:string; //unique id for this card
+    id:CARD_FACTION_ID; //unique id for this card
     //display text
     name:string;    //in-game display name
     desc:string;    //in-game display desc
@@ -79,7 +88,7 @@ export const CardFactionData:CardFactionDataObject[] = [
     {
         //indexing
         type: CARD_FACTION_TYPE.NEUTRAL,
-        id:"tcg-f0",
+        id:CARD_FACTION_ID.FACTION_NEUTRAL,
         //display text 
         name: "Neutral",
         desc: "Can be used in any deck.",
@@ -90,7 +99,7 @@ export const CardFactionData:CardFactionDataObject[] = [
     {
         //indexing
         type: CARD_FACTION_TYPE.FIRE,
-        id:"tcg-f1",
+        id:CARD_FACTION_ID.FACTION_FIRE,
         //display text 
         name: "Fire",
         desc: "Can only be used in fire decks.",
@@ -101,7 +110,7 @@ export const CardFactionData:CardFactionDataObject[] = [
     {
         //indexing
         type: CARD_FACTION_TYPE.ICE,
-        id:"tcg-f2",
+        id:CARD_FACTION_ID.FACTION_ICE,
         //display text 
         name: "Ice",
         desc: "Can only be used in ice decks.",
@@ -112,7 +121,7 @@ export const CardFactionData:CardFactionDataObject[] = [
     {
         //indexing
         type: CARD_FACTION_TYPE.VOID,
-        id:"tcg-f3",
+        id:CARD_FACTION_ID.FACTION_VOID,
         //display text 
         name: "Void",
         desc: "Can only be used in void decks.",
@@ -123,7 +132,7 @@ export const CardFactionData:CardFactionDataObject[] = [
     {
         //indexing
         type: CARD_FACTION_TYPE.ELECTRIC,
-        id:"tcg-f4",
+        id:CARD_FACTION_ID.FACTION_ELECTRIC,
         //display text 
         name: "Electric",
         desc: "Can only be used in electric decks.",

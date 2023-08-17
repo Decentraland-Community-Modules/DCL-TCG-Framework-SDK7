@@ -36,39 +36,6 @@ export interface CardKeywordTriggerDataObject {
     value:Number;
 }
 
-/** defines what targets are valid/required for the effect */
-export enum CARD_KEYWORD_TARGET_TYPE {
-    //does not require a target
-    //  use this with effects that are global
-    //  ex: defining an effect that causes the player to pick up more cards
-    NONE,
-    //target must not be owned by the player 
-    //  ex: defining an effect that damages an enemy
-    ENEMY,
-    //target must be owned by the player 
-    //  ex: defining an effect that heals an ally
-    ALLY,
-    //target can be owned by any player
-    //  ex: defining an effect that removes effects a target
-    ANY,
-}
-/** defines how many targets will be affected by an effect */
-export enum CARD_KEYWORD_TARGET_COUNT_TYPE {
-    //targets no units on the board
-    NONE,
-    //targets N number of targets
-    COUNT,
-    //targets all units on the board
-    ALL,
-}
-/** data interface for defining a target type */
-export interface CardKeywordTargetDataObject {
-    //
-    type:CARD_KEYWORD_TARGET_TYPE;
-    //
-    count:CARD_KEYWORD_TARGET_COUNT_TYPE;
-}
-
 /** all possible effects tied to a keyword (like causing damage to health) */
 export enum CARD_KEYWORD_EFFECT_TYPE {
     //### DAMAGE
@@ -121,7 +88,6 @@ export interface CardKeywordDataObject
     displayDesc: string;
     //gameplay
     playType:CardKeywordTriggerDataObject;
-    playTarget:CardKeywordTargetDataObject;
     playEffects: CardKeywordEffectDataObject [];
 }
 
@@ -163,7 +129,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Causes damage to the enemy target",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.DAMAGE_OVERFLOW},
         ]
@@ -177,7 +142,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "inflicts constant direct damage to targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.DAMAGE_HEALTH},
         ]
@@ -191,7 +155,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "inflicts constant overall damage to targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.DAMAGE_OVERFLOW},
         ]
@@ -205,7 +168,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Causes damage to the enemy target(s) armour",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.EXPAND_ARMOUR},
         ]
@@ -219,7 +181,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Causes damage to the enemy target(s) armour",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.EXPAND_ARMOUR},
         ]
@@ -237,7 +198,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Heals any allied card targeted over time",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.RESTORE_HEALTH},
         ]
@@ -251,7 +211,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Heals any allied card targeted",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.RESTORE_HEALTH},
         ]
@@ -265,7 +224,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "increases the max HP of targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.EXPAND_HEALTH},
         ]
@@ -279,7 +237,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "regenerates HP of targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.EXPAND_HEALTH},
         ]
@@ -293,7 +250,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "regenerates armour of targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.EXPAND_ARMOUR},
         ]
@@ -310,7 +266,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "increases the max dmg of targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.INCREASE_ATTACK},
         ]
@@ -324,7 +279,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.INCREASE_ATTACK},
         ]
@@ -341,7 +295,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_TAUNT},
         ]
@@ -355,7 +308,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "forces next debuff upon targeted unit(s)",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:2,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_PURITY},
         ]
@@ -369,7 +321,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "puts targeted unit(s) into an undetectable state until next action",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_STEALTH},
         ]
@@ -383,7 +334,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "puts targeted unit(s) into a disabled state until cleared",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_DISABLE},
         ]
@@ -397,7 +347,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "allows targeted unit(s) into a re-enabled state once played",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ALLY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_REFRESH},
         ]
@@ -411,7 +360,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "syphons health from enemy unit(s) and applies it to your own",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ENEMY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.DAMAGE_VAMPIRISM},
         ]
@@ -425,7 +373,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "when this card kills another card remove that card from the game",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ANY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_ANNIHILATION},
         ]
@@ -439,7 +386,6 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "after this card is played remove the card from the game",
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
-        playTarget: {type: CARD_KEYWORD_TARGET_TYPE.ANY, count:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT},
         playEffects: [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_ANNIHILATION},
         ]
