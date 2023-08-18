@@ -66,6 +66,7 @@ export module CardCharacterObject
         /** initializes the  */
         public Intialize(data: CardCharacterObjectCreationData) {
             //update object
+            this.isActive = true;
             //  key
             this.key = data.key;
             //  transform 
@@ -140,9 +141,6 @@ export module CardCharacterObject
         }
 
         //prepare object for use
-        //  state
-        object.isActive = true;
-        //  initialize
         object.Intialize(data);
 
         //add object to active collection (ensure only 1 entry)

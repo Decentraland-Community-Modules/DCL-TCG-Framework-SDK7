@@ -1,5 +1,5 @@
 import { Animator, ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
-import { CardObject } from "./tcg-card-object";
+import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { PlayerCardRegistry } from "./tcg-card-registry";
 import { CardCharacterObject } from "./tcg-card-character-object";
@@ -51,25 +51,25 @@ export module DeckManager
     }
 
     /** default size for the deck manager object */
-    const deckManagerScale = { x:0.8, y:0.8, z:0.8 };
+    const DISPLAY_OBJECT_SCALE = { x:0.8, y:0.8, z:0.8 };
+    
+    /** default size for the deck manager object */
+    const CARD_OBJECT_OFFSET = { x:0.0, y:1.75, z:0.0 };
+    const CARD_OBJECT_SCALE = { x:0.125, y:0.125, z:0.125 };
+    /* number of cards in the display */
+    const DISPLAY_GRID_SIZE_X:number = 5;
+    const DISPLAY_GRID_SIZE_Y:number = 3;
+    /* size of cards */
+    const CARD_SIZE_X:number = 0.45;
+    const CARD_SIZE_Y:number = 0.6;
+    
+    /** true when this object can be interacted with */
+    var isInteractable:boolean = false;
     
     /* min number of cards in a viable deck */
     const deckSizeMin = 24;
     /* max number of cards in a viable deck */
     const deckSizeMax = 32;
-    
-    /** default size for the deck manager object */
-    const cardObjectOffset = { x:0.0, y:1.75, z:0.0 };
-    const cardObjectScale = { x:0.125, y:0.125, z:0.125 };
-    /* number of cards in the display */
-    const cardGridSizeX:number = 5;
-    const cardGridSizeY:number = 3;
-    /* size of cards */
-    const cardSizeX:number = 0.45;
-    const cardSizeY:number = 0.6;
-    
-    /** true when this object can be interacted with */
-    var isInteractable:boolean = false;
 
     /** display pedistal for card characters */
     const pedistalObject:Entity = engine.addEntity();
@@ -119,7 +119,7 @@ export module DeckManager
 
     //### DISPLAYED CARD PAGE DETAILS 
     /** references to all cards being used to display the current card page */
-    var entityGridCards:CardObject.CardObject[] = [];
+    var entityGridCards:CardDisplayObject.CardDisplayObject[] = [];
     /** display page current/count text */
     /** display page next */
     /** display page prev */
@@ -131,7 +131,7 @@ export module DeckManager
         //create frame
         //  create entity
         entityFrame = engine.addEntity();
-        Transform.create(entityFrame, {parent: instance, scale: deckManagerScale});
+        Transform.create(entityFrame, {parent: instance, scale: DISPLAY_OBJECT_SCALE});
         //  add custom model
         GltfContainer.create(entityFrame, {
             src: MODEL_DECK_MANAGER,
@@ -184,59 +184,64 @@ export module DeckManager
 
     /** triggered when player enters the area */
     function OnTriggerEntry() {
-        console.log(debugTag+"trigger entered");
+        if(isDebugging) console.log(debugTag+"trigger entered");
         SetAnimation(1);
-        DisplayCards();
-        //claim callback functionality for card objects
-        CardObject.callbackInteract = CardInteraction;
+        GenerateCardObjects();
     }
 
     /** triggered when player exits the area */
     function OnTriggerExit() { 
-        console.log(debugTag+"trigger exit"); 
+        if(isDebugging) console.log(debugTag+"trigger exit"); 
         SetAnimation(2);
         ReleaseCardObjects();
     }
 
     /** displays a list of cards in the game, based on the current filters/page  */
-    function DisplayCards() {
-        console.log(debugTag+"redrawing card display..."); 
+    function GenerateCardObjects() {
+        if(isDebugging) console.log(debugTag+"redrawing card display..."); 
+        entityGridCards = [];
         //populate card grid display
-        const invTotalX = cardSizeX * (cardGridSizeX - 1);
-        const invTotalY = cardSizeY * (cardGridSizeY - 1);
-        for(let x = 0; x < cardGridSizeX; x++) {
-            for(let y = 0; y < cardGridSizeY; y++) {
+        const invTotalX = CARD_SIZE_X * (DISPLAY_GRID_SIZE_X - 1);
+        const invTotalY = CARD_SIZE_Y * (DISPLAY_GRID_SIZE_Y - 1);
+        for(let y = 0; y < DISPLAY_GRID_SIZE_Y; y++) {
+            for(let x = 0; x < DISPLAY_GRID_SIZE_X; x++) {
                 //create new card object
-                entityGridCards.push(CardObject.Create({
-                    key: "dm-"+x+"-"+y,
+                const card = CardDisplayObject.Create({
+                    ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
+                    slotID: (x + (y*DISPLAY_GRID_SIZE_X)).toString(),
                     def: PlayerCardRegistry.Instance.GetEntryByPos(0).DataDef, 
                     parent: instance,
                     position: {
-                        x:cardObjectOffset.x + (x * cardSizeX) - (invTotalX / 2), 
-                        y:cardObjectOffset.y - (y * cardSizeY) + (invTotalY / 2), 
-                        z:cardObjectOffset.z 
+                        x:CARD_OBJECT_OFFSET.x + (x * CARD_SIZE_X) - (invTotalX / 2), 
+                        y:CARD_OBJECT_OFFSET.y - (y * CARD_SIZE_Y) + (invTotalY / 2), 
+                        z:CARD_OBJECT_OFFSET.z 
                     },
-                    scale: cardObjectScale,
-                    rotation: { x:0, y:0, z:0 },
-                }));
+                    scale: CARD_OBJECT_SCALE,
+                });
+                entityGridCards.push(card);
             }
         }
-        console.log(debugTag+"redrew display cards with "+entityGridCards.length); 
+        if(isDebugging) console.log(debugTag+"redrew display cards with "+entityGridCards.length); 
     }
 
-    /** releases all card objects in the current display grid */
-    function ReleaseCardObjects() {
-        console.log(debugTag+"releasing display card, count="+entityGridCards.length); 
-        while(entityGridCards.length > 0) {
-            const card = entityGridCards.pop();
-            if(card) CardObject.Disable(card);
-        }
-        console.log(debugTag+"released display card, remaining="+entityGridCards.length); 
+    //TODO: add filtering system for toggling displays per:
+    //  faction
+    //  type (spell, character, terrain)
+    //  cost
+
+    /**  */
+    function ApplyFilter() {
+
+    }
+
+    /**  */
+    function RedrawCardView() {
+
     }
 
     /** called when a card is interacted with */
-    function CardInteraction(object:CardObject.CardObject) {
-        console.log(debugTag+"player interacted with card, key="+object.ID); 
+    export function CardInteraction(slotID:string) {
+        if(isDebugging) console.log(debugTag+"player interacted with card, key="+slotID); 
 
         //create character display model
         CardCharacterObject.Create({
@@ -247,6 +252,16 @@ export module DeckManager
             scale: { x:1, y:1, z:1, },
             rotation: { x:0, y:0, z:0, }
         });
+    }
+
+    /** releases all card objects in the current display grid */
+    function ReleaseCardObjects() {
+        if(isDebugging) console.log(debugTag+"releasing display card, count="+entityGridCards.length); 
+        while(entityGridCards.length > 0) {
+            const card = entityGridCards.pop();
+            if(card) CardDisplayObject.Disable(card);
+        }
+        if(isDebugging) console.log(debugTag+"released display card, remaining="+entityGridCards.length); 
     }
 }
 

@@ -1,4 +1,4 @@
-import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, Schemas, Transform, engine } from "@dcl/sdk/ecs";
+import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, Transform, engine } from "@dcl/sdk/ecs";
 import { Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataObject } from "./data/tcg-card-data";
@@ -13,7 +13,7 @@ export module TableCardSlot {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
-    const debugTag:string = "TCG Card Slot: ";
+    const debugTag:string = "TCG Table Card Slot: ";
 
     /** scale for parental view toggles */
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
@@ -27,7 +27,7 @@ export module TableCardSlot {
 
     /** transform details for interaction element */
     const INTERACTION_OFFSET:Vector3 = { x:0, y:0, z:0 };
-    const INTERACTION_SCALE:Vector3 = { x:1, y:1, z:1 };
+    const INTERACTION_SCALE:Vector3 = { x:1.8, y:0.5, z:1.8 };
     const INTERACTION_ROTATION:Vector3 = { x:0, y:0, z:0 };
 
     /** indexing key */
@@ -123,19 +123,20 @@ export module TableCardSlot {
 
             //create interaction object
             this.interactionEntity = engine.addEntity();
-            Transform.create(this.characterEntity, {
+            Transform.create(this.interactionEntity, {
                 parent: this.parentEntity,
                 position: INTERACTION_OFFSET,
                 scale: INTERACTION_SCALE,
                 rotation: Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z)
             });
-            //  add interactions
+            //  add model
             MeshRenderer.setBox(this.interactionEntity);
             MeshCollider.setBox(this.interactionEntity, ColliderLayer.CL_POINTER);
         }
 
         /** prepares the card slot for use by a table team */
         public Initialize(data:TableCardSlotCreationData) {
+            this.isActive = true;
             //indexing
             this.tableID = data.tableID;
             this.teamID = data.teamID;
@@ -143,20 +144,28 @@ export module TableCardSlot {
             //transform
             const transformParent = Transform.getMutable(this.parentEntity);
             transformParent.parent = data.parent;
-            transformParent.position = INTERACTION_OFFSET;
-            transformParent.scale = INTERACTION_SCALE;
-            transformParent.rotation = Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z);
+            transformParent.position = data.position;
+            //transformParent.scale = INTERACTION_SCALE;
+            //transformParent.rotation = Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z);
             //component
             TableCardSlotComponent.createOrReplace(this.interactionEntity, {
                 tableID:data.tableID,
                 teamID:data.teamID,
                 slotID:data.slotID,
             });
+            //  pointer event system
+            PointerEvents.createOrReplace(this.interactionEntity, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Select Card Slot "+TableCardSlot.GetKeyFromObject(this) }
+                  },
+                ]
+            });
         }
 
         /** applies a card to this card slot (displaying character or effect) */
         public ApplyCard(data:CardDataObject) {
-            this.isActive = true;
             this.slottedCard = data.id.toString();
             //enable card parent
             const transformParent = Transform.getMutable(this.parentEntity);
@@ -175,7 +184,6 @@ export module TableCardSlot {
 
         /** clears an existing card from this card slot */
         public ClearCard() {
-            this.isActive = false;
             //hide card character
             const transformCharacter = Transform.getMutable(this.characterEntity);
             transformCharacter.position = DISAPLAY_OFFSET_OFF;
@@ -184,6 +192,7 @@ export module TableCardSlot {
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
+            this.isActive = false;
             this.ClearCard();
             //hide card parent
             const transformParent = Transform.getMutable(this.parentEntity);
@@ -233,7 +242,7 @@ export module TableCardSlot {
         //add to registry under given key
         pooledObjectsRegistry.addItem(key, object);
 
-        if(isDebugging) console.log(debugTag+"created new collectible object, key='"+key+"'");
+        if(isDebugging) console.log(debugTag+"created new object, key='"+key+"'!");
         //provide entity reference
         return object;
     }

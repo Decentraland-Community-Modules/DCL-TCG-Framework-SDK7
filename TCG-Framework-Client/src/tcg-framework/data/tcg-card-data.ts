@@ -210,7 +210,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
+        objPath: "models/tcg-framework/card-characters/stone-golem-r1.glb",
         audioTriggers: "",
         //Attributes
         attributeCost:1,
@@ -364,7 +364,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 0, posY: 1 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
+        objPath: "models/tcg-framework/card-characters/stone-golem-r1.glb",
         audioTriggers: "",
         //Attributes
         attributeCost:1,

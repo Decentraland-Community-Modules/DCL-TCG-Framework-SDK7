@@ -1,5 +1,5 @@
-import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator } from "@dcl/sdk/ecs";
-import { Color4, Quaternion } from "@dcl/sdk/math";
+import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator, Schemas, PointerEvents, PointerEventType } from "@dcl/sdk/ecs";
+import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataObject, CardTextureDataObject, CardData } from "./data/tcg-card-data";
 import { CARD_FACTION_TYPE, CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-card-faction-data";
@@ -17,12 +17,27 @@ import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
     PrimaryAuthors: TheCryptoTrader69 (Alex Pazder)
     TeamContact: thecryptotrader69@gmail.com
 */
-export module CardObject
+export module CardDisplayObject
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Object: ";
+
+    /** scale for parental view toggles */
+    const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+    
+    /** transform defaults */
+    const DEFAULT_POSITION:Vector3 = { x:0, y:0, z:0 };
+    const DEFAULT_SCALE:Vector3 = { x:1, y:1, z:1 };
+    const DEFAULT_ROTATION:Vector3 = { x:0, y:0, z:0 };
+
+    /** determines all possible card owners */
+    export enum CARD_OBJECT_OWNER_TYPE {
+        GAME_TABLE = 0, //used by an active game table
+        DECK_MANAGER = 1, //used by deck manager
+        SHOWCASE = 2, //set on display in scene
+    }
 
     /** object model location */
     const MODEL_CARD_FRAME:string = 'models/tcg-framework/card-core/tcg-card-prototype.glb';
@@ -32,10 +47,6 @@ export module CardObject
         "anim_shrink", //unselected
         "anim_hover", //mouse-over
     ];
-
-    /** provides a unique ID every time it is called */
-    function nextID():number { return idCount++; } 
-    var idCount:number = 0;
 
     /** default frame object size */
     const cardObjectSize = {x:0.25, y:0.25, z:0.25};
@@ -58,77 +69,107 @@ export module CardObject
     const cardTextArmourPos = {x:0.87, y:-1.32, z:-0.08};
     const cardTextArmourScale = {x:0.25, y:0.25, z:0.25};
 
-    /** pool of ALL existing objects */
-    var pooledObjectsAll:List<CardObject> = new List<CardObject>();
-    /** pool of active objects (already being used in scene) */
-    var pooledObjectsActive:List<CardObject> = new List<CardObject>();
-    /** pool of inactive objects (not being used in scene) */
-    var pooledObjectsInactive:List<CardObject> = new List<CardObject>();
-    /** registry of all objects in-use, access key is card's play-data key */
-    var pooledObjectsRegistry:Dictionary<CardObject> = new Dictionary<CardObject>();
+    /** indexing key */
+    export function GetKeyFromObject(data:CardDisplayObject):string { return data.OwnerType+"-"+(data.TableID??"0")+"-"+(data.TeamID??"0")+"-"+data.SlotID; };
+    export function GetKeyFromData(data:CardObjectCreationData):string { return data.ownerType+"-"+(data.tableID??"0")+"-"+(data.teamID??"0")+"-"+data.slotID; };
 
+    /** pool of ALL existing objects */
+    var pooledObjectsAll:List<CardDisplayObject> = new List<CardDisplayObject>();
+    /** pool of active objects (already being used in scene) */
+    var pooledObjectsActive:List<CardDisplayObject> = new List<CardDisplayObject>();
+    /** pool of inactive objects (not being used in scene) */
+    var pooledObjectsInactive:List<CardDisplayObject> = new List<CardDisplayObject>();
+    /** registry of all objects in-use, access key is card's play-data key */
+    var pooledObjectsRegistry:Dictionary<CardDisplayObject> = new Dictionary<CardDisplayObject>();
+
+    /** attmepts to find an object of the given key. if no object is registered under the given key then 'undefined' is returned. */
+    export function GetByKey(key:string):undefined|CardDisplayObject {
+        //check for object's existance
+        if(pooledObjectsRegistry.containsKey(key)) {
+            //return existing object
+            return pooledObjectsRegistry.getItem(key);
+        }
+        //object does not exist, send undefined
+        return undefined;
+    }
+
+    /** component for on-click interactions */
+    export const CardObjectComponentData = {
+        //what type of display this card is tied to
+        //  0=table, 1=deck manager
+        ownerType:Schemas.Number,
+        //indexing
+        tableID:Schemas.String,
+        teamID:Schemas.String,
+        slotID:Schemas.String,
+    }
+	/** define component, adding it to the engine as a managed behaviour */
+    export const CardObjectComponent = engine.defineComponent("CardObjectComponentData", CardObjectComponentData);
+    
     //TODO: migrate to creation data system (pass all details to create a card in a single data object)
 	/** object interface used to define all data required to create a new object */
 	export interface CardObjectCreationData {
-        //index
-        key: string; //key to register this object at (overwrites if key already exists)
+        //display type
+        ownerType: CARD_OBJECT_OWNER_TYPE,
+        //indexing
+        tableID?: string,
+        teamID?: string,
+        slotID: string,
         //target
         def: CardDataObject,
         //position
-        parent: undefined|Entity, //entity to parent object under 
-		position: { x:number; y:number; z:number; }; //new position for object
-		scale: { x:number; y:number; z:number; }; //new scale for object
-		rotation: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
+        parent?: Entity, //entity to parent object under 
+		position?: { x:number; y:number; z:number; }; //new position for object
+		scale?: { x:number; y:number; z:number; }; //new scale for object
+		rotation?: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
 	}
 
-    /** defines the blueprint for callbacks made from a card when it is clicked/selected */
-    type CardObjectCallback = (object:CardObject) => void;
-    /** called when the object is interacted with */
-    export var callbackInteract:undefined|CardObjectCallback = undefined;
-
     /** contains all pieces that make up a card object  */
-    export class CardObject { 
-        //unique id of this object
-        private id: number;
-        public get ID(): number { return this.id };
-
-        /** true when this object is rendered in the scene */
-        isActive:boolean = false; 
+    export class CardDisplayObject { 
+        /** when true this object is reserved in-scene */
+        private isActive: boolean = true;
+        public get IsActive():boolean { return this.isActive; };
+        
         /** true when this object can be interacted with */
-        isInteractable:boolean = false; 
-        /** true when this card is selected 
-         *  ex: player clicks card in hand turns to true, player clicks again and unselects it turns to false
-         * */
-        isSelected:boolean = false;
+        IsInteractable:boolean = false; 
+
+        /** type of owner/how this object should be interacted with */
+        private ownerType:number = 0;
+        public get OwnerType():number { return this.ownerType; };
+
+        /** represents the unique index of this slot's table, req for networking */
+        private tableID:string = "";
+        public get TableID():string { return this.tableID; };
+
+        /** represents the unique index of this slot's team, req for networking */
+        private teamID:string = "";
+        public get TeamID():string { return this.teamID; };
+
+        /** represents the unique index of this slot, req for networking */
+        private slotID:string = "";
+        public get SlotID():string { return this.slotID; };
+
+        /** core definition for this card (this should be expanded to target play data) */
+        private def:string = "";
+        public get Def():string { return this.def; };
+
         /**  rarity of the card */
         rarity:number = 0;
 
-        /** access key for card's play-data 
-         *      play-data contains the game-relevent values/details for the card, 
-         *      ex: how much health card has, if it is in-play, etc.
-         * */
-        key:string = "";
-        /** core definition for this card () */
-        def:string = "";
-
-        /** text displayed when the user is mousing over the card */
-        hoverText:string = "Select Card "+this.key;
-        get HoverText():string { return this.hoverText; }
-
         /** card frame (parent) */
-        entityFrame:Entity;
+        private entityFrame:Entity;
         /** card background display */
-        entityBackgroundDisplay:Entity;
+        private entityBackgroundDisplay:Entity;
         /** card character display */
-        entityCharacterDisplay:Entity;
+        private entityCharacterDisplay:Entity;
         /** card cost text */
-        entityTextCost:Entity;
+        private entityTextCost:Entity;
         /** card health text */
-        entityTextHealth:Entity;
+        private entityTextHealth:Entity;
         /** card attack text */
-        entityTextAttack:Entity;
+        private entityTextAttack:Entity;
         /** card armour text */
-        entityTextArmour:Entity;
+        private entityTextArmour:Entity;
 
         /** card effect/keyword pieces */
 
@@ -137,9 +178,6 @@ export module CardObject
 
         /** builds out the card, ensuring all required components exist and positioned correctly */
         constructor() {
-            //set id
-            this.id = nextID();
-
             //create frame
             //  create entity
             this.entityFrame = engine.addEntity();
@@ -152,19 +190,6 @@ export module CardObject
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
-            //  on click interaction
-            const ID = this.id; //this must be provided its own assert space to actually work/retain def
-            pointerEventsSystem.onPointerDown(
-                this.entityFrame,
-                function () {
-                    if(isDebugging) console.log(debugTag+"player interacted with objectID="+ID);
-                    if(callbackInteract) CardInteraction(ID);
-                },
-                {
-                    button: InputAction.IA_POINTER,
-                    hoverText: "Interact With Card (ID="+ID+")"
-                }
-            );
             
             //create background display
             //  create entity
@@ -240,20 +265,58 @@ export module CardObject
 
         /** initializes the  */
         public Initialize(data: CardObjectCreationData) {
-            //update object
-            //  key
-            this.key = data.key;
-            //  component defaults
-            this.isActive = false;
-            this.isInteractable = false;
-            this.isSelected = false;
-            //  transform 
+            this.isActive = true;
+            this.IsInteractable = false;
+            //indexing
+            this.ownerType = data.ownerType;
+            this.tableID = data.tableID??"0";
+            this.teamID = data.teamID??"0";
+            this.slotID = data.slotID;
+            //transform 
             const transform = Transform.getOrCreateMutable(this.entityFrame);
             transform.parent = data.parent;
-            transform.position = data.position;
-            transform.scale = data.scale;
-            transform.rotation = Quaternion.fromEulerDegrees(data.rotation.x,data.rotation.y,data.rotation.z);
-            //  animations (must be reasserted whenever model is replaced)
+            transform.position = data.position??DEFAULT_POSITION;
+            transform.scale = data.scale??DEFAULT_ROTATION;
+            const rot = data.rotation??DEFAULT_ROTATION;
+            transform.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
+            //set card sprite display details
+            //  get required def references
+            const factionDef: CardFactionDataObject = PlayerCardRegistry.Instance.GetFaction(data.def.faction);
+            const factionSheet: CardFactionTextureDataObject = PlayerCardRegistry.Instance.GetFactionTexture(data.def.faction);
+            const cardSheet: CardTextureDataObject = PlayerCardRegistry.Instance.GetCardTexture(data.def.id);
+            //  background image
+            MeshRenderer.setPlane(this.entityBackgroundDisplay, GetCardDrawVectors(
+                factionSheet.sheetDetails.totalSizeX, 
+                factionSheet.sheetDetails.totalSizeY, 
+                factionSheet.sheetDetails.elementSizeX, 
+                factionSheet.sheetDetails.elementSizeY, 
+                factionDef.sheetData.posX, 
+                factionDef.sheetData.posY
+            ));
+            Material.setPbrMaterial(this.entityBackgroundDisplay, {
+                texture: Material.Texture.Common({
+                    src: factionSheet.path,
+                    wrapMode: TextureWrapMode.TWM_REPEAT
+                }),
+                transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
+            });
+            //  character image
+            MeshRenderer.setPlane(this.entityCharacterDisplay, GetCardDrawVectors(
+                cardSheet.sheetDetails.totalSizeX, 
+                cardSheet.sheetDetails.totalSizeY, 
+                cardSheet.sheetDetails.elementSizeX, 
+                cardSheet.sheetDetails.elementSizeY, 
+                data.def.sheetData.posX, 
+                data.def.sheetData.posY
+            ));
+            Material.setPbrMaterial(this.entityCharacterDisplay, {
+                texture: Material.Texture.Common({
+                    src: cardSheet.path,
+                    wrapMode: TextureWrapMode.TWM_REPEAT
+                }),
+                transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
+            });
+            //animations (must be reasserted whenever model is replaced)
             /*Animator.createOrReplace(this.entityFrame, {
                 states:[
                     {name: ANIM_KEYS_CARD[0], clip: ANIM_KEYS_CARD[0], playing: true, loop: false},
@@ -263,7 +326,22 @@ export module CardObject
             });
             //halt any animations
             this.SetAnimation(-1);*/
-            //
+            //component
+            CardObjectComponent.createOrReplace(this.entityFrame, {
+                ownerType:data.ownerType,
+                tableID:data.tableID??"0",
+                teamID:data.teamID??"0",
+                slotID:data.slotID,
+            });
+            //  pointer event system
+            PointerEvents.createOrReplace(this.entityFrame, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Interact Card: "+GetKeyFromObject(this) }
+                  },
+                ]
+            });
         }
 
         /** plays the given animation on the character */
@@ -274,6 +352,20 @@ export module CardObject
             }
             //turn on targeted animation
             if(index != -1) Animator.getClip(this.entityFrame, ANIM_KEYS_CARD[index]).playing = true;
+        }
+
+        /** disables the given object, hiding it from the scene but retaining it in data & pooling */
+        public Disable() {
+            this.isActive = false;
+            //hide card parent
+            const transformParent = Transform.getMutable(this.entityFrame);
+            transformParent.scale = PARENT_SCALE_OFF;
+        }
+
+        /** removes objects from game scene and engine */
+        public Destroy() {
+            //destroy game object
+            engine.removeEntity(this.entityFrame);
         }
     }
     
@@ -289,15 +381,15 @@ export module CardObject
      *  @param key unique id of card object, used for access
      *  @returns: card object data 
      */
-    export function Create(data:CardObjectCreationData):CardObject {
-        if(isDebugging) console.log(debugTag+"attempting to create object, key="+data.key);
-        
-        var object:undefined|CardObject = undefined;
+    export function Create(data:CardObjectCreationData):CardDisplayObject {
+        const key:string = GetKeyFromData(data);
+        var object:undefined|CardDisplayObject = undefined;
+        if(isDebugging) console.log(debugTag+"attempting to create new object, key="+key+"...");
         
         //if an object under the requested key is already active, hand that back
-        if(pooledObjectsRegistry.containsKey(data.key)) {
-            console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+data.key);
-            object = pooledObjectsRegistry.getItem(data.key);
+        if(pooledObjectsRegistry.containsKey(key)) {
+            console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+key);
+            object = pooledObjectsRegistry.getItem(key);
         } 
         //  attempt to find an existing unused object
         if(pooledObjectsInactive.size() > 0) {
@@ -310,98 +402,23 @@ export module CardObject
         if(object == undefined) {
             //create card object frame
             //  create data object (initializes all sub-components)
-            object = new CardObject();
+            object = new CardDisplayObject();
             //  add to overhead collection
             pooledObjectsAll.addItem(object);
         }
 
-        //get faction def
-        const factionDef: CardFactionDataObject = PlayerCardRegistry.Instance.GetFaction(data.def.faction);
-        //get faction sheet
-        const factionSheet: CardFactionTextureDataObject = PlayerCardRegistry.Instance.GetFactionTexture(data.def.faction);
-        //get card sheet
-        const cardSheet: CardTextureDataObject = PlayerCardRegistry.Instance.GetCardTexture(data.def.id);
-        
-        //set card details
-        //  background image
-        MeshRenderer.setPlane(object.entityBackgroundDisplay, GetCardDrawVectors(
-            factionSheet.sheetDetails.totalSizeX, 
-            factionSheet.sheetDetails.totalSizeY, 
-            factionSheet.sheetDetails.elementSizeX, 
-            factionSheet.sheetDetails.elementSizeY, 
-            factionDef.sheetData.posX, 
-            factionDef.sheetData.posY
-        ));
-        Material.setPbrMaterial(object.entityBackgroundDisplay, {
-            texture: Material.Texture.Common({
-                src: factionSheet.path,
-                wrapMode: TextureWrapMode.TWM_REPEAT
-            }),
-            transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
-        });
-        //  character image
-        MeshRenderer.setPlane(object.entityCharacterDisplay, GetCardDrawVectors(
-            cardSheet.sheetDetails.totalSizeX, 
-            cardSheet.sheetDetails.totalSizeY, 
-            cardSheet.sheetDetails.elementSizeX, 
-            cardSheet.sheetDetails.elementSizeY, 
-            data.def.sheetData.posX, 
-            data.def.sheetData.posY
-        ));
-        Material.setPbrMaterial(object.entityCharacterDisplay, {
-            texture: Material.Texture.Common({
-                src: cardSheet.path,
-                wrapMode: TextureWrapMode.TWM_REPEAT
-            }),
-            transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
-        });
-
         //initialize object
         object.Initialize(data);
-
-        //TODO: redefined object based on given def/rarity; implement SetType
-        
 
         //add object to active collection (ensure only 1 entry)
         var posX = pooledObjectsActive.getItemPos(object);
         if(posX == -1) pooledObjectsActive.addItem(object);
         //add to registry under given key
-        pooledObjectsRegistry.addItem(data.key, object);
+        pooledObjectsRegistry.addItem(key, object);
 
-        if(isDebugging) console.log(debugTag+"created new collectible object, key="+data.key+
-            ", total="+pooledObjectsAll.size()+", active="+pooledObjectsActive.size()+", inactive="+pooledObjectsInactive.size());
+        if(isDebugging) console.log(debugTag+"created new object, key='"+key+"'!");
         //provide entity reference
         return object;
-    }
-
-    /** called when a card is interacted with */
-    function CardInteraction(id:number) {
-        //get object reference
-        var object:undefined|CardObject = undefined;
-        for(let i=0; i < pooledObjectsActive.size(); i++) {
-            if(pooledObjectsActive.getItem(i).ID == id)
-                object = pooledObjectsActive.getItem(i);
-        }
-        //ensure object was found
-        if(!object) return;
-
-        //process interaction for object
-        if(callbackInteract) callbackInteract(object);
-    } 
-
-    /** attmepts to find an object of the given key. if no object is registered under the
-     *  given key then 'undefined' is returned.
-     * 
-     * use create to initialize a card object (send it def, rarity, etc.)
-     */
-    export function GetByKey(key:string):undefined|CardObject {
-        //check for object's existance
-        if(pooledObjectsRegistry.containsKey(key)) {
-            //return existing object
-            return pooledObjectsRegistry.getItem(key);
-        }
-        //object does not exist, send undefined
-        return undefined;
     }
 
     /** disables all objects, hiding them from the scene but retaining them in data & pooling */
@@ -416,7 +433,8 @@ export module CardObject
     }
 
     /** disables the given object, hiding it from the scene but retaining it in data & pooling */
-    export function Disable(object:CardObject) {
+    export function Disable(object:CardDisplayObject) {
+        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  add to inactive listing (ensure add is required)
         var posX = pooledObjectsInactive.getItemPos(object);
@@ -424,15 +442,10 @@ export module CardObject
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(object.key)) pooledObjectsRegistry.removeItem(object.key);
+        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
 
-        //disable via component
-        object.isActive = false;
-        object.isInteractable = false;
-        object.isSelected = false;
-        
-        //hide object (soft remove work-around)
-        Transform.getMutable(object.entityFrame).scale = { x:0, y:0, z:0 }; 
+        //send disable command
+        object.Disable();
     }
 
     /** removes all objects from the game */
@@ -447,7 +460,8 @@ export module CardObject
     }
 
     /** removes given object from game scene and engine */
-    export function Destroy(object:CardObject) {
+    export function Destroy(object:CardDisplayObject) {
+        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  remove from overhead listing
         pooledObjectsAll.removeItem(object);
@@ -456,10 +470,10 @@ export module CardObject
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(object.key)) pooledObjectsRegistry.removeItem(object.key);
+        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
 
-        //destroy game object
-        engine.removeEntity(object.entityFrame);
+        //send destroy command
+        object.Destroy();
         //TODO: atm we rely on DCL to clean up object data class. so far it hasn't been an issue due to how
         //  object data is pooled, but we should look into how we can explicitly set data classes for removal
     }
@@ -467,7 +481,7 @@ export module CardObject
 
 //### EVERYTHING BELOW THIS POINT IS JUST TESTING COMMANDS TO ENSURE FUNCTIONALITY
 //var pass
-var testEntities:CardObject.CardObject[] = [];
+var testEntities:CardDisplayObject.CardDisplayObject[] = [];
     
 /** tests 'create' functionality
  *  PROCESS: create n objects
@@ -476,13 +490,11 @@ var testEntities:CardObject.CardObject[] = [];
 export function TEST_CARD_OBJECT_CREATE(count:number) {
     //create requested number of objects
     for(var i=0; i<count; i++) {
-        testEntities.push(CardObject.Create({
-            key: testEntities.length.toString(),
+        testEntities.push(CardDisplayObject.Create({
+            ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.SHOWCASE,
+            slotID: "0",
             def: CardData[i], 
-            parent: undefined,
             position: { x:(testEntities.length*0.65)-(count*0.65/2)+8, y:1.5, z:8 },
-            scale: { x:1, y:1, z:1 },
-            rotation: { x:0, y:0, z:0 },
         }));
     }
 }
@@ -496,7 +508,7 @@ export function TEST_CARD_OBJECT_DISABLE() {
     TEST_CARD_OBJECT_CREATE(2);
     //remove single object
     var cardObject = testEntities.pop();
-    if(cardObject) CardObject.Disable(cardObject);
+    if(cardObject) CardDisplayObject.Disable(cardObject);
     //create more objects
     TEST_CARD_OBJECT_CREATE(2);
 }
@@ -509,7 +521,7 @@ export function TEST_CARD_OBJECT_DISABLE_ALL() {
     //create objects
     TEST_CARD_OBJECT_CREATE(2);
     //remove all objects
-    CardObject.DestroyAll();
+    CardDisplayObject.DestroyAll();
     //create more objects
     TEST_CARD_OBJECT_CREATE(3);
 }
@@ -523,7 +535,7 @@ export function TEST_CARD_OBJECT_DESTROY() {
     TEST_CARD_OBJECT_CREATE(2);
     //destroy single object
     var cardObject = testEntities.pop();
-    if(cardObject) CardObject.Destroy(cardObject);
+    if(cardObject) CardDisplayObject.Destroy(cardObject);
     //create more objects
     TEST_CARD_OBJECT_CREATE(2);
 }
@@ -536,7 +548,7 @@ export function TEST_CARD_OBJECT_DESTROY_ALL() {
     //create objects
     TEST_CARD_OBJECT_CREATE(2);
     //destroy all objects
-    CardObject.DestroyAll();
+    CardDisplayObject.DestroyAll();
     //create more objects
     TEST_CARD_OBJECT_CREATE(3);
 }
