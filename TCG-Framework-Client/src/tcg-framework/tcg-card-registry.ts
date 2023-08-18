@@ -11,13 +11,13 @@
 */
 
 import Dictionary, { List } from "../utilities/collections";
-import { CARD_PLAY_TYPE, CardData, CardDataObject, CardTextureData, CardTextureDataObject, TEXTURE_SHEET_CARDS } from "./data/tcg-card-data";
+import { CARD_DATA_ID, CARD_PLAY_TYPE, CardData, CardDataObject, CardTextureData, CardTextureDataObject, TEXTURE_SHEET_CARDS } from "./data/tcg-card-data";
 import { CARD_FACTION_TYPE, CardFactionData, CardFactionDataObject, CardFactionSheetDataObject, CardFactionTextureData, CardFactionTextureDataObject as FactionTextureDataObject, TEXTURE_SHEET_CARD_FACTIONS } from "./data/tcg-card-faction-data";
 
 /* linkage for a single card's data in the game */
 export class CardEntry {
     //card's uid
-    private id:string; 
+    private id:CARD_DATA_ID; 
     public get ID() { return this.id; }
     //card's data position
     private position:number;
@@ -30,7 +30,7 @@ export class CardEntry {
     public Count: number = 0;
     
     /** prepares card data entry for use */
-    constructor(pos:number, id:string) {
+    constructor(pos:number, id:CARD_DATA_ID) {
         this.position = pos;
         this.id = id;
     }
@@ -133,7 +133,7 @@ export class PlayerCardRegistry {
                 + ", type=" + CardData[i].type.toString() + ", faction=" + CardData[i].faction.toString());
             //add to registry
             this.cardRegistryAll.addItem(entry);
-            this.cardRegistryViaID.addItem(CardData[i].id, entry);
+            this.cardRegistryViaID.addItem(CardData[i].id.toString(), entry);
             this.cardRegistryViaType.getItem(CardData[i].type.toString()).addItem(entry);
             this.cardRegistryViaFaction.getItem(CardData[i].faction.toString()).addItem(entry);
         }
@@ -154,8 +154,8 @@ export class PlayerCardRegistry {
     
     //### CARDS
     /** returns card sheet index */
-    public CallbackGetCardTexture(id: string): CardTextureDataObject { return PlayerCardRegistry.Instance.GetCardTexture(id); }
-    public GetCardTexture(id: string): CardTextureDataObject { return this.cardTextureRegistry.getItem(this.GetEntryByID(id).DataDef.sheetData.sheet); }
+    public CallbackGetCardTexture(id: CARD_DATA_ID): CardTextureDataObject { return PlayerCardRegistry.Instance.GetCardTexture(id); }
+    public GetCardTexture(id:CARD_DATA_ID): CardTextureDataObject { return this.cardTextureRegistry.getItem(this.GetEntryByID(id.toString()).DataDef.sheetData.sheet); }
     /** returns card entry at given position */
     public CallbackGetEntryByPos(index: number): CardEntry { return PlayerCardRegistry.Instance.GetEntryByPos(index); }
     public GetEntryByPos(index: number): CardEntry { return this.cardRegistryAll.getItem(index); }

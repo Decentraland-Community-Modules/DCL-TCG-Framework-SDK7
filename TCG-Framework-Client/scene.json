@@ -16,7 +16,9 @@
 	"tags": [],
 	"scene": {
 		"parcels": [
-			"0,0"
+			"0,0","0,1","0,2",
+			"1,0","1,1","1,2",
+			"2,0","2,1","2,2"
 		],
 		"base": "0,0"
 	},
@@ -24,8 +26,8 @@
 		{
 			"name": "spawn1",
 			"default": true,
-			"position": { "x":8, "y":1, "z":0 },
-			"cameraTarget": { "x": 8, "y": 1.5, "z": 8 }
+			"position": { "x":24, "y":1, "z":0 },
+			"cameraTarget": { "x": 24, "y": 1.5, "z": 8 }
 		}
 	],
 	"requiredPermissions": [
