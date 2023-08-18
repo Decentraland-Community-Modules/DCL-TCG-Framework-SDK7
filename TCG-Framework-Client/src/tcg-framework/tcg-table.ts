@@ -30,7 +30,7 @@ export module Table {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
-    const debugTag:string = "TCG Card Field: ";
+    const debugTag:string = "TCG Table: ";
 
     /** scale for parental view toggles */
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
@@ -43,8 +43,8 @@ export module Table {
     ];
     /** rotation for card field team objects */
     const FIELD_TEAM_ROTATION:Vector3[] = [
-        { x:0, y:0, z:0 },
-        { x:0, y:180, z:0 }
+        { x:0, y:90, z:0 },
+        { x:0, y:270, z:0 }
     ];
 
     /** indexing key */
@@ -113,6 +113,7 @@ export module Table {
 
         /** prepares the card slot for use by a table team */
         public Initialize(data:TableTeamCreationData) {
+            this.isActive = true;
             //indexing
             this.tableID = data.tableID;
             //transform
@@ -129,7 +130,7 @@ export module Table {
             }
 
             //create team objects
-            for(let i:number=0; i<2; i++) {
+            for(let i:number=0; i<1; i++) {
                 const teamObject:TableTeam.TableTeamObject = TableTeam.Create({
                     tableID: data.tableID,
                     teamID: i.toString(),
@@ -143,6 +144,7 @@ export module Table {
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
+            this.isActive = false;
             //disable all attached table teams
             while(this.teamObjects.length > 0) {
                 const teamObject = this.teamObjects.pop();
@@ -203,7 +205,7 @@ export module Table {
         //add to registry under given key
         pooledObjectsRegistry.addItem(key, object);
 
-        if(isDebugging) console.log(debugTag+"created new collectible object, key='"+key+"'");
+        if(isDebugging) console.log(debugTag+"created new object, key='"+key+"'!");
         //provide entity reference
         return object;
     }

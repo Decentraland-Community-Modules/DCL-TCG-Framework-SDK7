@@ -29,11 +29,11 @@ export module TableTeam {
 
     /** positions of field team's card slots */
     const CARD_SLOT_POSITIONS:Vector3[] = [
-        { x:0, y:0, z:0 },
-        { x:2, y:0, z:0 },
-        { x:-2, y:0, z:0 },
-        { x:4, y:0, z:0 },
-        { x:-4, y:0, z:0 },
+        { x:0, y:0, z:1.5 },
+        { x:2, y:0, z:1.5 },
+        { x:-2, y:0, z:1.5 },
+        { x:4, y:0, z:1.5 },
+        { x:-4, y:0, z:1.5 },
     ];
 
     /** indexing key */
@@ -124,6 +124,7 @@ export module TableTeam {
 
         /** prepares the card slot for use by a table team */
         public Initialize(data:TableTeamCreationData) {
+            this.isActive = true;
             //indexing
             this.tableID = data.tableID;
             this.teamID = data.teamID;
@@ -141,7 +142,7 @@ export module TableTeam {
             }
 
             //create team objects
-            for(let i:number=0; i<2; i++) {
+            for(let i:number=0; i<CARD_SLOT_POSITIONS.length; i++) {/**/
                 const teamObject:TableCardSlot.TableCardSlotObject = TableCardSlot.Create({
                     tableID: data.tableID,
                     teamID: data.teamID,
@@ -155,6 +156,7 @@ export module TableTeam {
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
+            this.isActive = false;
             //disable all attached table teams
             while(this.cardSlotObjects.length > 0) {
                 const teamObject = this.cardSlotObjects.pop();
@@ -216,7 +218,7 @@ export module TableTeam {
         //add to registry under given key
         pooledObjectsRegistry.addItem(key, object);
 
-        if(isDebugging) console.log(debugTag+"created new collectible object, key='"+key+"'");
+        if(isDebugging) console.log(debugTag+"created new object, key='"+key+"'!");
         //provide entity reference
         return object;
     }
