@@ -14,7 +14,7 @@
  *  this effectively gives us 99 card ids per type per factions
  */
 
-import { CARD_FACTION_TYPE } from "./tcg-card-faction-data";
+import { CARD_FACTION_TYPE } from "./tcg-faction-data";
 import { CARD_KEYWORD_ID } from "./tcg-keyword-data";
 
 /** defines splice sheets in an easily changable manner */
@@ -64,7 +64,7 @@ export const CardTextureData: CardTextureDataObject[] = [
 ];
 
 /** defines what play type a card is  */
-export enum CARD_PLAY_TYPE {
+export enum CARD_TYPE {
     //effect-based cards
     //  ex: card that causes damage or heals a unit
     SPELL,    
@@ -75,6 +75,12 @@ export enum CARD_PLAY_TYPE {
     //  ex: creates a fortified zone that heals all units at the start of each turn
     TERRAIN,
 }
+/** represents all display strings per card type */
+export const CARD_TYPE_STRINGS:string[] = [
+    "Spell",
+    "Character",
+    "Terrain"
+];
 
 /** defines what targets are valid/required for the effect */
 export enum CARD_KEYWORD_TARGET_TYPE {
@@ -121,7 +127,7 @@ export interface CardEffectDataObject {
 /** data interface for defining a card */
 export interface CardDataObject {
     //indexing
-    type:CARD_PLAY_TYPE;    //card type
+    type:CARD_TYPE;    //card type
     faction:CARD_FACTION_TYPE;   //faction type
     id:CARD_DATA_ID; //unique id for this card
     //display text
@@ -131,10 +137,9 @@ export interface CardDataObject {
     sheetData:CardSheetDataObject;  //defines how card's character will be drawn
     //display 3D
     objPath:string; //object location
-    audioTriggers:string;   //linkage to play sounds at certain points
     //attributes
     attributeCost:number;
-    attributeCharacter:undefined|CardCharacterDataObject;
+    attributeCharacter?:CardCharacterDataObject;
     //effects
     keywords: CardEffectDataObject [];    //all associated keywords/effects of card
 }
@@ -160,7 +165,6 @@ export enum CARD_DATA_ID {
     SPELL_HEAL,
     //## FIRE SPELLS
     SPELL_FIREBOLT,
-    SPELL_FIRESTORM,
     //## ICE SPELLS
     SPELL_ICEBOLT,
     //## ELECTRIC SPELLS
@@ -198,23 +202,21 @@ export enum CARD_DATA_ID {
 /** listing of all cards included in the game */
 export const CardData:CardDataObject[] = [
     //### DEMO SPELLS
-    // Heal
+    //## NEUTRAL SPELLS
     {
         //indexing
-        type: CARD_PLAY_TYPE.SPELL,
+        type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.NEUTRAL,
         id:CARD_DATA_ID.SPELL_HEAL,
         //display text 
         name: "Heal",
         desc: "A spell of healing",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/stone-golem-r1.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/neutral-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords:[
             {
@@ -223,23 +225,21 @@ export const CardData:CardDataObject[] = [
             }
         ]
     },
-    // Firebolt
+    //## FIRE SPELLS
     {
         //indexing
-        type: CARD_PLAY_TYPE.SPELL,
+        type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.FIRE,
         id:CARD_DATA_ID.SPELL_FIREBOLT,
         //display text 
-        name: "FireBall",
+        name: "Fireball",
         desc: "A bolt of fire",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords:[
             {
@@ -248,48 +248,21 @@ export const CardData:CardDataObject[] = [
             }
         ]
     },
-    // FireStorm
+    //## ICE SPELLS
     {
         //indexing
-        type: CARD_PLAY_TYPE.SPELL,
-        faction: CARD_FACTION_TYPE.FIRE,
-        id:CARD_DATA_ID.SPELL_FIRESTORM,
-        //display text 
-        name: "FireStorm",
-        desc: "A fire spell that attacks all enemy players",
-        //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
-        //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
-        //Attributes
-        attributeCost:2,
-        attributeCharacter: undefined,
-        //effects
-        keywords:[
-            {
-                type:CARD_KEYWORD_ID.BURN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.ALL, targetCount:0
-            }
-        ]
-    },
-    // IceBolt
-    {
-        //indexing
-        type: CARD_PLAY_TYPE.SPELL,
+        type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.ICE,
         id:CARD_DATA_ID.SPELL_ICEBOLT,
         //display text 
         name: "Icebolt",
         desc: "A bolt of ice",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords:[
             {
@@ -298,23 +271,21 @@ export const CardData:CardDataObject[] = [
             }
         ]
     },
-    // LightningBolt
+    //## ELECTRIC SPELLS
     {
         //indexing
-        type: CARD_PLAY_TYPE.SPELL,
+        type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.ELECTRIC,
         id:CARD_DATA_ID.SPELL_LIGHTNINGBOLT,
         //display text 
-        name: "LightningBolt",
+        name: "Lightningbolt",
         desc: "A bolt of Lightning",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords:[
             {
@@ -323,23 +294,21 @@ export const CardData:CardDataObject[] = [
             }
         ]
     },
-    // VoidBolt
+    //## VOID SPELLS
     {
         //indexing
-        type: CARD_PLAY_TYPE.SPELL,
+        type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.VOID,
         id:CARD_DATA_ID.SPELL_VOIDBOLT,
         //display text 
-        name: "VoidBolt",
+        name: "Voidbolt",
         desc: "A bolt from the void",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/void-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords:[
             {
@@ -350,22 +319,20 @@ export const CardData:CardDataObject[] = [
     },
 
    
-   
-    //### DEMO CHARACTERS (Golems)
+    //### DEMO CHARACTERS
     //## NEUTRAL CHARACTERS 
     {
         //indexing
-        type: CARD_PLAY_TYPE.CHARACTER,
+        type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.NEUTRAL,
         id:CARD_DATA_ID.CHARACTER_NEUTRAL_GOLEM,
         //display text 
-        name: "Fire Golem",
-        desc: "a lava golem carved from molten rock",
+        name: "Stone Golem",
+        desc: "a stone golem carved from stone",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 0, posY: 1 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/stone-golem-r1.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/neutral-golem.glb",
         //Attributes
         attributeCost:1,
         attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -377,21 +344,19 @@ export const CardData:CardDataObject[] = [
             }
         ]  
     },
-
     //## FIRE CHARACTERS
     {
         //indexing
-        type: CARD_PLAY_TYPE.CHARACTER,
+        type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.FIRE,
         id:CARD_DATA_ID.CHARACTER_FIRE_GOLEM,
         //display text 
         name: "Fire Golem",
         desc: "a lava golem carved from molten rock",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 0, posY: 1 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
         //Attributes
         attributeCost:1,
         attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -410,17 +375,16 @@ export const CardData:CardDataObject[] = [
     //## ICE CHARACTERS
     {
         //indexing
-        type: CARD_PLAY_TYPE.CHARACTER,
+        type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.ICE,
         id:CARD_DATA_ID.CHARACTER_ICE_GOLEM,
         //display text 
         name: "Ice Golem",
         desc: "a golem of ice chiped from permafrost",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 1 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
         //Attributes
         attributeCost:1,
         attributeCharacter: {unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -439,17 +403,16 @@ export const CardData:CardDataObject[] = [
     //## ELECTRIC CHARACTERS
     {
         //indexing
-        type: CARD_PLAY_TYPE.CHARACTER,
+        type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.ELECTRIC,
         id:CARD_DATA_ID.CHARACTER_LIGHTNING_GOLEM,
         //display text 
         name: "Lightning Golem",
-        desc: "a golem made from pure energy",
+        desc: "a golem formed from pure energy",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
         //Attributes
         attributeCost:1,
         attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -468,17 +431,16 @@ export const CardData:CardDataObject[] = [
     //## VOID CHARACTERS
     {
         //indexing
-        type: CARD_PLAY_TYPE.CHARACTER,
+        type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.VOID,
         id:CARD_DATA_ID.CHARACTER_VOID_GOLEM,
         //display text 
         name: "Void Golem",
         desc: "a golem from realms beyond our comprehension",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 0, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/void-golem.glb",
         //Attributes
         attributeCost:1,
         attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -495,24 +457,23 @@ export const CardData:CardDataObject[] = [
         ]  
     },
 
+
     //### DEMO TERRIANS
-    //Fire
+    //## FIRE TERRAIN
     {
         //indexing
-        type: CARD_PLAY_TYPE.TERRAIN,
+        type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.FIRE,
         id:CARD_DATA_ID.TERRAIN_FIRE,
         //display text 
-        name: "Ashen Plains",
+        name: "Fire Terrain",
         desc: "a terrain of burning feilds molten rivers and dark clouds and trees with black leaves",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords: [
             {
@@ -521,23 +482,21 @@ export const CardData:CardDataObject[] = [
             },
         ]  
     },
-    //ice
+    //## ICE TERRAIN
     {
         //indexing
-        type: CARD_PLAY_TYPE.TERRAIN,
+        type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.ICE,
         id:CARD_DATA_ID.TERRAIN_ICE,
         //display text 
-        name: "Permafrost Forest",
+        name: "Ice Terrain",
         desc: "a terrain of frozen rivers whipping winds and heavy snowfall surrounded by endless trees",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords: [
             {
@@ -545,23 +504,21 @@ export const CardData:CardDataObject[] = [
                 targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.ALL, targetCount:0
             },        ]  
     },
-    //Electric
+    //## ELECTRIC TERRAIN
     {
         //indexing
-        type: CARD_PLAY_TYPE.TERRAIN,
+        type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.ELECTRIC,
         id:CARD_DATA_ID.TERRAIN_ELECTRIC,
         //display text 
-        name: "Thunder Summit",
+        name: "Electric Terrain",
         desc: "a terrain based admidst thunderous clouds",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords: [
             {
@@ -570,23 +527,21 @@ export const CardData:CardDataObject[] = [
             },
         ]  
     },
-    //Void
+    //## VOID TERRAIN
     {
         //indexing
-        type: CARD_PLAY_TYPE.TERRAIN,
+        type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.VOID,
         id:CARD_DATA_ID.TERRAIN_VOID,
         //display text 
-        name: "Infinite Void",
+        name: "Void Terrain",
         desc: "a terrain based in a glossy dark zone with purple stars littering the sky",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 1, posY: 0 },
+        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/sample-tank/sample-tank.glb",
-        audioTriggers: "",
+        objPath: "models/tcg-framework/card-characters/void-golem.glb",
         //Attributes
         attributeCost:1,
-        attributeCharacter: undefined,
         //effects
         keywords: [
             {

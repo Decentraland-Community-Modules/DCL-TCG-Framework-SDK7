@@ -14,7 +14,7 @@ import { TableCardSlot } from "./tcg-table-card-slot";
 */
 export module TableTeam {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table Team: ";
 

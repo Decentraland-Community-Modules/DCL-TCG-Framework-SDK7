@@ -11,7 +11,7 @@ import { CardDataObject } from "./data/tcg-card-data";
 */
 export module TableCardSlot {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table Card Slot: ";
 
@@ -130,7 +130,7 @@ export module TableCardSlot {
                 rotation: Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z)
             });
             //  add model
-            MeshRenderer.setBox(this.interactionEntity);
+            //MeshRenderer.setBox(this.interactionEntity);
             MeshCollider.setBox(this.interactionEntity, ColliderLayer.CL_POINTER);
         }
 
