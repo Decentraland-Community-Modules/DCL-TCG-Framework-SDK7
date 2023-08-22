@@ -1,5 +1,6 @@
 import { executeTask } from "@dcl/sdk/ecs"
 import { getUserData } from "~system/UserIdentity"
+import { PlayCardDeck } from "../tcg-play-card-deck";
 
 /** defines all possible connectivity/load states */
 enum PLAYER_CONNECTIVITY_STATE {
@@ -46,11 +47,14 @@ export module Player {
     var displayName:string;
     export function DisplayName():string { return displayName;}
 
-    /*
-    executeTask(async () => {
-      let userData = await getUserData({})
-      console.log(userData.data)
-    });*/
+    /** local player's available decks */
+    export const PlayerDecks:PlayCardDeck.PlayCardDeckObject[] = [
+        PlayCardDeck.Create({key:"P0", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
+        PlayCardDeck.Create({key:"P1", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
+        PlayCardDeck.Create({key:"P2", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
+        PlayCardDeck.Create({key:"P3", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
+        PlayCardDeck.Create({key:"P4", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
+    ];
 
     /** attempts to load the local player's data */
     export async function LoadPlayerData() {
@@ -91,7 +95,4 @@ export module Player {
         connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTED;
         if(isDebugging) console.log("Player: loaded player data!");
     };
-
-} 
-//attempt connection on-start
-Player.LoadPlayerData();
+}

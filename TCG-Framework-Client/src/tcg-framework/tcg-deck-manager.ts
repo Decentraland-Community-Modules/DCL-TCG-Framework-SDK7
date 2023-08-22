@@ -1,10 +1,14 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Animator, ColliderLayer, Entity, GltfContainer, Material, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
-import { PlayerCardRegistry } from "./tcg-card-registry";
+import { CardDataRegistry } from "./data/tcg-card-registry";
 import { CardCharacterObject } from "./tcg-card-character-object";
-import { CardData } from "./data/tcg-card-data";
-import { Quaternion } from "@dcl/sdk/math";
+import { CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
+import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
+import { CardFactionData } from "./data/tcg-faction-data";
+import { InteractionObject } from "./tcg-interaction-object";
+import { PlayCardDeck } from "./tcg-play-card-deck";
+import { Player } from "./config/tcg-player";
 /*      TRADING CARD GAME - DECK MANAGER
     all utilities for creating & managing a decks of cards, this includes 
     creating new decks, adding/removing cards from a deck, and viewing available
@@ -25,89 +29,163 @@ export module DeckManager
     const debugTag:string = "TCG Deck Manager: ";
 
     /** deck manager object model location */
-    const MODEL_DECK_MANAGER:string = 'models/tcg-framework/deck-manager/tcg-deck-manager-prototype.glb';
+    const MODEL_DECK_MANAGER:string = 'models/tcg-framework/deck-manager/tcg-deck-manager-prototype-1.glb';
     /** pedistal display model location */
-    const MODEL_PEDISTAL:string = 'models/tcg-framework/deck-manager/tcg-display-pedistal.glb';
+    const MODEL_PEDISTAL:string = 'models/tcg-framework/deck-manager/tcg-deck-manager-prototype-1-pedistal.glb';
     /** animation keys */
-    const animKeysDeckManagerObject:string[] = [
+    const ANIM_KEYS_DECK_MANAGER:string[] = [
         "state_inactive",
         "anim_activate",
         "anim_deactivate"
     ];
 
-    /** parental instance for all */
-    var instance:undefined|Entity = undefined;
-    /** instance pocketing for deck manager object, ensures initialization */
-    function Instance():Entity {
-        //ensure instance is set
-        if(instance === undefined) {
-            //create class
-            instance = engine.addEntity();
-            Transform.create(instance);
-            Initialize();
-        }
-  
-        return instance;
+    export enum DECK_INTERACTION_TYPE {
+        SELECT,
+        SAVE,
+        LOAD,
     }
 
-    /** default size for the deck manager object */
-    const DISPLAY_OBJECT_SCALE = { x:0.8, y:0.8, z:0.8 };
+    /** core display object defaults */
+    const DISPLAY_OBJECT_SCALE = { x:1.2, y:1.2, z:1.2 };
     
+    /** character display object defaults */
+    const DISPLAY_CHARACTER_OFFSET = { x:0.0, y:0.46, z:0.0 };
+    const DISPLAY_CHARACTER_SCALE = { x:0.25, y:0.25, z:0.25 };
+    
+    /** collsion area defaults */
+    const TRIGGER_OFFSET = { x:0, y:1.5, z:-2 };
+    const TRIGGER_SCALE = { x:8, y:4, z:6 };
+
     /** default size for the deck manager object */
-    const CARD_OBJECT_OFFSET = { x:0.0, y:1.75, z:0.0 };
-    const CARD_OBJECT_SCALE = { x:0.125, y:0.125, z:0.125 };
+    const CARD_OBJECT_OFFSET = { x:0.0, y:1.8, z:-0.05 };
+    const CARD_OBJECT_SCALE = { x:0.125, y:0.125, z:0.025 };
     /* number of cards in the display */
     const DISPLAY_GRID_SIZE_X:number = 5;
-    const DISPLAY_GRID_SIZE_Y:number = 3;
+    const DISPLAY_GRID_SIZE_Y:number = 2;
     /* size of cards */
-    const CARD_SIZE_X:number = 0.45;
-    const CARD_SIZE_Y:number = 0.6;
+    const CARD_SIZE_X:number = 0.35;
+    const CARD_SIZE_Y:number = 0.45;
     
-    /** true when this object can be interacted with */
-    var isInteractable:boolean = false;
-    
-    /* min number of cards in a viable deck */
-    const deckSizeMin = 24;
-    /* max number of cards in a viable deck */
-    const deckSizeMax = 32;
+    /** parental display object */
+    const entityParent:Entity = engine.addEntity();
+    Transform.create(entityParent, {scale: DISPLAY_OBJECT_SCALE });
 
-    /** display pedistal for card characters */
-    const pedistalObject:Entity = engine.addEntity();
-    Transform.create(pedistalObject, { 
-        position: { x:8, y:0, z:12 } 
+    /** core display model  */
+    const entityDisplayModel = engine.addEntity();
+    Transform.create(entityDisplayModel, { parent: entityParent });
+    //  add custom model
+    GltfContainer.create(entityDisplayModel, {
+        src: MODEL_DECK_MANAGER,
+        visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+        invisibleMeshesCollisionMask: undefined
     });
-    GltfContainer.createOrReplace(pedistalObject, {
+    //add animator
+    Animator.create(entityDisplayModel, {
+        states:[
+            { name: ANIM_KEYS_DECK_MANAGER[0], clip: ANIM_KEYS_DECK_MANAGER[0], playing: true, loop: false },
+            { name: ANIM_KEYS_DECK_MANAGER[1], clip: ANIM_KEYS_DECK_MANAGER[1], playing: false, loop: false },
+            { name: ANIM_KEYS_DECK_MANAGER[2], clip: ANIM_KEYS_DECK_MANAGER[2], playing: false, loop: false },
+        ]
+    });
+    //add trigger entry trigger
+    utils.triggers.addTrigger(entityDisplayModel, utils.NO_LAYERS, utils.LAYER_1, 
+        [{type: 'box', position: TRIGGER_OFFSET, scale: TRIGGER_SCALE }],
+        OnTriggerEntry,
+        OnTriggerExit
+    );
+
+    /** pedistal display model */
+    const entityDisplayPedistal:Entity = engine.addEntity();
+    Transform.create(entityDisplayPedistal, { parent: entityParent });
+    //  add custom model
+    GltfContainer.createOrReplace(entityDisplayPedistal, {
         src: MODEL_PEDISTAL,
         visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
         invisibleMeshesCollisionMask: undefined
     });
-    Animator.create(pedistalObject, {
+    //add animator
+    Animator.create(entityDisplayPedistal, {
         states:[
             { name: 'rotate', clip: 'rotate', playing: true, loop: true, speed:0.25 },
         ]
     });
-    /** display location for selected card character */
-    const pedistalDisplayPoint:Entity = engine.addEntity();
-    Transform.create(pedistalDisplayPoint, { 
-        parent: pedistalObject,
-        position: { x:0, y:0.5, z:0 },
-        scale: { x:0.75, y:0.75, z:0.75 }
-    });
-    utils.perpetualMotions.startRotation(pedistalDisplayPoint, Quaternion.fromEulerDegrees(0, -15, 0))
 
-    //### DISPLAY DETAILS
-    /** display frame */
-    var entityFrame:Entity;
+    /** card character display parent */
+    const entityDisplayPedistalPoint:Entity = engine.addEntity();
+    Transform.create(entityDisplayPedistalPoint, { 
+        parent: entityParent,
+        position: DISPLAY_CHARACTER_OFFSET,
+        scale: DISPLAY_CHARACTER_SCALE
+    });
+    //add constant rotation
+    utils.perpetualMotions.startRotation(entityDisplayPedistalPoint, Quaternion.fromEulerDegrees(0, -15, 0))
+
+
+    //### DECK INTERACTION COMPONENTS
+    const deckParent:Entity = engine.addEntity();
+    Transform.create(deckParent,{
+        parent:entityParent,
+        position: { x:2.05, y:1.7, z:-0.325 },
+        rotation: Quaternion.fromEulerDegrees(0,35,0)
+    });
+    /** deck header text */
+    const deckHeaderText:Entity = engine.addEntity();
+    Transform.create(deckHeaderText,{
+        parent:deckParent,
+        position: { x:0, y:0.45, z:-0.12 },
+        scale: { x:0.1, y:0.1, z:0.1, },
+    });
+    TextShape.create(deckHeaderText, { text: "DECK CARDS ###/###", 
+        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+    });
+    /** select deck buttons */
+    var deckButtonSelectors:InteractionObject.InteractionObject[] = [];
+    for(let i:number=0; i<CardFactionData.length; i++) {
+        deckButtonSelectors.push(InteractionObject.Create({
+            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
+            actionPrimary:DECK_INTERACTION_TYPE.SELECT, actionSecondary:i,
+            interactionText:"SELECT DECK "+i,
+            textScale: { x:0.125, y:1, z:1, },
+            parent: deckParent, 
+            position: { x:0, y:0.325-(i*0.13), z:-0.1 },
+            scale: { x:0.8, y:0.10, z:0.05, }
+        }));
+        Material.setPbrMaterial(deckButtonSelectors[i].entityShape, { albedoColor: Color4.White(), });
+        TextShape.getMutable(deckButtonSelectors[i].entityText).text = "DECK "+i+" - ("+Player.PlayerDecks[i]?.CardsAll.size()+")";
+    }
     /** save deck button */
+    const deckButtonSave = InteractionObject.Create({
+        ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
+        actionPrimary:DECK_INTERACTION_TYPE.SAVE, actionSecondary:0,
+        displayText:"SAVE",
+        interactionText:"SAVE DECK",
+        textScale: { x:0.35, y:1, z:1, },
+        parent: deckParent, 
+        position: { x:-0.3, y:-0.4, z:-0.1 },
+        scale: { x:0.5, y:0.2, z:0.05, }
+    });
     /** load deck button */
-    /** area trigger, auto clean-up when player moves away */
-    /** area trigger, auto hide other players in deck manager area */
+    const deckButtonLoad = InteractionObject.Create({
+        ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
+        actionPrimary:DECK_INTERACTION_TYPE.LOAD, actionSecondary:0,
+        displayText:"LOAD",
+        interactionText:"LOAD DECK",
+        textScale: { x:0.35, y:1, z:1, },
+        parent: deckParent, 
+        position: { x:0.3, y:-0.4, z:-0.1 },
+        scale: { x:0.5, y:0.2, z:0.05, }
+    });
 
     //### DECK DETAILS
+    /** local deck data capsule (overwritten/saved to player's actual decks) */
+    var deckLocalContainer = PlayCardDeck.Create({
+        key: 'deck-manager',
+        type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL
+    });
     /** which deck slot is currently being modified (-1 for no-save) */
-    var deckSelection:number = -1;
-    /** number of cards in the current deck */
-    var deckCardCount:number = 0;
+    var deckTargetIndex:number = 0;
+    /** reference to currently targeted deck */
+    var deckTargetContainer:PlayCardDeck.PlayCardDeckObject = Player.PlayerDecks[0];
 
     //### SELECTED CARD DETAILS
     /** which card slot is currently selected/displayed (-1 for no slot selected) */
@@ -124,76 +202,140 @@ export module DeckManager
     /** display page next */
     /** display page prev */
 
-    /** builds out the deck manager, ensuring all required components exist and positioned correctly.
-     *  card objects are claimed/released as the player interacts with the deck manager.
-     */
-    function Initialize() {
-        //create frame
-        //  create entity
-        entityFrame = engine.addEntity();
-        Transform.create(entityFrame, {parent: instance, scale: DISPLAY_OBJECT_SCALE});
-        //  add custom model
-        GltfContainer.create(entityFrame, {
-            src: MODEL_DECK_MANAGER,
-            visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-            invisibleMeshesCollisionMask: undefined
+    //### CARD FILTERING
+    enum FILTER_TYPE { FACTION=10, TYPE=11, COST=12 }
+    const filterParent:Entity = engine.addEntity();
+    Transform.create(filterParent, {parent:entityParent});
+    /** filter objects - per faction */
+    var filterFactionMask:boolean[] = [];
+    var filterFactionObj:InteractionObject.InteractionObject[] = [];
+    for(let i:number=0; i<CardFactionData.length; i++) {
+        filterFactionMask.push(true);
+        filterFactionObj.push(InteractionObject.Create({
+            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
+            actionPrimary:FILTER_TYPE.FACTION, actionSecondary:i,
+            displayText:i.toString(),
+            interactionText:"toggle "+CardFactionData[i].name,
+            parent: filterParent, 
+            position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
+            scale: { x:0.1, y:0.1, z:0.04, }
+        }));
+        Material.setPbrMaterial(filterFactionObj[i].entityShape, {
+            albedoColor: Color4.Green(),
         });
-        //add animator
-        Animator.create(entityFrame, {
-            states:[
-                { name: animKeysDeckManagerObject[0], clip: animKeysDeckManagerObject[0], playing: true, loop: false },
-                { name: animKeysDeckManagerObject[1], clip: animKeysDeckManagerObject[1], playing: false, loop: false },
-                { name: animKeysDeckManagerObject[2], clip: animKeysDeckManagerObject[2], playing: false, loop: false },
-            ]
+    }
+    /** filter objects - per type */
+    var filterTypeMask:boolean[] = [];
+    var filterTypeObj:InteractionObject.InteractionObject[] = [];
+    for(let i:number=0; i<CARD_TYPE_STRINGS.length; i++) {
+        filterTypeMask.push(true);
+        filterTypeObj.push(InteractionObject.Create({
+            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
+            actionPrimary:FILTER_TYPE.TYPE, actionSecondary:i,
+            displayText:i.toString(),
+            interactionText:"toggle "+CARD_TYPE_STRINGS[i],
+            parent: filterParent, 
+            position: { x:-0.95, y:2-(i*0.2), z:-0.025 },
+            scale: { x:0.1, y:0.1, z:0.04, }
+        }));
+        Material.setPbrMaterial(filterTypeObj[i].entityShape, {
+            albedoColor: Color4.Green(),
         });
-        //add trigger entry trigger
-        utils.triggers.addTrigger(entityFrame, utils.NO_LAYERS, utils.LAYER_1, 
-            [{type: 'box', position: {x:0,y:1.5,z:-2}, scale: {x:4,y:4,z:4}}],
-            OnTriggerEntry,
-            OnTriggerExit
-        );
-        
-        //set default animation
-        SetAnimation(0);
+    }
+    /** filter objects - per cost */
+    var filterCostMask:boolean[] = [];
+    var filterCostObj:InteractionObject.InteractionObject[] = [];
+    for(let i:number=0; i<10; i++) {
+        filterCostMask.push(true);
+        filterCostObj.push(InteractionObject.Create({
+            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
+            actionPrimary:FILTER_TYPE.COST, actionSecondary:i,
+            displayText:i.toString(),
+            interactionText:"toggle cost "+i,
+            parent: filterParent, 
+            position: { x:-0.675+(i*0.15), y:1.25, z:-0.025 },
+            scale: { x:0.1, y:0.1, z:0.04, }
+        }));
+        Material.setPbrMaterial(filterCostObj[i].entityShape, {
+            albedoColor: Color4.Green(),
+        });
+    }
+
+    /** toggles filter of given type */
+    export function ToggleFilter(type:number, index:number) {
+        if(isDebugging) console.log(debugTag+"toggling filter tag type="+type+", index="+index);
+        switch(type) {
+            case 
+                FILTER_TYPE.FACTION: filterFactionMask[index] = !filterFactionMask[index]; 
+                if(filterFactionMask[index]) Material.setPbrMaterial(filterFactionObj[index].entityShape, { albedoColor: Color4.Green(), });
+                else Material.setPbrMaterial(filterFactionObj[index].entityShape, { albedoColor: Color4.Red(), });
+            break;
+            case 
+                FILTER_TYPE.TYPE: filterTypeMask[index] = !filterTypeMask[index]; 
+                if(filterTypeMask[index]) Material.setPbrMaterial(filterTypeObj[index].entityShape, { albedoColor: Color4.Green(), });
+                else Material.setPbrMaterial(filterTypeObj[index].entityShape, { albedoColor: Color4.Red(), });
+
+            break;
+            case 
+                FILTER_TYPE.COST: filterCostMask[index] = !filterCostMask[index]; 
+                if(filterCostMask[index]) Material.setPbrMaterial(filterCostObj[index].entityShape, { albedoColor: Color4.Green(), });
+                else Material.setPbrMaterial(filterCostObj[index].entityShape, { albedoColor: Color4.Red(), });
+
+            break;
+        }
+        RedrawCardView();
     }
 
     /** redefines the deck manager object's parent */
     export function SetParent(parent: undefined|Entity) {
-        Transform.getMutable(Instance()).parent = parent;
+        Transform.getMutable(entityParent).parent = parent;
     }
 
     /** redefines the deck manager object's position */
     export function SetPosition(position: {x:number,y:number,z:number}) {
-        Transform.getMutable(Instance()).position = position;
+        Transform.getMutable(entityParent).position = position;
     }
 
     /** redefines the deck manager object's rotation */
     export function SetRotation(rotation: {x:number,y:number,z:number,w:number}) {
-        Transform.getMutable(Instance()).rotation = rotation;
+        Transform.getMutable(entityParent).rotation = rotation;
     }
 
     /** sets the given animation */
     function SetAnimation(value:number) {
         //turn off animations
-        for(let i = 0; i < animKeysDeckManagerObject.length; i++) {
-            Animator.getClip(entityFrame, animKeysDeckManagerObject[i]).playing = false;
+        for(let i = 0; i < ANIM_KEYS_DECK_MANAGER.length; i++) {
+            Animator.getClip(entityDisplayModel, ANIM_KEYS_DECK_MANAGER[i]).playing = false;
         }
         //turn on animation
-        Animator.getClip(entityFrame, animKeysDeckManagerObject[value]).playing = true;
+        Animator.getClip(entityDisplayModel, ANIM_KEYS_DECK_MANAGER[value]).playing = true;
     }
 
     /** triggered when player enters the area */
     function OnTriggerEntry() {
         if(isDebugging) console.log(debugTag+"trigger entered");
         SetAnimation(1);
-        GenerateCardObjects();
+
+        //update display
+        utils.timers.setTimeout(
+            function() { 
+                GenerateCardObjects();
+                RedrawCardView();
+                Transform.getMutable(deckParent).scale = Vector3.One(); 
+                Transform.getMutable(filterParent).scale = Vector3.One(); 
+            },
+            1000
+        );
     }
 
     /** triggered when player exits the area */
     function OnTriggerExit() { 
         if(isDebugging) console.log(debugTag+"trigger exit"); 
         SetAnimation(2);
+
         ReleaseCardObjects();
+        Transform.getMutable(deckParent).scale = Vector3.Zero();
+        Transform.getMutable(filterParent).scale = Vector3.Zero();
     }
 
     /** displays a list of cards in the game, based on the current filters/page  */
@@ -209,8 +351,8 @@ export module DeckManager
                 const card = CardDisplayObject.Create({
                     ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
                     slotID: (x + (y*DISPLAY_GRID_SIZE_X)).toString(),
-                    def: PlayerCardRegistry.Instance.GetEntryByPos(0).DataDef, 
-                    parent: instance,
+                    def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
+                    parent: entityParent,
                     position: {
                         x:CARD_OBJECT_OFFSET.x + (x * CARD_SIZE_X) - (invTotalX / 2), 
                         y:CARD_OBJECT_OFFSET.y - (y * CARD_SIZE_Y) + (invTotalY / 2), 
@@ -224,30 +366,111 @@ export module DeckManager
         if(isDebugging) console.log(debugTag+"redrew display cards with "+entityGridCards.length); 
     }
 
-    //TODO: add filtering system for toggling displays per:
-    //  faction
-    //  type (spell, character, terrain)
-    //  cost
+    /** processes all cards looking  */
+    function RedrawCardView() {
+        //process all display card objects
+        var indexDisplay: number = 0;
+        var indexData: number = 0;
+        while(indexDisplay < entityGridCards.length) {
+            //attempt to get next card data
+            var cardData:undefined|CardDataObject = undefined;
+            while(indexData < CardData.length) {
+                //set card data
+                cardData = CardData[indexData];
+                //push to next card data
+                indexData++;
 
-    /**  */
-    function ApplyFilter() {
+                //check filters
+                //  faction
+                if(!filterFactionMask[cardData.faction]) cardData = undefined;
+                //  type
+                else if(!filterTypeMask[cardData.type]) cardData = undefined;
+                //  cost
+                else if(!filterCostMask[cardData.attributeCost]) cardData = undefined;
 
+                //if card data was found, exit
+                if(cardData != undefined) break;
+            }
+
+            //if card data was found, populate display object based on data 
+            var cardObject:CardDisplayObject.CardDisplayObject = entityGridCards[indexDisplay];
+            if(cardData != undefined) {
+                cardObject.SetCard(cardData);
+                //update count text
+                cardObject.SetCounterValue(deckLocalContainer.GetCardCount(cardObject.DefIndex).toString());
+            }
+            //if no card data, hide card object
+            else {
+                cardObject.Disable();
+            }
+
+            //push to next card objects
+            indexDisplay++;
+        }
     }
 
-    /**  */
-    function RedrawCardView() {
+    /** selects a new deck, loading it in for modification */
+    export function DeckInteractionSelect(index:number) {
+        if(isDebugging) console.log(debugTag+"selecting deck, key="+index); 
 
+        Material.setPbrMaterial(deckButtonSelectors[deckTargetIndex].entityShape, { albedoColor: Color4.White(), });
+        //set reference
+        deckTargetIndex = index;
+        deckTargetContainer = Player.PlayerDecks[index];
+        Material.setPbrMaterial(deckButtonSelectors[deckTargetIndex].entityShape, { albedoColor: Color4.Green(), });
+    }
+
+    /** called when player interacts with counter buttons */
+    export function DeckInteractionSave() {
+        if(isDebugging) console.log(debugTag+"saving deck, key="+deckTargetIndex); 
+        //save local deck to target deck
+        deckTargetContainer.Clone(deckLocalContainer);
+        TextShape.getMutable(deckButtonSelectors[deckTargetIndex].entityText).text = "DECK "+deckTargetIndex+" - ("+deckTargetContainer.CardsAll.size()+")";
+
+        //update count text
+        RedrawCardView();
+        UpdateCardCount();
+    }
+
+    /** called when player interacts with counter buttons */
+    export function DeckInteractionLoad() {
+        if(isDebugging) console.log(debugTag+"loading deck, key="+deckTargetIndex);
+        //load local deck from target deck
+        deckLocalContainer.Clone(deckTargetContainer);
+
+        //update count text
+        RedrawCardView();
+        UpdateCardCount();
+    }
+
+    /** called when player interacts with counter buttons */
+    export function CardInteractionCounterButton(slotID:string, change:number) {
+        //get card object
+        const cardObject = entityGridCards[Number.parseInt(slotID)];
+        if(isDebugging) console.log(debugTag+"modifying card ID="+cardObject.DefIndex+", change="+change+"...");
+
+        //process change
+        if(change > 0) deckLocalContainer.AddCard(cardObject.DefIndex);
+        else deckLocalContainer.RemoveCard(cardObject.DefIndex);
+
+        //update count text
+        UpdateCardCount();
+        cardObject.SetCounterValue(deckLocalContainer.GetCardCount(cardObject.DefIndex).toString());
+    }
+
+    export function UpdateCardCount() {
+        TextShape.getMutable(deckHeaderText).text = "DECK CARDS "+deckLocalContainer.CardsAll.size()+"/"+PlayCardDeck.DECK_SIZE_MAX;
     }
 
     /** called when a card is interacted with */
-    export function CardInteraction(slotID:string) {
+    export function CardInteractionSelect(slotID:string) {
         if(isDebugging) console.log(debugTag+"player interacted with card, key="+slotID); 
 
         //create character display model
         CardCharacterObject.Create({
             key: "tcg-dm",
-		    model: CardData[0].objPath,
-            parent: pedistalDisplayPoint, 
+		    model: CardData[entityGridCards[Number.parseInt(slotID)].DefIndex].objPath,
+            parent: entityDisplayPedistalPoint, 
             position: { x:0, y:0, z:0, },
             scale: { x:1, y:1, z:1, },
             rotation: { x:0, y:0, z:0, }
@@ -263,6 +486,10 @@ export module DeckManager
         }
         if(isDebugging) console.log(debugTag+"released display card, remaining="+entityGridCards.length); 
     }
-}
 
+    //ensure display is set as 
+    UpdateCardCount();
+    DeckInteractionSelect(0);
+    OnTriggerExit();
+}
 //### EVERYTHING BELOW THIS POINT IS JUST TESTING COMMANDS TO ENSURE FUNCTIONALITY

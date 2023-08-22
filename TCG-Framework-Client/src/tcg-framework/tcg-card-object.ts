@@ -1,10 +1,11 @@
-import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator, Schemas, PointerEvents, PointerEventType } from "@dcl/sdk/ecs";
+import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator, Schemas, PointerEvents, PointerEventType, MeshCollider } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataObject, CardTextureDataObject, CardData } from "./data/tcg-card-data";
-import { CARD_FACTION_TYPE, CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-card-faction-data";
-import { PlayerCardRegistry } from "./tcg-card-registry";
+import { CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-faction-data";
+import { CardDataRegistry } from "./data/tcg-card-registry";
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
+import { InteractionObject } from "./tcg-interaction-object";
 
 /*      TRADING CARD GAME - CARD OBJECT
     contains all the functionality for the framework's card objects. these are simply display
@@ -24,13 +25,10 @@ export module CardDisplayObject
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Object: ";
 
-    /** scale for parental view toggles */
-    const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
-    
-    /** transform defaults */
-    const DEFAULT_POSITION:Vector3 = { x:0, y:0, z:0 };
-    const DEFAULT_SCALE:Vector3 = { x:1, y:1, z:1 };
-    const DEFAULT_ROTATION:Vector3 = { x:0, y:0, z:0 };
+    /** object model location */
+    const MODEL_CARD_FRAME_CORE:string = 'models/tcg-framework/card-core/tcg-card-prototype-core.glb';
+    const MODEL_CARD_FRAME_CHARACTER:string = 'models/tcg-framework/card-core/tcg-card-prototype-character.glb';
+    const MODEL_CARD_FRAME_COUNTER:string = 'models/tcg-framework/card-core/tcg-card-prototype-counter.glb';
 
     /** determines all possible card owners */
     export enum CARD_OBJECT_OWNER_TYPE {
@@ -38,9 +36,14 @@ export module CardDisplayObject
         DECK_MANAGER = 1, //used by deck manager
         SHOWCASE = 2, //set on display in scene
     }
+    
+    /** determines all possible card interaction types */
+    export enum CARD_OBJECT_INTERACTION_TYPE {
+        INTERACT = 0,
+        COUNTER_UP = 1,
+        COUNTER_DOWN = 2,
+    }
 
-    /** object model location */
-    const MODEL_CARD_FRAME:string = 'models/tcg-framework/card-core/tcg-card-prototype.glb';
     /** animation key tags (FOR CARD) */
     const ANIM_KEYS_CARD:string[] = [
         "anim_grow", //selected/played
@@ -48,14 +51,26 @@ export module CardDisplayObject
         "anim_hover", //mouse-over
     ];
 
+    /** transform - parent */
+    const PARENT_POSITION:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
+    const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_ROTATION:Vector3 = { x:0, y:0, z:0 };
+
     /** default frame object size */
-    const cardObjectSize = {x:0.25, y:0.25, z:0.25};
+    const CARD_CORE_SCALE = {x:0.25, y:0.25, z:0.25};
+    /**  */
+    const COUNTER_BUTTON_POSITION_INCREASE = {x:1.1, y:0.6, z:-0.15};
+    const COUNTER_BUTTON_POSITION_DECREASE = {x:1.1, y:-0.6, z:-0.15};
+    const COUNTER_BUTTON_SCALE = {x:0.5, y:0.5, z:0.1};
+    const COUNTER_TEXT_POSITION = {x:1.1, y:0.0, z:-0.15};
+    const COUNTER_TEXT_SCALE = {x:0.35, y:0.35, z:0.35};
     /** background object size */
-    const cardObjectBackgroundPos = {x:0, y:0, z:-0.035};
-    const cardObjectBackgroundScale = {x:2, y:3, z:1};
+    const CARD_BACKGROUND_POSITION = {x:0, y:0, z:-0.01};
+    const CARD_BACKGROUND_SCALE = {x:2, y:3, z:1};
     /** character object size */
-    const cardObjectCharacterPos = {x:0, y:0, z:-0.036};
-    const cardObjectCharacterScale = {x:1.4, y:2.3, z:1};
+    const CARD_CHARACTER_POSITION = {x:0, y:0, z:-0.011};
+    const CARD_CHARACTER_SCALE = {x:1.4, y:2.3, z:1};
     /** cost text transform */
     const cardTextCostPos = {x:1.08, y:1.45, z:-0.08};
     const cardTextCostScale = {x:0.25, y:0.25, z:0.25};
@@ -102,6 +117,8 @@ export module CardDisplayObject
         tableID:Schemas.String,
         teamID:Schemas.String,
         slotID:Schemas.String,
+        //targeting
+        request:Schemas.Number,
     }
 	/** define component, adding it to the engine as a managed behaviour */
     export const CardObjectComponent = engine.defineComponent("CardObjectComponentData", CardObjectComponentData);
@@ -150,14 +167,23 @@ export module CardDisplayObject
         public get SlotID():string { return this.slotID; };
 
         /** core definition for this card (this should be expanded to target play data) */
-        private def:string = "";
-        public get Def():string { return this.def; };
+        private defIndex:number = 0;
+        public get DefIndex():number { return this.defIndex; };
 
         /**  rarity of the card */
         rarity:number = 0;
 
-        /** card frame (parent) */
-        private entityFrame:Entity;
+        /** parental entity */
+        private entity:Entity;
+        /** card core frame */
+        private entityCoreFrameObject:Entity;
+        /** card character stats display frame */
+        private entityCharacterFrameObject:Entity;
+        /** card counter display frame */
+        private entityCounterFrame:Entity;
+        private entityCounterText:Entity;
+        private entityCounterButtonUp:Entity;
+        private entityCounterButtonDown:Entity;
         /** card background display */
         private entityBackgroundDisplay:Entity;
         /** card character display */
@@ -178,26 +204,86 @@ export module CardDisplayObject
 
         /** builds out the card, ensuring all required components exist and positioned correctly */
         constructor() {
-            //create frame
+            //create parent
+            this.entity = engine.addEntity();
+            Transform.create(this.entity, {
+                scale: PARENT_SCALE_ON
+            });
+
+            //create core frame
             //  create entity
-            this.entityFrame = engine.addEntity();
-            Transform.create(this.entityFrame, {
-                scale: cardObjectSize
+            this.entityCoreFrameObject = engine.addEntity();
+            Transform.create(this.entityCoreFrameObject, {
+                parent: this.entity,
+                scale: CARD_CORE_SCALE
             });
             //  add custom model
-            GltfContainer.create(this.entityFrame, {
-                src: MODEL_CARD_FRAME,
+            GltfContainer.create(this.entityCoreFrameObject, {
+                src: MODEL_CARD_FRAME_CORE,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
-            
+
+            //create character state frame
+            //  create entity
+            this.entityCharacterFrameObject = engine.addEntity();
+            Transform.create(this.entityCharacterFrameObject, {
+                parent: this.entityCoreFrameObject,
+            });
+            //  add custom model
+            GltfContainer.create(this.entityCharacterFrameObject, {
+                src: MODEL_CARD_FRAME_CHARACTER,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+
+            //create counter frame
+            //  create entity
+            this.entityCounterFrame = engine.addEntity();
+            Transform.create(this.entityCounterFrame, {
+                parent: this.entityCoreFrameObject,
+            });
+            //  add custom model
+            GltfContainer.create(this.entityCounterFrame, {
+                src: MODEL_CARD_FRAME_COUNTER,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            //create counter button up
+            this.entityCounterButtonUp = engine.addEntity();
+            Transform.create(this.entityCounterButtonUp, {
+                parent: this.entityCounterFrame,
+                position: COUNTER_BUTTON_POSITION_INCREASE,
+                scale: COUNTER_BUTTON_SCALE
+            });
+            //MeshRenderer.setBox(this.entityCounterButtonUp);
+            MeshCollider.setBox(this.entityCounterButtonUp);
+            //create counter button down
+            this.entityCounterButtonDown = engine.addEntity();
+            Transform.create(this.entityCounterButtonDown, {
+                parent: this.entityCounterFrame,
+                position: COUNTER_BUTTON_POSITION_DECREASE,
+                scale: COUNTER_BUTTON_SCALE
+            });
+            //MeshRenderer.setBox(this.entityCounterButtonDown);
+            MeshCollider.setBox(this.entityCounterButtonDown);
+            //counter text
+            this.entityCounterText = engine.addEntity();
+            Transform.create(this.entityCounterText, {
+                parent: this.entityCounterFrame,
+                position: COUNTER_TEXT_POSITION, scale: COUNTER_TEXT_SCALE 
+            });
+            TextShape.create(this.entityCounterText, { text: "8", 
+                textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
+            });
+
             //create background display
             //  create entity
             this.entityBackgroundDisplay = engine.addEntity();
             Transform.create(this.entityBackgroundDisplay, {
-                parent: this.entityFrame, 
-                position: cardObjectBackgroundPos, 
-                scale: cardObjectBackgroundScale,
+                parent: this.entityCoreFrameObject,
+                position: CARD_BACKGROUND_POSITION, 
+                scale: CARD_BACKGROUND_SCALE,
             });
             //  add display plane
             MeshRenderer.setPlane(this.entityBackgroundDisplay, GetCardDrawVectors(512, 512, 256, 512, 1, 0));
@@ -212,9 +298,9 @@ export module CardDisplayObject
             //  create entity
             this.entityCharacterDisplay = engine.addEntity();
             Transform.create(this.entityCharacterDisplay, {
-                parent: this.entityFrame, 
-                position: cardObjectCharacterPos, 
-                scale: cardObjectCharacterScale,
+                parent: this.entityCoreFrameObject,
+                position: CARD_CHARACTER_POSITION, 
+                scale: CARD_CHARACTER_SCALE,
             });
             //  add display plane
             MeshRenderer.setPlane(this.entityCharacterDisplay, GetCardDrawVectors(512, 512, 142, 256, 0, 0));
@@ -228,7 +314,8 @@ export module CardDisplayObject
             
             //create cost text
             this.entityTextCost = engine.addEntity();
-            Transform.create(this.entityTextCost, { parent: this.entityFrame, 
+            Transform.create(this.entityTextCost, {
+                parent: this.entityCoreFrameObject,
                 position: cardTextCostPos, scale: cardTextCostScale 
             });
             TextShape.create(this.entityTextCost, { text: "99", 
@@ -237,7 +324,8 @@ export module CardDisplayObject
             
             //create health text
             this.entityTextHealth = engine.addEntity();
-            Transform.create(this.entityTextHealth, { parent: this.entityFrame, 
+            Transform.create(this.entityTextHealth, {
+                parent: this.entityCoreFrameObject,
                 position: cardTextHealthPos, scale: cardTextHealthScale 
             });
             TextShape.create(this.entityTextHealth, { text: "99", 
@@ -246,7 +334,8 @@ export module CardDisplayObject
             
             //create attack text
             this.entityTextAttack = engine.addEntity();
-            Transform.create(this.entityTextAttack, { parent: this.entityFrame, 
+            Transform.create(this.entityTextAttack, {
+                parent: this.entityCoreFrameObject,
                 position: cardTextAttackPos, scale: cardTextAttackScale
             });
             TextShape.create(this.entityTextAttack, { text: "99", 
@@ -255,7 +344,8 @@ export module CardDisplayObject
 
             //create armour text
             this.entityTextArmour = engine.addEntity();
-            Transform.create(this.entityTextArmour, { parent: this.entityFrame, 
+            Transform.create(this.entityTextArmour, {
+                parent: this.entityCoreFrameObject,
                 position: cardTextArmourPos, scale: cardTextArmourScale 
             });
             TextShape.create(this.entityTextArmour, { text: "99", 
@@ -272,18 +362,71 @@ export module CardDisplayObject
             this.tableID = data.tableID??"0";
             this.teamID = data.teamID??"0";
             this.slotID = data.slotID;
-            //transform 
-            const transform = Transform.getOrCreateMutable(this.entityFrame);
+            //parent 
+            const transform = Transform.getOrCreateMutable(this.entity);
             transform.parent = data.parent;
-            transform.position = data.position??DEFAULT_POSITION;
-            transform.scale = data.scale??DEFAULT_ROTATION;
-            const rot = data.rotation??DEFAULT_ROTATION;
+            transform.position = data.position??PARENT_POSITION;
+            const rot = data.rotation??PARENT_ROTATION;
             transform.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
+            //core frame
+            Transform.getOrCreateMutable(this.entityCoreFrameObject).scale = data.scale??CARD_CORE_SCALE;
+            //core component
+            CardObjectComponent.createOrReplace(this.entityCoreFrameObject, {
+                ownerType:data.ownerType,
+                tableID:data.tableID??"0",
+                teamID:data.teamID??"0",
+                slotID:data.slotID,
+                request:CARD_OBJECT_INTERACTION_TYPE.INTERACT,
+            });
+            //button up component
+            CardObjectComponent.createOrReplace(this.entityCounterButtonUp, {
+                ownerType:data.ownerType,
+                tableID:data.tableID??"0",
+                teamID:data.teamID??"0",
+                slotID:data.slotID,
+                request:CARD_OBJECT_INTERACTION_TYPE.COUNTER_UP,
+            });
+            //pointer event system
+            PointerEvents.createOrReplace(this.entityCounterButtonUp, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "INCREASE" }
+                  },
+                ]
+            });
+            //button down component
+            CardObjectComponent.createOrReplace(this.entityCounterButtonDown, {
+                ownerType:data.ownerType,
+                tableID:data.tableID??"0",
+                teamID:data.teamID??"0",
+                slotID:data.slotID,
+                request:CARD_OBJECT_INTERACTION_TYPE.COUNTER_DOWN,
+            });
+            //pointer event system
+            PointerEvents.createOrReplace(this.entityCounterButtonDown, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "DECREASE" }
+                  },
+                ]
+            });
+
+            //apply card definition
+            this.SetCard(data.def);
+        }
+
+        /** */
+        public SetCard(def:CardDataObject) {
+            this.defIndex = def.id;
+            //enable object
+            Transform.getOrCreateMutable(this.entity).scale = PARENT_SCALE_ON;
             //set card sprite display details
             //  get required def references
-            const factionDef: CardFactionDataObject = PlayerCardRegistry.Instance.GetFaction(data.def.faction);
-            const factionSheet: CardFactionTextureDataObject = PlayerCardRegistry.Instance.GetFactionTexture(data.def.faction);
-            const cardSheet: CardTextureDataObject = PlayerCardRegistry.Instance.GetCardTexture(data.def.id);
+            const factionDef: CardFactionDataObject = CardDataRegistry.Instance.GetFaction(def.faction);
+            const factionSheet: CardFactionTextureDataObject = CardDataRegistry.Instance.GetFactionTexture(def.faction);
+            const cardSheet: CardTextureDataObject = CardDataRegistry.Instance.GetCardTexture(def.id);
             //  background image
             MeshRenderer.setPlane(this.entityBackgroundDisplay, GetCardDrawVectors(
                 factionSheet.sheetDetails.totalSizeX, 
@@ -306,8 +449,8 @@ export module CardDisplayObject
                 cardSheet.sheetDetails.totalSizeY, 
                 cardSheet.sheetDetails.elementSizeX, 
                 cardSheet.sheetDetails.elementSizeY, 
-                data.def.sheetData.posX, 
-                data.def.sheetData.posY
+                def.sheetData.posX, 
+                def.sheetData.posY
             ));
             Material.setPbrMaterial(this.entityCharacterDisplay, {
                 texture: Material.Texture.Common({
@@ -316,56 +459,67 @@ export module CardDisplayObject
                 }),
                 transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
             });
-            //animations (must be reasserted whenever model is replaced)
-            /*Animator.createOrReplace(this.entityFrame, {
-                states:[
-                    {name: ANIM_KEYS_CARD[0], clip: ANIM_KEYS_CARD[0], playing: true, loop: false},
-                    {name: ANIM_KEYS_CARD[1], clip: ANIM_KEYS_CARD[1], playing: false, loop: false},
-                    {name: ANIM_KEYS_CARD[2], clip: ANIM_KEYS_CARD[2], playing: false, loop: false},
-                ]
-            });
-            //halt any animations
-            this.SetAnimation(-1);*/
-            //component
-            CardObjectComponent.createOrReplace(this.entityFrame, {
-                ownerType:data.ownerType,
-                tableID:data.tableID??"0",
-                teamID:data.teamID??"0",
-                slotID:data.slotID,
-            });
+            //update text
+            //  cost
+            TextShape.getMutable(this.entityTextCost).text = def.attributeCost.toString();
+            //  if character stat component exists in def
+            if(def.attributeCharacter) {
+                Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
+                TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
+                TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
+                TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
+            }
+            else {
+                Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
+                TextShape.getMutable(this.entityTextAttack).text = "";
+                TextShape.getMutable(this.entityTextHealth).text = "";
+                TextShape.getMutable(this.entityTextArmour).text = "";
+            }
             //  pointer event system
-            PointerEvents.createOrReplace(this.entityFrame, {
+            PointerEvents.createOrReplace(this.entityCoreFrameObject, {
                 pointerEvents: [
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Interact Card: "+GetKeyFromObject(this) }
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: def.name }
                   },
                 ]
             });
+        }
+
+        public SetCounterState(state:boolean) {
+
+        }
+
+        public GetCounterValue() {
+            return TextShape.getMutable(this.entityCounterText).text;
+        }
+
+        public SetCounterValue(value:string) {
+            TextShape.getMutable(this.entityCounterText).text = value;
         }
 
         /** plays the given animation on the character */
         public SetAnimation(index:number) {
             //turn off all animations
             for(let i = 0; i < ANIM_KEYS_CARD.length; i++) {
-                Animator.getClip(this.entityFrame, ANIM_KEYS_CARD[i]).playing = false;
+                Animator.getClip(this.entity, ANIM_KEYS_CARD[i]).playing = false;
             }
             //turn on targeted animation
-            if(index != -1) Animator.getClip(this.entityFrame, ANIM_KEYS_CARD[index]).playing = true;
+            if(index != -1) Animator.getClip(this.entity, ANIM_KEYS_CARD[index]).playing = true;
         }
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
             this.isActive = false;
             //hide card parent
-            const transformParent = Transform.getMutable(this.entityFrame);
+            const transformParent = Transform.getMutable(this.entity);
             transformParent.scale = PARENT_SCALE_OFF;
         }
 
         /** removes objects from game scene and engine */
         public Destroy() {
             //destroy game object
-            engine.removeEntity(this.entityFrame);
+            engine.removeEntity(this.entity);
         }
     }
     

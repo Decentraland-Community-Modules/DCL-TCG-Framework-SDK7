@@ -28,7 +28,7 @@ import { TableTeam } from "./tcg-table-team";
 */
 export module Table {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table: ";
 
@@ -130,7 +130,7 @@ export module Table {
             }
 
             //create team objects
-            for(let i:number=0; i<1; i++) {
+            for(let i:number=0; i<2; i++) {
                 const teamObject:TableTeam.TableTeamObject = TableTeam.Create({
                     tableID: data.tableID,
                     teamID: i.toString(),
