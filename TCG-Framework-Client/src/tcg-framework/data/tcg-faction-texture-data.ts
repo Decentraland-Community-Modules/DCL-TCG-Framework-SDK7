@@ -26,7 +26,7 @@ export const CardFactionTextureData: CardFactionTextureDataObject[] = [
     //### DEMO BACKGROUND SPLICE
     {
         id: TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_0, //sheet name
-        path:"images/tcg-framework/card-images/card-backgrounds/card-type-example-0.png",  //sheet path
+        path:"images/tcg-framework/card-backgrounds/card-type-example-0.png",  //sheet path
         sheetDetails: { 
             totalSizeX: 512,      //total width of sheet
             totalSizeY: 512,      //total height of sheet
@@ -36,12 +36,12 @@ export const CardFactionTextureData: CardFactionTextureDataObject[] = [
     },
     {
         id: TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_1, //sheet name
-        path:"images/tcg-framework/card-images/card-backgrounds/card-type-example-1.png",  //sheet path
+        path:"images/tcg-framework/card-backgrounds/card-type-example-1.png",  //sheet path
         sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 256, elementSizeY: 512 }
     },
     {
         id: TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_2, //sheet name
-        path:"images/tcg-framework/card-images/card-backgrounds/card-type-example-2.png",  //sheet path
+        path:"images/tcg-framework/card-backgrounds/card-type-example-2.png",  //sheet path
         sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 256, elementSizeY: 512 }
     },
 ];

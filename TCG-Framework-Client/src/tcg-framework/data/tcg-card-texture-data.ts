@@ -24,7 +24,7 @@ export const CardTextureData: CardTextureDataObject[] = [
     //### DEMO SPELL SPLICE
     {
         id: TEXTURE_SHEET_CARDS.DEMO_SHEET_SPELL, //sheet name
-        path:"images/tcg-framework/card-images/card-characters/example-sheet-characters.png",  //sheet path
+        path:"images/tcg-framework/card-characters/example-sheet-characters.png",  //sheet path
         sheetDetails: { 
             totalSizeX: 512,      //total width of sheet
             totalSizeY: 512,      //total height of sheet
@@ -36,14 +36,14 @@ export const CardTextureData: CardTextureDataObject[] = [
     //### DEMO CHARACTER SPLICE
     {
         id: TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER,
-        path:"images/tcg-framework/card-images/card-characters/example-sheet-characters.png",
+        path:"images/tcg-framework/card-characters/example-sheet-characters.png",
         sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 142, elementSizeY: 256, }
     },
 
     //### DEMO FIELD SPLICE
     {
         id: TEXTURE_SHEET_CARDS.DEMO_SHEET_TERRAIN,
-        path:"images/tcg-framework/card-images/card-characters/example-sheet-characters.png",
+        path:"images/tcg-framework/card-characters/example-sheet-characters.png",
         sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 142, elementSizeY: 256, }
     },
 ];

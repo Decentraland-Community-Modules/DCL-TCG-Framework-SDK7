@@ -166,7 +166,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/neutral-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-neutral.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -189,7 +189,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-fire.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -212,7 +212,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-ice.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -235,7 +235,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-electric.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -258,7 +258,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/void-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-void.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -284,7 +284,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/neutral-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-neutral.glb",
         //Attributes
         attributeCost:2,
         attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -308,7 +308,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-fire.glb",
         //Attributes
         attributeCost:2,
         attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -336,7 +336,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-ice.glb",
         //Attributes
         attributeCost:2,
         attributeCharacter: {unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -364,7 +364,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-electric.glb",
         //Attributes
         attributeCost:2,
         attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -392,7 +392,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/void-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-void.glb",
         //Attributes
         attributeCost:2,
         attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
@@ -423,7 +423,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-fire.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -446,7 +446,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-ice.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -468,7 +468,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-electric.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -491,7 +491,7 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.DEMO_SHEET_CHARACTER, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/void-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-void.glb",
         //Attributes
         attributeCost:1,
         //effects
