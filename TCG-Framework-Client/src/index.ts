@@ -13,14 +13,14 @@ export function main()
 
 	//create deck manager
 	DeckManager.SetPosition({ x:8, y:0, z:8 });
-/*
+
 	//create card table
 	Table.Create({
-		tableID:"0",
+		tableID:0,
         parent: undefined,
 		position: { x:24, y:0, z:24 },
 		rotation: { x:0, y:90, z:0 }
-	});*/
+	});/**/
 
 	//enable processing
 	InteractionManager.ProcessingStart();

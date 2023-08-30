@@ -3,6 +3,8 @@ import { TableCardSlot } from "./tcg-table-card-slot";
 import { CardDisplayObject } from "./tcg-card-object";
 import { DeckManager } from "./tcg-deck-manager";
 import { InteractionObject } from "./tcg-interaction-object";
+import { Table } from "./tcg-table";
+import { Player } from "./config/tcg-player";
 
 /*      TRADING CARD GAME - INTERACTION MANAGER
     used to process all interactions with tcg tables/card slots
@@ -49,6 +51,38 @@ export module InteractionManager {
                     break;
                     //card table -> controls (join/leave game)
                     case InteractionObject.INTERACTION_TYPE.GAME_TABLE:
+                        //get targeted table
+                        const table = Table.GetByKey(component.actionPrimary.toString());
+                        if(table == undefined) {
+                            if(isDebugging) console.log(debugTag+"<WARNING> targeted table="+component.actionPrimary+" does not exist!");
+                            return;            
+                        }
+                        //process based on current state
+                            switch(table.CurState) {
+                                case Table.LOBBY_STATE.IDLE:
+                                    switch(component.actionSecondary) {
+                                        case Table.LOBBY_BUTTONS.JOIN:
+                                            table.AddPlayerToTeam(Player.DisplayName());
+                                        break;
+                                        case Table.LOBBY_BUTTONS.LEAVE:
+                                            table.RemovePlayerFromTeam(Player.DisplayName());
+                                        break;
+                                        case Table.LOBBY_BUTTONS.START:
+                                            table.StartGame();
+                                        break;
+                                    }
+                                break;
+                                case Table.LOBBY_STATE.ACTIVE:
+                                    switch(component.actionSecondary) {
+                                        case Table.LOBBY_BUTTONS.END_TURN:
+                                            table.NextTurn();
+                                        break;
+                                    }
+                                break;
+                                case Table.LOBBY_STATE.OVER:
+                                    
+                                break;
+                            }
                     break;
                 }
             }
@@ -67,8 +101,13 @@ export module InteractionManager {
                 
                 //process interaction based on ownership type
                 switch(component.ownerType) {
-                    //card table
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.GAME_TABLE:
+                    //card table team's hand 
+                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND:
+                        //get table & confirm existance
+                        const table = Table.GetByKey(component.tableID);
+                        if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
+                        //pass interaction call to table
+                        table.InteractionCardObject(parseInt(component.teamID), component.slotID, false);
                     break;
                     //deck manager
                     case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER:
@@ -102,6 +141,9 @@ export module InteractionManager {
                 //get card component
                 const component = TableCardSlot.TableCardSlotComponent.get(entity);
                 if(isDebugging) console.log(debugTag+"table card slot, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
+                const table = Table.GetByKey(component.tableID);
+                if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
+                table.InteractionCardSlot(parseInt(component.teamID), parseInt(component.slotID));
             }
         }
     }

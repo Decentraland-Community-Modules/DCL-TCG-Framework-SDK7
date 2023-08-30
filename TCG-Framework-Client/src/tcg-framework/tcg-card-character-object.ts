@@ -19,6 +19,17 @@ export module CardCharacterObject
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Character Object: ";
 
+    /** listing for all animation keys */
+    export enum ANIM_KEY_NAMES {
+        NONE = -1,
+        SPAWN = 0,
+        IDLE = 1,
+        ATTACK = 2,
+        FLINCH = 3,
+        ACTION = 4,
+        DEATH = 5
+    } 
+
     /** animation key tags (FOR CARD) */
     const ANIM_KEYS_CHARACTER:string[] = [
         "anim_spawn", // first created from card
@@ -27,7 +38,6 @@ export module CardCharacterObject
         "anim_flinch", // struck/takes damage
         "anim_action", // activatable effects/abilities
         "anim_death", // when unit is killed
-    
     ];
 
     /** pool of ALL existing objects */
@@ -86,8 +96,8 @@ export module CardCharacterObject
             //  animations (must be reasserted whenever model is replaced)
             Animator.createOrReplace(this.entity, {
                 states:[
-                    {name: ANIM_KEYS_CHARACTER[0], clip: ANIM_KEYS_CHARACTER[0], playing: true, loop: false},
-                    {name: ANIM_KEYS_CHARACTER[1], clip: ANIM_KEYS_CHARACTER[1], playing: false, loop: false},
+                    {name: ANIM_KEYS_CHARACTER[0], clip: ANIM_KEYS_CHARACTER[0], playing: false, loop: true},
+                    {name: ANIM_KEYS_CHARACTER[1], clip: ANIM_KEYS_CHARACTER[1], playing: false, loop: true},
                     {name: ANIM_KEYS_CHARACTER[2], clip: ANIM_KEYS_CHARACTER[2], playing: false, loop: false},
                     {name: ANIM_KEYS_CHARACTER[3], clip: ANIM_KEYS_CHARACTER[3], playing: false, loop: false},
                     {name: ANIM_KEYS_CHARACTER[4], clip: ANIM_KEYS_CHARACTER[4], playing: false, loop: false},
@@ -95,17 +105,22 @@ export module CardCharacterObject
                 ]
             });
             //halt any animations
-            this.SetAnimation(-1);
+            this.SetAnimation(ANIM_KEY_NAMES.NONE);
         }
 
         /** plays the given animation on the character */
-        public SetAnimation(index:number) {
+        public SetAnimation(animation:ANIM_KEY_NAMES) {
             //turn off all animations
             for(let i = 0; i < ANIM_KEYS_CHARACTER.length; i++) {
                 Animator.getClip(this.entity, ANIM_KEYS_CHARACTER[i]).playing = false;
             }
             //turn on targeted animation
-            if(index != -1) Animator.getClip(this.entity, ANIM_KEYS_CHARACTER[index]).playing = true;
+            if(animation != ANIM_KEY_NAMES.NONE) Animator.getClip(this.entity, ANIM_KEYS_CHARACTER[animation]).playing = true;
+        }
+
+        /** sets the speed of the given animation */
+        public SetAnimationSpeed(animation:ANIM_KEY_NAMES, speed:number) {
+            Animator.getClip(this.entity, ANIM_KEYS_CHARACTER[animation]).speed = speed;
         }
     }
 

@@ -32,9 +32,10 @@ export module CardDisplayObject
 
     /** determines all possible card owners */
     export enum CARD_OBJECT_OWNER_TYPE {
-        GAME_TABLE = 0, //used by an active game table
-        DECK_MANAGER = 1, //used by deck manager
-        SHOWCASE = 2, //set on display in scene
+        GAME_TABLE_HAND = 0, //used by an active game table
+        GAME_TABLE_DECK = 1, //
+        DECK_MANAGER = 2, //used by deck manager
+        SHOWCASE = 3, //set on display in scene
     }
     
     /** determines all possible card interaction types */
@@ -134,6 +135,7 @@ export module CardDisplayObject
         slotID: string,
         //target
         def: CardDataObject,
+        counter?: boolean,
         //position
         parent?: Entity, //entity to parent object under 
 		position?: { x:number; y:number; z:number; }; //new position for object
@@ -153,6 +155,8 @@ export module CardDisplayObject
         /** type of owner/how this object should be interacted with */
         private ownerType:number = 0;
         public get OwnerType():number { return this.ownerType; };
+
+        public get Key():string { return GetKeyFromObject(this); }
 
         /** represents the unique index of this slot's table, req for networking */
         private tableID:string = "";
@@ -174,7 +178,9 @@ export module CardDisplayObject
         rarity:number = 0;
 
         /** parental entity */
-        private entity:Entity;
+        private entityParent:Entity;
+        public SetPosition(pos:Vector3) { Transform.getMutable(this.entityParent).position = pos; }
+        public SetRotation(rot:Vector3) { Transform.getMutable(this.entityParent).rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z); }
         /** card core frame */
         private entityCoreFrameObject:Entity;
         /** card character stats display frame */
@@ -205,8 +211,8 @@ export module CardDisplayObject
         /** builds out the card, ensuring all required components exist and positioned correctly */
         constructor() {
             //create parent
-            this.entity = engine.addEntity();
-            Transform.create(this.entity, {
+            this.entityParent = engine.addEntity();
+            Transform.create(this.entityParent, {
                 scale: PARENT_SCALE_ON
             });
 
@@ -214,7 +220,7 @@ export module CardDisplayObject
             //  create entity
             this.entityCoreFrameObject = engine.addEntity();
             Transform.create(this.entityCoreFrameObject, {
-                parent: this.entity,
+                parent: this.entityParent,
                 scale: CARD_CORE_SCALE
             });
             //  add custom model
@@ -363,7 +369,7 @@ export module CardDisplayObject
             this.teamID = data.teamID??"0";
             this.slotID = data.slotID;
             //parent 
-            const transform = Transform.getOrCreateMutable(this.entity);
+            const transform = Transform.getOrCreateMutable(this.entityParent);
             transform.parent = data.parent;
             transform.position = data.position??PARENT_POSITION;
             const rot = data.rotation??PARENT_ROTATION;
@@ -413,6 +419,8 @@ export module CardDisplayObject
                 ]
             });
 
+            //set counter state
+            this.SetCounterState(data.counter??true);
             //apply card definition
             this.SetCard(data.def);
         }
@@ -421,7 +429,7 @@ export module CardDisplayObject
         public SetCard(def:CardDataObject) {
             this.defIndex = def.id;
             //enable object
-            Transform.getOrCreateMutable(this.entity).scale = PARENT_SCALE_ON;
+            Transform.getOrCreateMutable(this.entityParent).scale = PARENT_SCALE_ON;
             //set card sprite display details
             //  get required def references
             const factionDef: CardFactionDataObject = CardDataRegistry.Instance.GetFaction(def.faction);
@@ -486,10 +494,13 @@ export module CardDisplayObject
             });
         }
 
+        /** */
         public SetCounterState(state:boolean) {
-
+            if(state) Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_ON
+            else Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_OFF
         }
 
+        /** */
         public GetCounterValue() {
             return TextShape.getMutable(this.entityCounterText).text;
         }
@@ -502,24 +513,24 @@ export module CardDisplayObject
         public SetAnimation(index:number) {
             //turn off all animations
             for(let i = 0; i < ANIM_KEYS_CARD.length; i++) {
-                Animator.getClip(this.entity, ANIM_KEYS_CARD[i]).playing = false;
+                Animator.getClip(this.entityParent, ANIM_KEYS_CARD[i]).playing = false;
             }
             //turn on targeted animation
-            if(index != -1) Animator.getClip(this.entity, ANIM_KEYS_CARD[index]).playing = true;
+            if(index != -1) Animator.getClip(this.entityParent, ANIM_KEYS_CARD[index]).playing = true;
         }
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
             this.isActive = false;
             //hide card parent
-            const transformParent = Transform.getMutable(this.entity);
+            const transformParent = Transform.getMutable(this.entityParent);
             transformParent.scale = PARENT_SCALE_OFF;
         }
 
         /** removes objects from game scene and engine */
         public Destroy() {
             //destroy game object
-            engine.removeEntity(this.entity);
+            engine.removeEntity(this.entityParent);
         }
     }
     

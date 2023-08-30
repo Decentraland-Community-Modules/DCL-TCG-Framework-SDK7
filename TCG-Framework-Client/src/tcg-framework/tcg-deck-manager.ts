@@ -1,10 +1,10 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, Material, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { CardCharacterObject } from "./tcg-card-character-object";
 import { CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
-import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
+import { Color3, Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
 import { PlayCardDeck } from "./tcg-play-card-deck";
@@ -24,7 +24,7 @@ import { Player } from "./config/tcg-player";
 export module DeckManager
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Deck Manager: ";
 
@@ -122,20 +122,38 @@ export module DeckManager
 
 
     //### DECK INTERACTION COMPONENTS
-    const deckParent:Entity = engine.addEntity();
-    Transform.create(deckParent,{
+    const deckInfoParent:Entity = engine.addEntity();
+    Transform.create(deckInfoParent,{
         parent:entityParent,
         position: { x:2.05, y:1.7, z:-0.325 },
         rotation: Quaternion.fromEulerDegrees(0,35,0)
     });
+    /** deck header background */
+    const deckHeaderBackground:Entity = engine.addEntity();
+    Transform.create(deckHeaderBackground,{
+        parent:deckInfoParent,
+        position: { x:0, y:0.45, z:-0.09 },
+        scale: { x:1, y:0.17, z:0.01, },
+    });
+    MeshRenderer.setBox(deckHeaderBackground);
     /** deck header text */
     const deckHeaderText:Entity = engine.addEntity();
     Transform.create(deckHeaderText,{
-        parent:deckParent,
-        position: { x:0, y:0.45, z:-0.12 },
-        scale: { x:0.1, y:0.1, z:0.1, },
+        parent:deckHeaderBackground,
+        position: { x:0, y:0.235, z:-0.52 },
+        scale: { x:0.055, y:0.4, z:0.1, },
     });
-    TextShape.create(deckHeaderText, { text: "DECK CARDS ###/###", 
+    TextShape.create(deckHeaderText, { text: "A VALID DECK HAS 8 TO 12 CARDS", 
+        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+    });
+    /** deck state text */
+    const deckStateText:Entity = engine.addEntity();
+    Transform.create(deckStateText,{
+        parent:deckHeaderBackground,
+        position: { x:0, y:-0.235, z:-0.52 },
+        scale: { x:0.055, y:0.4, z:0.1, },
+    });
+    TextShape.create(deckStateText, { text: "DECK CARDS ###/###", 
         textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
     /** select deck buttons */
@@ -145,10 +163,10 @@ export module DeckManager
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
             actionPrimary:DECK_INTERACTION_TYPE.SELECT, actionSecondary:i,
             interactionText:"SELECT DECK "+i,
-            textScale: { x:0.125, y:1, z:1, },
-            parent: deckParent, 
-            position: { x:0, y:0.325-(i*0.13), z:-0.1 },
-            scale: { x:0.8, y:0.10, z:0.05, }
+            textScale: { x:0.125, y:1, z:1 },
+            parent: deckInfoParent, 
+            position: { x:0, y:0.29-(i*0.125), z:-0.1 },
+            scale: { x:0.8, y:0.10, z:0.05 }
         }));
         Material.setPbrMaterial(deckButtonSelectors[i].entityShape, { albedoColor: Color4.White(), });
         TextShape.getMutable(deckButtonSelectors[i].entityText).text = "DECK "+i+" - ("+Player.PlayerDecks[i]?.CardsAll.size()+")";
@@ -160,8 +178,8 @@ export module DeckManager
         displayText:"SAVE",
         interactionText:"SAVE DECK",
         textScale: { x:0.35, y:1, z:1, },
-        parent: deckParent, 
-        position: { x:-0.3, y:-0.4, z:-0.1 },
+        parent: deckInfoParent, 
+        position: { x:-0.28, y:-0.4, z:-0.1 },
         scale: { x:0.5, y:0.2, z:0.05, }
     });
     /** load deck button */
@@ -171,8 +189,8 @@ export module DeckManager
         displayText:"LOAD",
         interactionText:"LOAD DECK",
         textScale: { x:0.35, y:1, z:1, },
-        parent: deckParent, 
-        position: { x:0.3, y:-0.4, z:-0.1 },
+        parent: deckInfoParent, 
+        position: { x:0.28, y:-0.4, z:-0.1 },
         scale: { x:0.5, y:0.2, z:0.05, }
     });
 
@@ -182,14 +200,13 @@ export module DeckManager
         key: 'deck-manager',
         type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL
     });
-    /** which deck slot is currently being modified (-1 for no-save) */
-    var deckTargetIndex:number = 0;
+    
     /** reference to currently targeted deck */
     var deckTargetContainer:PlayCardDeck.PlayCardDeckObject = Player.PlayerDecks[0];
 
     //### SELECTED CARD DETAILS
     /** which card slot is currently selected/displayed (-1 for no slot selected) */
-    var cardSelection:number = -1;
+    var cardSelection:number = 0;
     /** rarity of selected card */
     var cardRarity:number = 0;
     /** def key of selected card */
@@ -320,8 +337,9 @@ export module DeckManager
         utils.timers.setTimeout(
             function() { 
                 GenerateCardObjects();
-                RedrawCardView();
-                Transform.getMutable(deckParent).scale = Vector3.One(); 
+                DeckInteractionSelect(0);
+                DeckInteractionLoad();
+                Transform.getMutable(deckInfoParent).scale = Vector3.One(); 
                 Transform.getMutable(filterParent).scale = Vector3.One(); 
             },
             1000
@@ -334,7 +352,7 @@ export module DeckManager
         SetAnimation(2);
 
         ReleaseCardObjects();
-        Transform.getMutable(deckParent).scale = Vector3.Zero();
+        Transform.getMutable(deckInfoParent).scale = Vector3.Zero();
         Transform.getMutable(filterParent).scale = Vector3.Zero();
     }
 
@@ -413,19 +431,27 @@ export module DeckManager
     export function DeckInteractionSelect(index:number) {
         if(isDebugging) console.log(debugTag+"selecting deck, key="+index); 
 
-        Material.setPbrMaterial(deckButtonSelectors[deckTargetIndex].entityShape, { albedoColor: Color4.White(), });
+        Material.setPbrMaterial(deckButtonSelectors[Player.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.White(), });
         //set reference
-        deckTargetIndex = index;
+        Player.SetPlayerDeck(index);
         deckTargetContainer = Player.PlayerDecks[index];
-        Material.setPbrMaterial(deckButtonSelectors[deckTargetIndex].entityShape, { albedoColor: Color4.Green(), });
+        Material.setPbrMaterial(deckButtonSelectors[Player.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.Green(), });
     }
 
     /** called when player interacts with counter buttons */
     export function DeckInteractionSave() {
-        if(isDebugging) console.log(debugTag+"saving deck, key="+deckTargetIndex); 
+        if(isDebugging) console.log(debugTag+"saving deck, key="+Player.GetPlayerDeckIndex()); 
+        //ensure deck has correct number of cards
+        if(deckLocalContainer.CardsAll.size() < PlayCardDeck.DECK_SIZE_MIN || deckLocalContainer.CardsAll.size() > PlayCardDeck.DECK_SIZE_MAX) {
+            if(isDebugging) console.log(debugTag+"deck not withing card limits, card count="+deckLocalContainer.CardsAll.size()); 
+            TextShape.getMutable(deckHeaderText).textColor = Color4.Red();
+            return;
+        }
+        
         //save local deck to target deck
         deckTargetContainer.Clone(deckLocalContainer);
-        TextShape.getMutable(deckButtonSelectors[deckTargetIndex].entityText).text = "DECK "+deckTargetIndex+" - ("+deckTargetContainer.CardsAll.size()+")";
+        TextShape.getMutable(deckButtonSelectors[Player.GetPlayerDeckIndex()].entityText).text = "DECK "+Player.GetPlayerDeckIndex()+" - ("+deckTargetContainer.CardsAll.size()+")";
+        TextShape.getMutable(deckHeaderText).textColor = Color4.Black();
 
         //update count text
         RedrawCardView();
@@ -434,7 +460,7 @@ export module DeckManager
 
     /** called when player interacts with counter buttons */
     export function DeckInteractionLoad() {
-        if(isDebugging) console.log(debugTag+"loading deck, key="+deckTargetIndex);
+        if(isDebugging) console.log(debugTag+"loading deck, key="+Player.GetPlayerDeckIndex());
         //load local deck from target deck
         deckLocalContainer.Clone(deckTargetContainer);
 
@@ -459,7 +485,7 @@ export module DeckManager
     }
 
     export function UpdateCardCount() {
-        TextShape.getMutable(deckHeaderText).text = "DECK CARDS "+deckLocalContainer.CardsAll.size()+"/"+PlayCardDeck.DECK_SIZE_MAX;
+        TextShape.getMutable(deckStateText).text = "DECK CARDS "+deckLocalContainer.CardsAll.size()+"/"+PlayCardDeck.DECK_SIZE_MAX;
     }
 
     /** called when a card is interacted with */

@@ -16,9 +16,9 @@ import { PlayCard } from "./tcg-play-card";
 export module PlayCardDeck
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
-    const debugTag:string = "TCG Play Card Collection: ";
+    const debugTag:string = "TCG Play Card Deck: ";
 
     /** all possible card deck types */
     export enum DECK_TYPE {
@@ -93,6 +93,10 @@ export module PlayCardDeck
 
     /** contains all pieces that make up a single card deck */
     export class PlayCardDeckObject {
+        //TODO: add sub-roller to redo indexes of cards based on def, not this overhead uid
+        private curIndex:number = 0;
+        private get nextIndex():number { return this.curIndex++; }
+
         /** when true this object is reserved in-scene */
         private isActive: boolean = true;
         public get IsActive():boolean { return this.isActive; };
@@ -140,7 +144,6 @@ export module PlayCardDeck
         /** adds a single instance of the given card data index */
         public AddCard(def:number) {
             if(isDebugging) console.log(debugTag+"adding card to deck="+this.key+", ID="+def+"...");
-            //TODO: define maxes per card type (terrain, unit, spell)
             //ensure card instance limit is not over max
             if(this.GetCardCount(def) >= CARD_LIMIT_PER_TYPE[CardData[def].type]) {
                 if(isDebugging) console.log(debugTag+"failed to add card - too many instances in deck!");
@@ -149,12 +152,12 @@ export module PlayCardDeck
 
             //create instance of card
             const card = PlayCard.Create({
-                key: this.key+def,  //key: deck's unique key + card data unique key
+                key: this.key+"-"+def+"-"+this.nextIndex,  //key: deck's unique key + card data unique key
                 defIndex: def,
             });
             //add card to deck
             this.CardsAll.addItem(card);
-            this.CardsPerState[0].addItem(card);
+            this.CardsPerState[DECK_CARD_STATES.DECK].addItem(card);
             
             //modify count reg
             if(!this.RegisteredCardCounts.containsKey(def.toString())) this.RegisteredCardCounts.addItem(def.toString(), new PlayCardDeckPiece(1));
@@ -189,7 +192,7 @@ export module PlayCardDeck
 
             //remove instance of card
             this.CardsAll.removeItem(card);
-            this.CardsPerState[0].removeItem(card);
+            this.CardsPerState[DECK_CARD_STATES.DECK].removeItem(card);
             //disable card
             PlayCard.Disable(card);
             
@@ -205,7 +208,7 @@ export module PlayCardDeck
                 while(this.CardsPerState[i].size() > 0) {
                     const card = this.CardsPerState[i].getItem(0);
                     this.CardsPerState[i].removeItem(card);
-                    this.CardsPerState[0].addItem(card);
+                    this.CardsPerState[DECK_CARD_STATES.DECK].addItem(card);
                 }
             }
 
@@ -218,8 +221,18 @@ export module PlayCardDeck
         }
 
         /** shuffles all cards in the deck, randomizing order */
-        public Shuffle() {
-
+        public ShuffleCards()
+        {
+            let card:PlayCard.PlayCardDataObject;
+            let swap:number;
+            let count = this.CardsPerState[DECK_CARD_STATES.DECK].size();
+            for (let i = 0; i < this.CardsPerState[DECK_CARD_STATES.DECK].size(); i++) 
+            {
+                swap = Math.floor(Math.random() * (count));
+                card = this.CardsPerState[DECK_CARD_STATES.DECK].getItem(swap);
+                this.CardsPerState[DECK_CARD_STATES.DECK].removeItem(card);
+                this.CardsPerState[DECK_CARD_STATES.DECK].addItem(card);
+            }
         }
 
         /** remove & release all cards in this deck */
@@ -232,7 +245,7 @@ export module PlayCardDeck
                 const card = this.CardsAll.getItem(index);
                 //remove instance of card
                 this.CardsAll.removeItem(card);
-                this.CardsPerState[0].removeItem(card);
+                this.CardsPerState[DECK_CARD_STATES.DECK].removeItem(card);
                 //disable card
                 PlayCard.Disable(card);
             }
@@ -296,8 +309,6 @@ export module PlayCardDeck
         //provide entity reference
         return object;
     }
-
-
 
     /** disables all objects, hiding them from the scene but retaining them in data & pooling */
     export function DisableAll() {
