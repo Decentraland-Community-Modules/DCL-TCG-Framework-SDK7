@@ -1,11 +1,12 @@
 import { Entity, engine, Transform, GltfContainer, ColliderLayer, MeshRenderer, Material, TextureWrapMode, MaterialTransparencyMode, TextShape, TextAlignMode, pointerEventsSystem, InputAction, Animator, Schemas, PointerEvents, PointerEventType, MeshCollider } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { CardDataObject, CardTextureDataObject, CardData } from "./data/tcg-card-data";
-import { CardFactionDataObject, CardFactionTextureDataObject } from "./data/tcg-faction-data";
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
-import { InteractionObject } from "./tcg-interaction-object";
+import { CardData, CardDataObject } from "./data/tcg-card-data";
+import { CardFactionDataObject } from "./data/tcg-faction-data";
+import { CardFactionTextureDataObject } from "./data/tcg-faction-texture-data";
+import { CardTextureDataObject } from "./data/tcg-card-texture-data";
 
 /*      TRADING CARD GAME - CARD OBJECT
     contains all the functionality for the framework's card objects. these are simply display
@@ -71,7 +72,6 @@ export module CardDisplayObject
     const CARD_BACKGROUND_SCALE = {x:2, y:3, z:1};
     /** character object size */
     const CARD_CHARACTER_POSITION = {x:0, y:0, z:-0.011};
-    const CARD_CHARACTER_SCALE = {x:1.4, y:2.3, z:1};
     /** cost text transform */
     const cardTextCostPos = {x:1.08, y:1.45, z:-0.08};
     const cardTextCostScale = {x:0.25, y:0.25, z:0.25};
@@ -305,8 +305,7 @@ export module CardDisplayObject
             this.entityCharacterDisplay = engine.addEntity();
             Transform.create(this.entityCharacterDisplay, {
                 parent: this.entityCoreFrameObject,
-                position: CARD_CHARACTER_POSITION, 
-                scale: CARD_CHARACTER_SCALE,
+                position: CARD_CHARACTER_POSITION,
             });
             //  add display plane
             MeshRenderer.setPlane(this.entityCharacterDisplay, GetCardDrawVectors(512, 512, 142, 256, 0, 0));
@@ -452,6 +451,11 @@ export module CardDisplayObject
                 transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
             });
             //  character image
+            Transform.getOrCreateMutable(this.entityCharacterDisplay).scale = {
+                x:cardSheet.sheetDetails.displayScaleX, 
+                y:cardSheet.sheetDetails.displayScaleY, 
+                z:1
+            };
             MeshRenderer.setPlane(this.entityCharacterDisplay, GetCardDrawVectors(
                 cardSheet.sheetDetails.totalSizeX, 
                 cardSheet.sheetDetails.totalSizeY, 
@@ -465,6 +469,8 @@ export module CardDisplayObject
                     src: cardSheet.path,
                     wrapMode: TextureWrapMode.TWM_REPEAT
                 }),
+                emissiveColor: Color4.White(),
+                emissiveIntensity: 0.02,
                 transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
             });
             //update text
@@ -486,10 +492,18 @@ export module CardDisplayObject
             //  pointer event system
             PointerEvents.createOrReplace(this.entityCoreFrameObject, {
                 pointerEvents: [
-                  { //primary key -> select card slot
-                    eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: def.name }
-                  },
+                    { //primary key -> attempt select
+                        eventType: PointerEventType.PET_DOWN,
+                        eventInfo: { button: InputAction.IA_POINTER, hoverText: "select "+def.name }
+                    },
+                    { //primary key -> attempt select
+                        eventType: PointerEventType.PET_DOWN,
+                        eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "select "+def.name }
+                    },
+                    { //secondary key -> attempt action
+                        eventType: PointerEventType.PET_DOWN,
+                        eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "activate "+def.name }
+                    },
                 ]
             });
         }

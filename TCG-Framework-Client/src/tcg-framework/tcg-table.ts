@@ -3,7 +3,7 @@ import Dictionary, { List } from "../utilities/collections";
 import { Animator, Billboard, ColliderLayer, Entity, GltfContainer, InputAction, Material, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableTeam } from "./tcg-table-team";
 import { InteractionObject } from "./tcg-interaction-object";
-import { CardCharacterObject } from "./tcg-card-character-object";
+import { CardSubjectObject } from "./tcg-card-subject-object";
 import { Player } from "./config/tcg-player";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
@@ -56,6 +56,8 @@ export module Table {
 
     /** model location for this team's boarder*/
     const MODEL_DEFAULT_BORDER:string = 'models/tcg-framework/card-table/card-table-arena.glb';
+    /** model location for this default terrain */
+    const MODEL_TERRAIN_DEFAULT:string = 'models/tcg-framework/card-terrain/terrain-neutral.glb';
 
     /** number of cards players start */
     const STARTING_CARD_COUNT:number = 3;
@@ -168,7 +170,7 @@ export module Table {
         private entityStateDisplays:TableTeam.TeamDisplayObject[];
 
         //pve npc enemy entity
-        private characterNPC: CardCharacterObject.CardCharacterObject;
+        private characterNPC: CardSubjectObject.CardSubjectObject;
 
         /** all team objects */
         public teamObjects: TableTeam.TableTeamObject[] = [];
@@ -343,16 +345,18 @@ export module Table {
             this.entityStateDisplays[1].SetRotation({x:0,y:300,z:0});
 
             //(DEMO ONLY)add NPC for combat
-            this.characterNPC = CardCharacterObject.Create({
+            this.characterNPC = CardSubjectObject.Create({
                 key: 'npc-'+this.TableID,
+                type: CARD_TYPE.CHARACTER,
                 model: "models/tcg-framework/card-characters/pve-golemancer.glb",
+                forceRepeat: true,
                 parent: this.entityParent, 
                 position: { x:-6.5, y:1.75, z:0 },
                 scale: { x:2, y:2, z:2 },
                 rotation: { x:0, y:90, z:0 }
             });
-            this.characterNPC.SetAnimation(CardCharacterObject.ANIM_KEY_NAMES.IDLE);
-            this.characterNPC.SetAnimationSpeed(CardCharacterObject.ANIM_KEY_NAMES.IDLE, 0.2);
+            this.characterNPC.SetAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.IDLE);
+            this.characterNPC.SetAnimationSpeed(CardSubjectObject.ANIM_KEY_CHARACTER.IDLE, 0.2);
         }
 
         /** prepares the card slot for use by a table team */
@@ -543,7 +547,6 @@ export module Table {
         /** prepares both sides and starts the game */
         public StartGame() {
             if(isDebugging) console.log(debugTag+"table="+this.TableID+" starting game...");
-            //TODO: ensure there are 2 players when networking
 
             //set initial states
             this.curTurn = -1;
@@ -597,8 +600,8 @@ export module Table {
             if(isDebugging) console.log(debugTag+"table="+this.TableID+" started new turn="+this.curTurn+", round="+this.curRound+"!");
         }
         
-        /** called when a card is interacted with by the player */
-        public InteractionCardObject(team:number, cardID:string, aiPVE:boolean=false) {
+        /** called when a selection attempt is made by the player */
+        public InteractionCardObjectSelection(team:number, cardID:string, aiPVE:boolean=false) {
             if(isDebugging) console.log(debugTag+"local player interacted with card="+cardID);
             
             //ensure team has a player (might be viewing the end of a game)
@@ -616,7 +619,7 @@ export module Table {
                 //if selected card is the same as given card
                 if(this.selectedCardObject === cardID) {
                     //attempt to play the card
-                    this.PlaySelectCard();
+                    this.DeselectCard();
                     return;
                 } 
                 //if selected card is not the same as given card
@@ -625,9 +628,32 @@ export module Table {
                 }
 
             }
-
             //select given card
             this.SelectCard(cardID);
+        }
+        
+        /** called when an activation attempt is made by the player */
+        public InteractionCardObjectActivate(team:number, cardID:string, aiPVE:boolean=false) {
+            if(isDebugging) console.log(debugTag+"local player activated card="+cardID);
+            
+            //ensure team has a player (might be viewing the end of a game)
+            if(this.teamObjects[team].Player == undefined) return;
+
+            //ensure caller is part of the team or the local AI
+            if(!aiPVE && this.teamObjects[team].Player != Player.DisplayName()) {
+                if(isDebugging) console.log(debugTag+"local player="+Player.DisplayName+" did not belong to required team="+team
+                    +", owner="+this.teamObjects[team].Player);
+                return;
+            }
+
+            //ensure card being activated is the selected card
+            if(this.selectedCardObject != cardID) {
+                if(isDebugging) console.log(debugTag+"card="+cardID+" being activated was not currently selected card="+this.selectedCardObject);
+                return;
+            }
+
+            //select given card
+            this.PlaySelectedCard();
         }
 
         /** selects a card from the player's hand */
@@ -704,18 +730,13 @@ export module Table {
         }
 
         /** attempts to play the currently selected card */
-        public PlaySelectCard() {
+        public PlaySelectedCard() {
             if(isDebugging) console.log(debugTag+"playing card="+this.selectedCardObject
                 +", slot{team="+this.selectedCardSlotTeam+", slot="+this.selectedCardSlotIndex+"}...");
 
             //ensure card is selected
             if(this.selectedCardObject == undefined) {
                 if(isDebugging) console.log(debugTag+"<FAILED> no selected card");
-                return;
-            }
-            //ensure slot is selected
-            if(this.selectedCardSlotIndex == undefined || this.selectedCardSlotIndex == undefined) {
-                if(isDebugging) console.log(debugTag+"<FAILED> no selected slot");
                 return;
             }
 
@@ -739,6 +760,11 @@ export module Table {
 
                 break;
                 case CARD_TYPE.CHARACTER:
+                    //ensure slot is selected
+                    if(this.selectedCardSlotIndex == undefined || this.selectedCardSlotIndex == undefined) {
+                        if(isDebugging) console.log(debugTag+"<FAILED> no selected slot");
+                        return;
+                    }
                     //ensure slot belongs to current team (cannot place characters into other team's slots) 
                     if(this.curTurn != this.selectedCardSlotTeam) {
                         if(isDebugging) console.log(debugTag+"<FAILED> targeted slot="+this.curTurn+" does not belong to current team="+this.selectedCardSlotTeam);
@@ -761,7 +787,15 @@ export module Table {
                     team.SetSlotObject(cardData, this.selectedCardSlotIndex);
                 break;
                 case CARD_TYPE.TERRAIN:
-
+                    //move card from hand to field
+                    team.MoveCardBetweenCollections(cardData, 
+                        PlayCardDeck.DECK_CARD_STATES.HAND,
+                        PlayCardDeck.DECK_CARD_STATES.TERRAIN
+                    );
+                    //remove card object
+                    team.RemoveHandObject(cardData);
+                    //set new terrain card
+                    team.SetTerrainCard(cardData);
                 break;
             }
 
@@ -930,8 +964,7 @@ export module Table {
     }
 
     /** system used to act as a non-player card player at a card table */
-    function processingTurnAI(dt: number)
-    {
+    function processingTurnAI(dt: number) {
         //process time change
         timeCounter -= dt;
         //check if new action should be taken
@@ -972,7 +1005,7 @@ export module Table {
                             aiTable.SelectCard(card.Key);
                             aiTable.SelectSlot(aiTable.CurTurn, j);
                             //play card
-                            aiTable.PlaySelectCard();
+                            aiTable.PlaySelectedCard();
                             return;
                         }
                     break;

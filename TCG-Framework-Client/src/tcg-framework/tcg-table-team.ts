@@ -1,5 +1,5 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
-import Dictionary, { List } from "../utilities/collections";
+import { Dictionary, List } from "../utilities/collections";
 import { ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableCardSlot } from "./tcg-table-card-slot";
 import { PlayCardDeck } from "./tcg-play-card-deck";
@@ -32,7 +32,7 @@ export module TableTeam {
     /** model location for this team's boarder*/
     const MODEL_DEFAULT_BORDER:string = 'models/tcg-framework/card-table/terrain-border.glb';
     /** model location for this team's terrain */
-    const MODEL_DEFAULT_TERRAIN:string = 'models/tcg-framework/card-table/terrain-neutral.glb';
+    const MODEL_DEFAULT_TERRAIN:string = 'models/tcg-framework/card-terrain/terrain-neutral.glb';
 
     /** transform - parent */
     const PARENT_OFFSET_ON:Vector3 = { x:0, y:0, z:0 };
@@ -204,8 +204,7 @@ export module TableTeam {
         private teamID:string = "";
         public get TeamID():string { return this.teamID; };
 
-        //TODO: security >_>
-
+        /** type of user registered to this table */
         public TeamType: TEAM_TYPE = TEAM_TYPE.LOCAL;
 
         /** current player's display name */
@@ -246,6 +245,21 @@ export module TableTeam {
                 if(this.handCards.getItem(i).SlotID == ID) return this.handCards.getItem(i);
             }
             return undefined;
+        }
+
+        /** current terrain card */
+        public TerrainCard:undefined|string = undefined;
+        public SetTerrainCard(card:undefined|PlayCard.PlayCardDataObject) {
+            var terrainModel:string = "";
+            if(card) { terrainModel = card.DefData.objPath; }
+            else { terrainModel = MODEL_DEFAULT_TERRAIN; }
+            
+            //set
+            GltfContainer.createOrReplace(this.entityTerrain, {
+                src: terrainModel,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
         }
 
         /** all card slot objects (used for displaying card characters) */
@@ -310,7 +324,9 @@ export module TableTeam {
             transformParent.scale = PARENT_SCALE_ON;
             transformParent.rotation = Quaternion.fromEulerDegrees(data.rotation.x, data.rotation.y, data.rotation.z);
         
-            //clear previous team objects
+            //clear previous terrain card
+            this.TerrainCard = undefined;
+            //clear previous card slot objects
             while(this.cardSlotObjects.length > 0) {
                 const teamObject = this.cardSlotObjects.pop();
                 if(teamObject) teamObject.Disable();

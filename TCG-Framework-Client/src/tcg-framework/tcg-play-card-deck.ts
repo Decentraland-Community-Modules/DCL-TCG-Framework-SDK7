@@ -32,6 +32,7 @@ export module PlayCardDeck
         DECK,
         HAND,
         FIELD,
+        TERRAIN,
         DISCARD,
     }
 
@@ -112,6 +113,7 @@ export module PlayCardDeck
         public CardsAll:List<PlayCard.PlayCardDataObject> = new List<PlayCard.PlayCardDataObject>;
         /** cards in deck */
         public CardsPerState:List<PlayCard.PlayCardDataObject>[] = [
+            new List<PlayCard.PlayCardDataObject>(),
             new List<PlayCard.PlayCardDataObject>(),
             new List<PlayCard.PlayCardDataObject>(),
             new List<PlayCard.PlayCardDataObject>(),

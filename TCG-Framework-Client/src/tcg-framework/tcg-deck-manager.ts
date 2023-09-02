@@ -2,7 +2,7 @@ import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer,
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry } from "./data/tcg-card-registry";
-import { CardCharacterObject } from "./tcg-card-character-object";
+import { CardSubjectObject } from "./tcg-card-subject-object";
 import { CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
 import { Color3, Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
@@ -49,8 +49,16 @@ export module DeckManager
     const DISPLAY_OBJECT_SCALE = { x:1.2, y:1.2, z:1.2 };
     
     /** character display object defaults */
-    const DISPLAY_CHARACTER_OFFSET = { x:0.0, y:0.46, z:0.0 };
-    const DISPLAY_CHARACTER_SCALE = { x:0.25, y:0.25, z:0.25 };
+    const DISPLAY_CHARACTER_OFFSET = [
+        { x:0.0, y:0.46, z:0.0 },
+        { x:0.0, y:0.46, z:0.0 },
+        { x:0.0, y:0.48, z:0.0 }
+    ];
+    const DISPLAY_CHARACTER_SCALE = [
+        { x:0.25, y:0.25, z:0.25 },
+        { x:0.25, y:0.25, z:0.25 },
+        { x:0.0, y:0.0, z:0.0 }
+    ];
     
     /** collsion area defaults */
     const TRIGGER_OFFSET = { x:0, y:1.5, z:-2 };
@@ -59,6 +67,7 @@ export module DeckManager
     /** default size for the deck manager object */
     const CARD_OBJECT_OFFSET = { x:0.0, y:1.8, z:-0.05 };
     const CARD_OBJECT_SCALE = { x:0.125, y:0.125, z:0.025 };
+    
     /* number of cards in the display */
     const DISPLAY_GRID_SIZE_X:number = 5;
     const DISPLAY_GRID_SIZE_Y:number = 2;
@@ -114,8 +123,8 @@ export module DeckManager
     const entityDisplayPedistalPoint:Entity = engine.addEntity();
     Transform.create(entityDisplayPedistalPoint, { 
         parent: entityParent,
-        position: DISPLAY_CHARACTER_OFFSET,
-        scale: DISPLAY_CHARACTER_SCALE
+        position: DISPLAY_CHARACTER_OFFSET[0],
+        scale: DISPLAY_CHARACTER_SCALE[0]
     });
     //add constant rotation
     utils.perpetualMotions.startRotation(entityDisplayPedistalPoint, Quaternion.fromEulerDegrees(0, -15, 0))
@@ -492,15 +501,23 @@ export module DeckManager
     export function CardInteractionSelect(slotID:string) {
         if(isDebugging) console.log(debugTag+"player interacted with card, key="+slotID); 
 
+        const dataDef = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
         //create character display model
-        CardCharacterObject.Create({
+        const card = CardSubjectObject.Create({
             key: "tcg-dm",
-		    model: CardData[entityGridCards[Number.parseInt(slotID)].DefIndex].objPath,
+            type: dataDef.type,
+		    model: dataDef.objPath,
+            forceRepeat: true,
             parent: entityDisplayPedistalPoint, 
             position: { x:0, y:0, z:0, },
             scale: { x:1, y:1, z:1, },
             rotation: { x:0, y:0, z:0, }
         });
+        card.SetAnimation(0);
+        //update transform
+        const transform = Transform.getOrCreateMutable(entityDisplayPedistalPoint);
+        transform.position = DISPLAY_CHARACTER_OFFSET[dataDef.type];
+        transform.scale = DISPLAY_CHARACTER_SCALE[dataDef.type];
     }
 
     /** releases all card objects in the current display grid */
