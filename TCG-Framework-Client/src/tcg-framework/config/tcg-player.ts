@@ -1,6 +1,7 @@
 import { executeTask } from "@dcl/sdk/ecs"
 import { getUserData } from "~system/UserIdentity"
 import { PlayCardDeck } from "../tcg-play-card-deck";
+import { CARD_DATA_ID } from "../data/tcg-card-data";
 
 /** defines all possible connectivity/load states */
 enum PLAYER_CONNECTIVITY_STATE {
@@ -24,8 +25,10 @@ enum PLAYER_ACCOUNT_TYPE {
     TeamContact: thecryptotrader69@gmail.com
 */
 export module Player {
-    /** when true generates debugging logs for this module */
+    /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = true;
+    /** hard-coded tag for module, helps log search functionality */
+    const debugTag:string = "Player: ";
 
     /** local player's connectivity state */
     var connectivityState:PLAYER_CONNECTIVITY_STATE = PLAYER_CONNECTIVITY_STATE.UNINITIALIZED;
@@ -47,6 +50,10 @@ export module Player {
     var displayName:string;
     export function DisplayName():string { return displayName;}
 
+    var curDeck:number = 0;
+    export function GetPlayerDeckIndex():number { return curDeck; }
+    export function GetPlayerDeck():PlayCardDeck.PlayCardDeckObject { return PlayerDecks[curDeck]; }
+    export function SetPlayerDeck(value:number) { return curDeck = value; }
     /** local player's available decks */
     export const PlayerDecks:PlayCardDeck.PlayCardDeckObject[] = [
         PlayCardDeck.Create({key:"P0", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
@@ -56,35 +63,66 @@ export module Player {
         PlayCardDeck.Create({key:"P4", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL}),
     ];
 
+    //provide default decks
+    for(let j:number=0; j<5; j++){
+        /*//default deck - ice
+        for(let i:number=0; i<3; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_ICEBOLT); }
+        for(let i:number=0; i<5; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.CHARACTER_ICE_GOLEM); }
+        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
+        *///default deck - terrain
+        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_FIRE);
+        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
+        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ELECTRIC);
+        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_VOID);
+    }
+
+    //TODO: move this to an external pve segment
+    /** deck used for pve enemy */
+    export const DeckPVE:PlayCardDeck.PlayCardDeckObject = PlayCardDeck.Create({key:"PvE", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL});
+    //  add spells
+    for(let i:number = 0; i<3; i++) {
+        DeckPVE.AddCard(CARD_DATA_ID.SPELL_FIREBOLT);
+    }
+    //  add fire golems
+    for(let i:number = 0; i<5; i++) {
+        DeckPVE.AddCard(CARD_DATA_ID.CHARACTER_FIRE_GOLEM);
+    }
+
     /** attempts to load the local player's data */
     export async function LoadPlayerData() {
-        //ensure this is the first connection attempt
-        if(connectivityState != PLAYER_CONNECTIVITY_STATE.UNINITIALIZED)
-            return;
+        if(isDebugging) console.log(debugTag+"loading player data...");
 
-        if(isDebugging) console.log("Player: loading player data...");
+        //ensure this is the first connection attempt
+        if(connectivityState != PLAYER_CONNECTIVITY_STATE.UNINITIALIZED) {
+            if(isDebugging) console.log(debugTag+"player data has already been loaded!");
+            return;
+        }
+        
         connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTING;
 
         //attempt to get player data
         let userData = await getUserData({});
         
         //ensure user data exists
-        if(!userData) {
-            if(isDebugging) console.log("Player: failed to load player data");
+        if(!userData || !userData.data) {
+            if(isDebugging) console.log(debugTag+"failed to load player data");
             connectivityState = PLAYER_CONNECTIVITY_STATE.FAILED;
             return;
         }    
         
-        //check for guest account
-        if(!userData.data?.publicKey) {
-            if(isDebugging) console.log("Player: player is a guest account (no web3 key)");
-            connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTED;
+        //public key is not found, player is not logged in
+        if(!userData.data.publicKey) {
+            if(isDebugging) console.log(debugTag+"player is a guest account (no web3 key)");
             accountType = PLAYER_ACCOUNT_TYPE.GUEST;
-            return;
-        }
+        } 
+        //public key is found, player logged in through web3 wallet 
+        else {
+            accountType = PLAYER_ACCOUNT_TYPE.STANDARD;
+
+            //TODO: check for NFT ownership
+        } 
 
         //determined to be at least standard account
-        accountType = PLAYER_ACCOUNT_TYPE.STANDARD
         //populate user data
         isWeb3 = userData.data.hasConnectedWeb3;
         userID = userData.data.userId;
@@ -93,6 +131,11 @@ export module Player {
         //TODO: run ownership checks to determine if user is a premium account
 
         connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTED;
-        if(isDebugging) console.log("Player: loaded player data!");
+        if(isDebugging) console.log(debugTag+"loaded player data!"+
+            "\n\taccountType="+accountType+
+            "\n\tisWeb3="+isWeb3+
+            "\n\tuserID="+userID+
+            "\n\tdisplayName="+displayName
+        );
     };
 }

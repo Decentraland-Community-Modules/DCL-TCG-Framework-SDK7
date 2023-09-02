@@ -1,7 +1,6 @@
 import { Color4, Quaternion, Scalar, Vector3 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
-import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
-import { ECS6ComponentNftShape_PictureFrameStyle } from "~system/EngineApi";
+import { Entity, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 
 /*      TRADING CARD GAME - INTERACTION OBJECT
     objects used to act as interaction points for the player throughout the scene

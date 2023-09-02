@@ -11,9 +11,32 @@
 */
 
 import Dictionary, { List } from "../../utilities/collections";
-import { CARD_DATA_ID, CARD_TYPE, CardData, CardDataObject, CardTextureData, CardTextureDataObject, TEXTURE_SHEET_CARDS } from "./tcg-card-data";
-import { CARD_FACTION_TYPE, CardFactionData, CardFactionDataObject, CardFactionSheetDataObject, CardFactionTextureData, CardFactionTextureDataObject as FactionTextureDataObject, TEXTURE_SHEET_CARD_FACTIONS } from "./tcg-faction-data";
+import { CARD_DATA_ID, CardData, CardDataObject} from "./tcg-card-data";
+import { CardTextureData, CardTextureDataObject } from "./tcg-card-texture-data";
+import { CARD_FACTION_TYPE, CardFactionData, CardFactionDataObject } from "./tcg-faction-data";
+import { CardFactionTextureData, CardFactionTextureDataObject } from "./tcg-faction-texture-data";
 
+/* linkage for a single card faction's data in the game */
+export class FactionEntry {
+    //card's uid
+    private id:CARD_FACTION_TYPE; 
+    public get ID() { return this.id; }
+    //card's data position
+    private position:number;
+    public get Position(): number { return this.Position; }
+    //returns the card's data component
+    public get DataDef(): CardFactionDataObject { return CardFactionData[this.position]; }
+
+    //max allowed number of this card in the player's deck
+    //  this will either be defined  by the card's tier or the player's NFT ownership
+    public Count: number = 0;
+    
+    /** prepares card data entry for use */
+    constructor(pos:number, id:CARD_FACTION_TYPE) {
+        this.position = pos;
+        this.id = id;
+    }
+}
 /* linkage for a single card's data in the game */
 export class CardEntry {
     //card's uid
@@ -58,14 +81,16 @@ export class CardDataRegistry {
 
     //sheet registries
     //  faction
-    private factionTextureRegistry: Dictionary<FactionTextureDataObject>;
+    private factionTextureRegistry: Dictionary<CardFactionTextureDataObject>;
     //  card
     private cardTextureRegistry: Dictionary<CardTextureDataObject>;
 
     //data registries
     //  faction 
+    //      to ALL registered data (unsorted)
+    private factionRegistryAll: List<FactionEntry>;
     //      indexes of factions (positions in data)
-    private factionRegistryIndex: Dictionary<number>;
+    private factionRegistryViaID: Dictionary<FactionEntry>;
     //  card
     //      to ALL registered data (unsorted)
     private cardRegistryAll: List<CardEntry>;
@@ -78,7 +103,7 @@ export class CardDataRegistry {
     
     //overhead count functions (used to easy access for iterators)
     /** returns number of card factions */
-    public static CardFactionCount() { return CardDataRegistry.Instance.factionRegistryIndex.size(); }
+    public static CardFactionCount() { return CardDataRegistry.Instance.factionRegistryAll.size(); }
     
     /**
      * prepares the inventory for use, populating all inventory item and callback dictionaries. 
@@ -86,43 +111,33 @@ export class CardDataRegistry {
     public constructor() {
         if (CardDataRegistry.IsDebugging) console.log("Card Registry: initializing...");
 
-        //initialize collection sets
-        //  sheets
-        //      factions
-        this.factionTextureRegistry = new Dictionary<FactionTextureDataObject>();
-        var index = 0;
-        Object.keys(TEXTURE_SHEET_CARD_FACTIONS).forEach((key) => {
-            this.factionTextureRegistry.addItem(key, CardFactionTextureData[index]);
-            index++;
-        });
-        //      cards
+        //initialize texture collections
+        //  factions
+        this.factionTextureRegistry = new Dictionary<CardFactionTextureDataObject>();
+        for(let i:number=0; i<CardFactionTextureData.length; i++) {
+            this.factionTextureRegistry.addItem(CardFactionTextureData[i].id.toString(), CardFactionTextureData[i]);
+        }
+        //  cards
         this.cardTextureRegistry = new Dictionary<CardTextureDataObject>();
-        var index = 0;
-        Object.keys(TEXTURE_SHEET_CARDS).forEach((key) => {
-            this.cardTextureRegistry.addItem(key, CardTextureData[index]);
-            index++;
-        });
-        //  data
-        //      factions
-        this.factionRegistryIndex = new Dictionary<number>();
-        //      card
+        for(let i:number=0; i<CardTextureData.length; i++) {
+            this.cardTextureRegistry.addItem(CardTextureData[i].id.toString(), CardTextureData[i]);
+        }
+
+        //initialize faction collections
+        this.factionRegistryAll = new List<FactionEntry>();
+        this.factionRegistryViaID = new Dictionary<FactionEntry>();
+        //initialize card collections
         this.cardRegistryAll = new List<CardEntry>();
         this.cardRegistryViaID = new Dictionary<CardEntry>();
         this.cardRegistryViaType = new Dictionary<List<CardEntry>>();
         this.cardRegistryViaFaction = new Dictionary<List<CardEntry>>();
-        //initialize sort by type sorting collection
-        var index = 0;
-        Object.keys(CARD_TYPE).forEach((key) => {
-            this.cardRegistryViaType.addItem(key, new List<CardEntry>());
-            index++;
-        });
         //initialize sort by faction sorting collection
-        var index = 0;
-        Object.keys(CARD_FACTION_TYPE).forEach((key) => {
-            this.factionRegistryIndex.addItem(key, index);
-            this.cardRegistryViaFaction.addItem(key, new List<CardEntry>());
-            index++;
-        });
+        for(let i:number=0; i<CardFactionData.length; i++) {
+            const entry = new FactionEntry(i, CardFactionData[i].id);
+            this.factionRegistryAll.addItem(entry);
+            this.factionRegistryViaID.addItem(CardFactionData[i].id.toString(), entry);
+            this.cardRegistryViaFaction.addItem(CardFactionData[i].id.toString(), new List<CardEntry>());
+        }
 
         //populate registry collections
         //  process every card def
@@ -131,6 +146,9 @@ export class CardDataRegistry {
             const entry = new CardEntry(i, CardData[i].id);
             if (CardDataRegistry.IsDebugging) console.log("Card Registry: creating entry=" + i
                 + ", type=" + CardData[i].type.toString() + ", faction=" + CardData[i].faction.toString());
+            //ensure type registry exists
+            if(!this.cardRegistryViaType.containsKey(CardData[i].type.toString()))
+                this.cardRegistryViaType.addItem(CardData[i].type.toString(), new List<CardEntry>());
             //add to registry
             this.cardRegistryAll.addItem(entry);
             this.cardRegistryViaID.addItem(CardData[i].id.toString(), entry);
@@ -143,19 +161,16 @@ export class CardDataRegistry {
 
     //### FACTIONS
     /** returns faction sheet */
-    public CallbackGetFactionTexture(faction: CARD_FACTION_TYPE): FactionTextureDataObject { return CardDataRegistry.Instance.GetFactionTexture(faction); }
-    public GetFactionTexture(faction: CARD_FACTION_TYPE): FactionTextureDataObject { return this.factionTextureRegistry.getItem(this.GetFaction(faction).sheetData.sheet); }
-    /** returns faction index */
-    public CallbackGetFactionIndex(faction: CARD_FACTION_TYPE): number { return CardDataRegistry.Instance.GetFactionIndex(faction); }
-    public GetFactionIndex(faction: CARD_FACTION_TYPE): number { return this.factionRegistryIndex.getItem(faction.toString()); }
+    public CallbackGetFactionTexture(faction: CARD_FACTION_TYPE): CardFactionTextureDataObject { return CardDataRegistry.Instance.GetFactionTexture(faction); }
+    public GetFactionTexture(faction: CARD_FACTION_TYPE): CardFactionTextureDataObject { return this.factionTextureRegistry.getItem(this.GetFaction(faction).sheetData.id.toString()); }
     /** returns faction data object */
     public CallbackGetFaction(faction: CARD_FACTION_TYPE): CardFactionDataObject { return CardDataRegistry.Instance.GetFaction(faction); }
-    public GetFaction(faction: CARD_FACTION_TYPE): CardFactionDataObject { return CardFactionData[this.factionRegistryIndex.getItem(faction.toString())]; }
+    public GetFaction(faction: CARD_FACTION_TYPE): CardFactionDataObject { return this.factionRegistryViaID.getItem(faction.toString()).DataDef; }
     
     //### CARDS
     /** returns card sheet index */
     public CallbackGetCardTexture(id: CARD_DATA_ID): CardTextureDataObject { return CardDataRegistry.Instance.GetCardTexture(id); }
-    public GetCardTexture(id:CARD_DATA_ID): CardTextureDataObject { return this.cardTextureRegistry.getItem(this.GetEntryByID(id.toString()).DataDef.sheetData.sheet); }
+    public GetCardTexture(id:CARD_DATA_ID): CardTextureDataObject { return this.cardTextureRegistry.getItem(this.GetEntryByID(id.toString()).DataDef.sheetData.id.toString()); }
     /** returns card entry at given position */
     public CallbackGetEntryByPos(index: number): CardEntry { return CardDataRegistry.Instance.GetEntryByPos(index); }
     public GetEntryByPos(index: number): CardEntry { return this.cardRegistryAll.getItem(index); }

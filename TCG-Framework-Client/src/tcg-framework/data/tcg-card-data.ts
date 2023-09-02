@@ -14,54 +14,9 @@
  *  this effectively gives us 99 card ids per type per factions
  */
 
+import { TEXTURE_SHEET_CARDS } from "./tcg-card-texture-data";
 import { CARD_FACTION_TYPE } from "./tcg-faction-data";
 import { CARD_KEYWORD_ID } from "./tcg-keyword-data";
-
-/** defines splice sheets in an easily changable manner */
-export enum TEXTURE_SHEET_CARDS {
-    SPELL_DEMO_SHEET = "SPELL_DEMO_SHEET",    
-    CHARACTER_DEMO_SHEET = "CHARACTER_DEMO_SHEET",
-    FIELD_DEMO_SHEET = "FIELD_DEMO_SHEET",
-}
-/** data interface for defining a card's texture sheet */
-export interface CardTextureDataObject {
-    id: string,     //sheet name
-    path:string,    //sheet path
-    sheetDetails: { 
-        totalSizeX: number,     //total width of sheet
-        totalSizeY: number,     //total height of sheet
-        elementSizeX: number,   //width of each element
-        elementSizeY: number,   //height of each element
-    }
-}
-/** listing of all card splice sheets used by cards (this method allows for non-conformity between sheets) */
-export const CardTextureData: CardTextureDataObject[] = [
-    //### DEMO SPELL SPLICE
-    {
-        id: "SPELL_DEMO_SHEET", //sheet name
-        path:"images/tcg-framework/card-images/card-characters/example-sheet-characters.png",  //sheet path
-        sheetDetails: { 
-            totalSizeX: 512,      //total width of sheet
-            totalSizeY: 512,      //total height of sheet
-            elementSizeX: 142,  //width of each element
-            elementSizeY: 256,  //height of each element
-        }
-    },
-
-    //### DEMO CHARACTER SPLICE
-    {
-        id: "CHARACTER_DEMO_SHEET",
-        path:"images/tcg-framework/card-images/card-characters/example-sheet-characters.png",
-        sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 142, elementSizeY: 256, }
-    },
-
-    //### DEMO FIELD SPLICE
-    {
-        id: "FIELD_DEMO_SHEET",
-        path:"images/tcg-framework/card-images/card-characters/example-sheet-characters.png",
-        sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 142, elementSizeY: 256, }
-    },
-];
 
 /** defines what play type a card is  */
 export enum CARD_TYPE {
@@ -75,6 +30,7 @@ export enum CARD_TYPE {
     //  ex: creates a fortified zone that heals all units at the start of each turn
     TERRAIN,
 }
+
 /** represents all display strings per card type */
 export const CARD_TYPE_STRINGS:string[] = [
     "Spell",
@@ -98,6 +54,7 @@ export enum CARD_KEYWORD_TARGET_TYPE {
     //  ex: defining an effect that removes effects a target
     ANY,
 }
+
 /** defines how many targets will be affected by an effect */
 export enum CARD_KEYWORD_TARGET_COUNT_TYPE {
     //targets no units on the board
@@ -107,10 +64,8 @@ export enum CARD_KEYWORD_TARGET_COUNT_TYPE {
     //targets all units on the board
     ALL,
 }
-/** data interface for defining a target type */
-export interface CardKeywordTargetDataObject {
-}
 
+/**  */
 export interface CardEffectDataObject {
     type:CARD_KEYWORD_ID; 
     //
@@ -123,39 +78,38 @@ export interface CardEffectDataObject {
     targetCount:number
 }
 
-
 /** data interface for defining a card */
 export interface CardDataObject {
     //indexing
-    type:CARD_TYPE;    //card type
+    type:CARD_TYPE; //card type
     faction:CARD_FACTION_TYPE;   //faction type
     id:CARD_DATA_ID; //unique id for this card
     //display text
-    name:string;    //in-game display name
-    desc:string;    //in-game display desc
+    name:string; //in-game display name
+    desc:string; //in-game display desc
     //display 2D
-    sheetData:CardSheetDataObject;  //defines how card's character will be drawn
+    sheetData:CardSheetDataObject; //defines how card's character will be drawn
     //display 3D
     objPath:string; //object location
     //attributes
     attributeCost:number;
     attributeCharacter?:CardCharacterDataObject;
     //effects
-    keywords: CardEffectDataObject [];    //all associated keywords/effects of card
+    keywords: CardEffectDataObject []; //all associated keywords/effects of card
 }
 
+/** character attribute portions */
 export interface CardCharacterDataObject {
     unitHealth:number; 
     unitAttack:number; 
     unitArmour:number;
 }
 
-
 /** data interface for defining a card's splice sheet draw details */
 export interface CardSheetDataObject {
-    sheet:TEXTURE_SHEET_CARDS;    //reference to sheet
-    posX:number;    //x position of character on sheet 
-    posY:number;    //y position of character on sheet
+    id:TEXTURE_SHEET_CARDS; //reference to sheet
+    posX:number; //x position of character on sheet 
+    posY:number; //y position of character on sheet
 }
 
 //list of card ID's
@@ -172,7 +126,7 @@ export enum CARD_DATA_ID {
     //## VOID SPELLS
     SPELL_VOIDBOLT,
     
-    
+
     //### CHARACTERS
     //## NEAUTRAL CHARACTERS
     CHARACTER_NEUTRAL_GOLEM,
@@ -195,9 +149,7 @@ export enum CARD_DATA_ID {
     TERRAIN_ELECTRIC,
     //## VOID
     TERRAIN_VOID
-
 }
-
 
 /** listing of all cards included in the game */
 export const CardData:CardDataObject[] = [
@@ -210,17 +162,17 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.SPELL_HEAL,
         //display text 
         name: "Heal",
-        desc: "A spell of healing",
+        desc: "Heals the targeted unit",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/neutral-golem.glb",
+        objPath: "models/tcg-framework/card-spells/spell-heal.glb",
         //Attributes
         attributeCost:1,
         //effects
         keywords:[
             {
-                type:CARD_KEYWORD_ID.HEAL, strength:1,
+                type:CARD_KEYWORD_ID.HEAL, strength:4,
                 targetType:CARD_KEYWORD_TARGET_TYPE.ALLY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
             }
         ]
@@ -232,12 +184,12 @@ export const CardData:CardDataObject[] = [
         faction: CARD_FACTION_TYPE.FIRE,
         id:CARD_DATA_ID.SPELL_FIREBOLT,
         //display text 
-        name: "Fireball",
-        desc: "A bolt of fire",
+        name: "Firebolt",
+        desc: "A bolt of searing fire",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 1, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
+        objPath: "models/tcg-framework/card-spells/spell-firebolt.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -256,11 +208,11 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.SPELL_ICEBOLT,
         //display text 
         name: "Icebolt",
-        desc: "A bolt of ice",
+        desc: "A bolt of freezing ice",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
+        objPath: "models/tcg-framework/card-spells/spell-icebolt.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -279,11 +231,11 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.SPELL_LIGHTNINGBOLT,
         //display text 
         name: "Lightningbolt",
-        desc: "A bolt of Lightning",
+        desc: "A bolt of jolting lightning",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 3, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
+        objPath: "models/tcg-framework/card-spells/spell-lightningbolt.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -302,11 +254,11 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.SPELL_VOIDBOLT,
         //display text 
         name: "Voidbolt",
-        desc: "A bolt from the void",
+        desc: "A bolt of dark void energy",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 1 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/void-golem.glb",
+        objPath: "models/tcg-framework/card-spells/spell-voidbolt.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -330,11 +282,11 @@ export const CardData:CardDataObject[] = [
         name: "Stone Golem",
         desc: "a stone golem carved from stone",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 1, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/neutral-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-neutral.glb",
         //Attributes
-        attributeCost:1,
+        attributeCost:2,
         attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
         //effects
         keywords: [
@@ -354,11 +306,11 @@ export const CardData:CardDataObject[] = [
         name: "Fire Golem",
         desc: "a lava golem carved from molten rock",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 1, posY: 1 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-fire.glb",
         //Attributes
-        attributeCost:1,
+        attributeCost:2,
         attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
         //effects
         keywords: [
@@ -382,11 +334,11 @@ export const CardData:CardDataObject[] = [
         name: "Ice Golem",
         desc: "a golem of ice chiped from permafrost",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 2, posY: 1 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-ice.glb",
         //Attributes
-        attributeCost:1,
+        attributeCost:2,
         attributeCharacter: {unitHealth:5, unitAttack:3, unitArmour:1,},
         //effects
         keywords: [
@@ -410,11 +362,11 @@ export const CardData:CardDataObject[] = [
         name: "Lightning Golem",
         desc: "a golem formed from pure energy",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 0, posY: 1 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-electric.glb",
         //Attributes
-        attributeCost:1,
+        attributeCost:2,
         attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
         //effects
         keywords: [
@@ -438,11 +390,11 @@ export const CardData:CardDataObject[] = [
         name: "Void Golem",
         desc: "a golem from realms beyond our comprehension",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 0, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/void-golem.glb",
+        objPath: "models/tcg-framework/card-characters/golem-void.glb",
         //Attributes
-        attributeCost:1,
+        attributeCost:2,
         attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
         //effects
         keywords: [
@@ -469,9 +421,9 @@ export const CardData:CardDataObject[] = [
         name: "Fire Terrain",
         desc: "a terrain of burning feilds molten rivers and dark clouds and trees with black leaves",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/fire-golem.glb",
+        objPath: "models/tcg-framework/card-terrain/terrain-fire.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -492,9 +444,9 @@ export const CardData:CardDataObject[] = [
         name: "Ice Terrain",
         desc: "a terrain of frozen rivers whipping winds and heavy snowfall surrounded by endless trees",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/ice-golem.glb",
+        objPath: "models/tcg-framework/card-terrain/terrain-neutral.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -514,9 +466,9 @@ export const CardData:CardDataObject[] = [
         name: "Electric Terrain",
         desc: "a terrain based admidst thunderous clouds",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 3, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/electric-golem.glb",
+        objPath: "models/tcg-framework/card-terrain/terrain-lightning.glb",
         //Attributes
         attributeCost:1,
         //effects
@@ -537,9 +489,9 @@ export const CardData:CardDataObject[] = [
         name: "Void Terrain",
         desc: "a terrain based in a glossy dark zone with purple stars littering the sky",
         //display 2D
-        sheetData: { sheet:TEXTURE_SHEET_CARDS.CHARACTER_DEMO_SHEET, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 0, posY: 1 },
         //display 3D
-        objPath: "models/tcg-framework/card-characters/void-golem.glb",
+        objPath: "models/tcg-framework/card-terrain/terrain-void.glb",
         //Attributes
         attributeCost:1,
         //effects

@@ -1,7 +1,8 @@
-import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, Transform, engine } from "@dcl/sdk/ecs";
-import { Quaternion, Vector3 } from "@dcl/sdk/math";
+import { Billboard, ColliderLayer, Entity, Font, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { CardDataObject } from "./data/tcg-card-data";
+import { CardData, CardDataObject } from "./data/tcg-card-data";
+import { PlayCard } from "./tcg-play-card";
 
 /*      TRADING CARD GAME - TABLE CARD SLOT
     represents a single card slot on a team's side of a table
@@ -15,20 +16,34 @@ export module TableCardSlot {
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table Card Slot: ";
 
+    /** model location for this team's boarder*/
+    const MODEL_CARD_SLOT:string = 'models/tcg-framework/card-table/card-table-slot-prototype.glb';
+    const MODEL_CARD_SLOT_SELECTOR:string = 'models/tcg-framework/card-table/card-table-slot-prototype-selector.glb';
+
     /** scale for parental view toggles */
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
 
-    /** transform details for displayed card element */
-    const DISAPLAY_OFFSET_ON:Vector3 = { x:0, y:1.5, z:0 };
+    /** transforms for displayed card element */
+    const DISAPLAY_OFFSET_ON:Vector3 = { x:0, y:0.425, z:0 };
     const DISAPLAY_OFFSET_OFF:Vector3 = { x:0, y:-10, z:0 };
-    const DISAPLAY_SCALE:Vector3 = { x:1, y:1, z:1 };
+    const DISAPLAY_SCALE:Vector3 = { x:0.45, y:0.45, z:0.45 };
     const DISAPLAY_ROTATION:Vector3 = { x:0, y:0, z:0 };
 
-    /** transform details for interaction element */
+    /** transforms for interaction element */
     const INTERACTION_OFFSET:Vector3 = { x:0, y:0, z:0 };
-    const INTERACTION_SCALE:Vector3 = { x:1.8, y:0.5, z:1.8 };
+    const INTERACTION_SCALE:Vector3 = { x:1.0, y:2, z:1.0 };
     const INTERACTION_ROTATION:Vector3 = { x:0, y:0, z:0 };
+
+    /** transforms for interaction element */
+    const SELECTION_OFFSET:Vector3 = { x:0, y:0.4, z:0 };
+    const SELECTION_SCALE:Vector3 = { x:1.5, y:0.1, z:1.5 };
+    const SELECTION_ROTATION:Vector3 = { x:0, y:0, z:0 };
+
+    /** transforms  */
+    const STATS_OFFSET = { x:0, y:1.75, z:0 };
+    const STATS_SCALE = { x:0.75, y:0.75, z:0.75 };
+    const STATS_ROTATION = { x:0, y:0, z:0 };
 
     /** indexing key */
     export function GetKeyFromObject(data:TableCardSlotObject):string { return data.TableID+"-"+data.TeamID+"-"+data.SlotID; };
@@ -98,40 +113,118 @@ export module TableCardSlot {
         public get SlottedCard():undefined|string { return this.slottedCard; }
 
         /** parental position */
-        private parentEntity: Entity;
-
+        private entityParent:Entity;
         /** interaction area for the card */
-        private interactionEntity: Entity;
-
+        private entityInteraction:Entity;
+        /** selection preview (shows if slot is selected) */
+        private entitySelection:Entity;
         /** active character display object (actual character in this slot) */
-        private characterEntity: Entity;
+        private entityCharacter:Entity;
 
+        //character stats display portions
+        /** character display pivot point */
+        private statsParent:Entity;
+        /** active character action */
+        private statsName:Entity;
+        /** active character action */
+        private statsAction:Entity;
+        /** attack display */
+        private statsAttack:Entity;
+        /** health display */
+        private statsHealth:Entity;
+        /** armour display */
+        private statsArmour:Entity;
+        
         /** prepares field team for use */
         constructor() {
             //create interaction object
-            this.parentEntity = engine.addEntity();
-            Transform.create(this.parentEntity);
+            this.entityParent = engine.addEntity();
+            Transform.create(this.entityParent);
 
             //create display object
-            this.characterEntity = engine.addEntity();
-            Transform.create(this.characterEntity, {
-                parent: this.parentEntity,
+            this.entityCharacter = engine.addEntity();
+            Transform.create(this.entityCharacter, {
+                parent: this.entityParent,
                 position: DISAPLAY_OFFSET_ON,
                 scale: DISAPLAY_SCALE,
                 rotation: Quaternion.fromEulerDegrees(DISAPLAY_ROTATION.x, DISAPLAY_ROTATION.y, DISAPLAY_ROTATION.z)
             });
 
+            //create selection object
+            this.entitySelection = engine.addEntity();
+            Transform.create(this.entitySelection, {
+                parent: this.entityParent,
+                position: SELECTION_OFFSET,
+                scale: SELECTION_SCALE,
+                rotation: Quaternion.fromEulerDegrees(SELECTION_ROTATION.x, SELECTION_ROTATION.y, SELECTION_ROTATION.z)
+            });
+            //  add model
+            GltfContainer.create(this.entitySelection, {
+                src: MODEL_CARD_SLOT_SELECTOR,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+
             //create interaction object
-            this.interactionEntity = engine.addEntity();
-            Transform.create(this.interactionEntity, {
-                parent: this.parentEntity,
+            this.entityInteraction = engine.addEntity();
+            Transform.create(this.entityInteraction, {
+                parent: this.entityParent,
                 position: INTERACTION_OFFSET,
                 scale: INTERACTION_SCALE,
                 rotation: Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z)
             });
             //  add model
-            //MeshRenderer.setBox(this.interactionEntity);
-            MeshCollider.setBox(this.interactionEntity, ColliderLayer.CL_POINTER);
+            GltfContainer.create(this.entityInteraction, {
+                src: MODEL_CARD_SLOT,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+
+            //stats
+            //  parent
+            this.statsParent = engine.addEntity();
+            Transform.create(this.statsParent, { parent: this.entityParent, position:STATS_OFFSET, scale:STATS_SCALE, rotation: Quaternion.fromEulerDegrees(STATS_ROTATION.x,STATS_ROTATION.y,STATS_ROTATION.z) });
+            Billboard.create(this.statsParent);
+            //name
+            this.statsName = engine.addEntity();
+            Transform.create(this.statsName, { parent: this.statsParent, position: {x:0,y:0.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            var textShape = TextShape.create(this.statsName);
+            textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
+            textShape.textColor = Color4.White(); textShape.fontSize = 12;
+            textShape.text = "<CHARACTER_NAME>";
+            textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
+            //action
+            this.statsAction = engine.addEntity();
+            Transform.create(this.statsAction, { parent: this.statsParent, position: {x:0,y:0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            var textShape = TextShape.create(this.statsAction);
+            textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
+            textShape.textColor = Color4.White(); textShape.fontSize = 6;
+            textShape.text = "<ACTION REMAINING>";
+            textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
+            //health
+            this.statsHealth = engine.addEntity();
+            Transform.create(this.statsHealth, { parent: this.statsParent, position: {x:0,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            var textShape = TextShape.create(this.statsHealth);
+            textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.2;
+            textShape.textColor = Color4.Red(); textShape.fontSize = 8;
+            textShape.text = "###";
+            textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
+            //attack
+            this.statsAttack = engine.addEntity();
+            Transform.create(this.statsAttack, { parent: this.statsParent, position: {x:-0.6,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            var textShape = TextShape.create(this.statsAttack);
+            textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.2;
+            textShape.textColor = Color4.Yellow(); textShape.fontSize = 8;
+            textShape.text = "###";
+            textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
+            //armour
+            this.statsArmour = engine.addEntity();
+            Transform.create(this.statsArmour, { parent: this.statsParent, position: {x:0.6,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            var textShape = TextShape.create(this.statsArmour);
+            textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.2;
+            textShape.textColor = Color4.Blue(); textShape.fontSize = 8;
+            textShape.text = "###";
+            textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
         }
 
         /** prepares the card slot for use by a table team */
@@ -142,19 +235,19 @@ export module TableCardSlot {
             this.teamID = data.teamID;
             this.slotID = data.slotID;
             //transform
-            const transformParent = Transform.getMutable(this.parentEntity);
+            const transformParent = Transform.getMutable(this.entityParent);
             transformParent.parent = data.parent;
             transformParent.position = data.position;
             //transformParent.scale = INTERACTION_SCALE;
             //transformParent.rotation = Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z);
             //component
-            TableCardSlotComponent.createOrReplace(this.interactionEntity, {
+            TableCardSlotComponent.createOrReplace(this.entityInteraction, {
                 tableID:data.tableID,
                 teamID:data.teamID,
                 slotID:data.slotID,
             });
             //  pointer event system
-            PointerEvents.createOrReplace(this.interactionEntity, {
+            PointerEvents.createOrReplace(this.entityInteraction, {
                 pointerEvents: [
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
@@ -162,32 +255,55 @@ export module TableCardSlot {
                   },
                 ]
             });
+            //hide selection obj
+            this.SetSelectionState(false);
+            //show character stats
+            Transform.getMutable(this.statsParent).scale = PARENT_SCALE_OFF;
+        }
+
+        /** */
+        public SetSelectionState(state:boolean) {
+            if(state) Transform.getMutable(this.entitySelection).scale = SELECTION_SCALE;
+            else Transform.getMutable(this.entitySelection).scale = PARENT_SCALE_OFF;
         }
 
         /** applies a card to this card slot (displaying character or effect) */
-        public ApplyCard(data:CardDataObject) {
-            this.slottedCard = data.id.toString();
+        public ApplyCard(data:PlayCard.PlayCardDataObject) {
+            this.slottedCard = data.Key;
             //enable card parent
-            const transformParent = Transform.getMutable(this.parentEntity);
+            const transformParent = Transform.getMutable(this.entityParent);
             transformParent.scale = PARENT_SCALE_ON;
             //display card character
-            const transformCharacter = Transform.getMutable(this.characterEntity);
+            const transformCharacter = Transform.getMutable(this.entityCharacter);
             transformCharacter.position = DISAPLAY_OFFSET_ON;
             transformCharacter.scale = DISAPLAY_SCALE;
             //update card character model
-            GltfContainer.createOrReplace(this.characterEntity, {
-                src: data.objPath,
+            GltfContainer.createOrReplace(this.entityCharacter, {
+                src: data.DefData.objPath,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
+            //show character stats
+            Transform.getMutable(this.statsParent).scale = STATS_SCALE;
+            this.UpdateStatDisplay(data);
+        }
+
+        public UpdateStatDisplay(data:PlayCard.PlayCardDataObject) {
+            TextShape.getMutable(this.statsName).text = data.DefData.name;
+            TextShape.getMutable(this.statsAction).text = "ACTIVE: "+"TRUE";
+            TextShape.getMutable(this.statsHealth).text = "HP: "+data.Health.toString();
+            TextShape.getMutable(this.statsAttack).text = "ATK: "+data.Attack.toString();
+            TextShape.getMutable(this.statsArmour).text = "DEF: "+data.Armour.toString();
         }
 
         /** clears an existing card from this card slot */
         public ClearCard() {
             //hide card character
-            const transformCharacter = Transform.getMutable(this.characterEntity);
+            const transformCharacter = Transform.getMutable(this.entityCharacter);
             transformCharacter.position = DISAPLAY_OFFSET_OFF;
             transformCharacter.scale = Vector3.Zero();
+            //hide character stats
+            Transform.getMutable(this.statsParent).scale = PARENT_SCALE_OFF;
         }
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
@@ -195,14 +311,14 @@ export module TableCardSlot {
             this.isActive = false;
             this.ClearCard();
             //hide card parent
-            const transformParent = Transform.getMutable(this.parentEntity);
+            const transformParent = Transform.getMutable(this.entityParent);
             transformParent.scale = PARENT_SCALE_OFF;
         }
 
         /** removes objects from game scene and engine */
         public Destroy() {
             //destroy game object
-            engine.removeEntity(this.parentEntity);
+            engine.removeEntity(this.entityParent);
         }
     }
     
