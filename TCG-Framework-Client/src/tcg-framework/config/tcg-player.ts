@@ -65,15 +65,15 @@ export module Player {
 
     //provide default decks
     for(let j:number=0; j<5; j++){
-        /*//default deck - ice
+        //default deck - ice
         for(let i:number=0; i<3; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_ICEBOLT); }
         for(let i:number=0; i<5; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.CHARACTER_ICE_GOLEM); }
         PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
-        *///default deck - terrain
-        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_FIRE);
+        //default deck - terrain
+        /*PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_FIRE);
         PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
         PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ELECTRIC);
-        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_VOID);
+        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_VOID);*/
     }
 
     //TODO: move this to an external pve segment
