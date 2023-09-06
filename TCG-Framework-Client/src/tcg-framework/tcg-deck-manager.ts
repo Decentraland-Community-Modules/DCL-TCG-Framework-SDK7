@@ -39,10 +39,18 @@ export module DeckManager
         "anim_deactivate"
     ];
 
+    /** all deck interaction buttons */
     export enum DECK_INTERACTION_TYPE {
-        SELECT,
-        SAVE,
-        LOAD,
+        SELECT="select",
+        SAVE="save",
+        LOAD="load",
+    }
+
+    /** all filter interaction buttons */
+    enum FILTER_TYPE {
+        FACTION="faction",
+        TYPE="type",
+        COST="cost"
     }
 
     /** core display object defaults */
@@ -170,8 +178,9 @@ export module DeckManager
     for(let i:number=0; i<CardFactionData.length; i++) {
         deckButtonSelectors.push(InteractionObject.Create({
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
-            actionPrimary:DECK_INTERACTION_TYPE.SELECT, actionSecondary:i,
-            interactionText:"SELECT DECK "+i,
+            target: DECK_INTERACTION_TYPE.SELECT,
+            action: i,
+            interactionText: "SELECT DECK "+i,
             textScale: { x:0.125, y:1, z:1 },
             parent: deckInfoParent, 
             position: { x:0, y:0.29-(i*0.125), z:-0.1 },
@@ -183,9 +192,9 @@ export module DeckManager
     /** save deck button */
     const deckButtonSave = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
-        actionPrimary:DECK_INTERACTION_TYPE.SAVE, actionSecondary:0,
-        displayText:"SAVE",
-        interactionText:"SAVE DECK",
+        target: DECK_INTERACTION_TYPE.SAVE,
+        displayText: "SAVE",
+        interactionText: "SAVE DECK",
         textScale: { x:0.35, y:1, z:1, },
         parent: deckInfoParent, 
         position: { x:-0.28, y:-0.4, z:-0.1 },
@@ -194,7 +203,7 @@ export module DeckManager
     /** load deck button */
     const deckButtonLoad = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
-        actionPrimary:DECK_INTERACTION_TYPE.LOAD, actionSecondary:0,
+        target:DECK_INTERACTION_TYPE.LOAD,
         displayText:"LOAD",
         interactionText:"LOAD DECK",
         textScale: { x:0.35, y:1, z:1, },
@@ -229,7 +238,6 @@ export module DeckManager
     /** display page prev */
 
     //### CARD FILTERING
-    enum FILTER_TYPE { FACTION=10, TYPE=11, COST=12 }
     const filterParent:Entity = engine.addEntity();
     Transform.create(filterParent, {parent:entityParent});
     /** filter objects - per faction */
@@ -239,7 +247,8 @@ export module DeckManager
         filterFactionMask.push(true);
         filterFactionObj.push(InteractionObject.Create({
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
-            actionPrimary:FILTER_TYPE.FACTION, actionSecondary:i,
+            target:FILTER_TYPE.FACTION, 
+            action:i,
             displayText:i.toString(),
             interactionText:"toggle "+CardFactionData[i].name,
             parent: filterParent, 
@@ -257,7 +266,8 @@ export module DeckManager
         filterTypeMask.push(true);
         filterTypeObj.push(InteractionObject.Create({
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
-            actionPrimary:FILTER_TYPE.TYPE, actionSecondary:i,
+            target:FILTER_TYPE.TYPE, 
+            action:i,
             displayText:i.toString(),
             interactionText:"toggle "+CARD_TYPE_STRINGS[i],
             parent: filterParent, 
@@ -275,7 +285,8 @@ export module DeckManager
         filterCostMask.push(true);
         filterCostObj.push(InteractionObject.Create({
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
-            actionPrimary:FILTER_TYPE.COST, actionSecondary:i,
+            target:FILTER_TYPE.COST, 
+            action:i,
             displayText:i.toString(),
             interactionText:"toggle cost "+i,
             parent: filterParent, 
@@ -288,7 +299,7 @@ export module DeckManager
     }
 
     /** toggles filter of given type */
-    export function ToggleFilter(type:number, index:number) {
+    export function ToggleFilter(type:string, index:number) {
         if(isDebugging) console.log(debugTag+"toggling filter tag type="+type+", index="+index);
         switch(type) {
             case 

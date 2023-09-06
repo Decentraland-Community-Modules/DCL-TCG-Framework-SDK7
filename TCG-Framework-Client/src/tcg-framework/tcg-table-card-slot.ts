@@ -46,7 +46,6 @@ export module TableCardSlot {
     const STATS_ROTATION = { x:0, y:0, z:0 };
 
     /** indexing key */
-    export function GetKeyFromObject(data:TableCardSlotObject):string { return data.TableID+"-"+data.TeamID+"-"+data.SlotID; };
     export function GetKeyFromData(data:TableCardSlotCreationData):string { return data.tableID+"-"+data.teamID+"-"+data.slotID; };
 
     /** pool of ALL existing objects */
@@ -72,9 +71,9 @@ export module TableCardSlot {
     /** component for on-click interactions */
     export const TableCardSlotComponentData = {
         //indexing
-        tableID:Schemas.String,
-        teamID:Schemas.String,
-        slotID:Schemas.String,
+        tableID:Schemas.Number,
+        teamID:Schemas.Number,
+        slotID:Schemas.Number,
     }
 	/** define component, adding it to the engine as a managed behaviour */
     export const TableCardSlotComponent = engine.defineComponent("TableCardSlotComponentData", TableCardSlotComponentData);
@@ -82,9 +81,9 @@ export module TableCardSlot {
 	/** object interface used to define all data required to create a team card slot */
 	export interface TableCardSlotCreationData {
         //indexing
-        tableID: string,
-        teamID: string,
-        slotID: string,
+        tableID: number,
+        teamID: number,
+        slotID: number,
         //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
@@ -96,18 +95,21 @@ export module TableCardSlot {
         private isActive: boolean = true;
         public get IsActive():boolean { return this.isActive; };
 
-        /** represents the unique index of this slot's table, req for networking */
-        private tableID:string = "";
-        public get TableID():string { return this.tableID; };
+        /** unique index of this slot's table */
+        private tableID:number = -1;
+        public get TableID():string { return this.tableID.toString(); };
 
-        /** represents the unique index of this slot's team, req for networking */
-        private teamID:string = "";
-        public get TeamID():string { return this.teamID; };
+        /** unique index of this slot's team */
+        private teamID:number = -1;
+        public get TeamID():string { return this.teamID.toString(); };
 
-        /** represents the unique index of this slot, req for networking */
-        private slotID:string = "";
-        public get SlotID():string { return this.slotID; };
+        /** unique index of this slot */
+        private slotID:number = -1;
+        public get SlotID():string { return this.slotID.toString(); };
         
+        /** unique key of this slot */
+        public get Key():string { return this.TableID+"-"+this.TeamID+"-"+this.SlotID; };
+
         /** id of the currently slotted card playdata */
         private slottedCard:undefined|string = undefined;
         public get SlottedCard():undefined|string { return this.slottedCard; }
@@ -185,7 +187,7 @@ export module TableCardSlot {
             this.statsParent = engine.addEntity();
             Transform.create(this.statsParent, { parent: this.entityParent, position:STATS_OFFSET, scale:STATS_SCALE, rotation: Quaternion.fromEulerDegrees(STATS_ROTATION.x,STATS_ROTATION.y,STATS_ROTATION.z) });
             Billboard.create(this.statsParent);
-            //name
+            //  name
             this.statsName = engine.addEntity();
             Transform.create(this.statsName, { parent: this.statsParent, position: {x:0,y:0.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.statsName);
@@ -193,7 +195,7 @@ export module TableCardSlot {
             textShape.textColor = Color4.White(); textShape.fontSize = 12;
             textShape.text = "<CHARACTER_NAME>";
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
-            //action
+            //  action
             this.statsAction = engine.addEntity();
             Transform.create(this.statsAction, { parent: this.statsParent, position: {x:0,y:0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.statsAction);
@@ -201,7 +203,7 @@ export module TableCardSlot {
             textShape.textColor = Color4.White(); textShape.fontSize = 6;
             textShape.text = "<ACTION REMAINING>";
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
-            //health
+            //  health
             this.statsHealth = engine.addEntity();
             Transform.create(this.statsHealth, { parent: this.statsParent, position: {x:0,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.statsHealth);
@@ -209,7 +211,7 @@ export module TableCardSlot {
             textShape.textColor = Color4.Red(); textShape.fontSize = 8;
             textShape.text = "###";
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
-            //attack
+            //  attack
             this.statsAttack = engine.addEntity();
             Transform.create(this.statsAttack, { parent: this.statsParent, position: {x:-0.6,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.statsAttack);
@@ -217,7 +219,7 @@ export module TableCardSlot {
             textShape.textColor = Color4.Yellow(); textShape.fontSize = 8;
             textShape.text = "###";
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
-            //armour
+            //  armour
             this.statsArmour = engine.addEntity();
             Transform.create(this.statsArmour, { parent: this.statsParent, position: {x:0.6,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.statsArmour);
@@ -246,22 +248,23 @@ export module TableCardSlot {
                 teamID:data.teamID,
                 slotID:data.slotID,
             });
-            //  pointer event system
+            //pointer event system
             PointerEvents.createOrReplace(this.entityInteraction, {
                 pointerEvents: [
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Select Card Slot "+TableCardSlot.GetKeyFromObject(this) }
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Select Card Slot "+this.Key }
                   },
                 ]
             });
+
             //hide selection obj
             this.SetSelectionState(false);
             //show character stats
             Transform.getMutable(this.statsParent).scale = PARENT_SCALE_OFF;
         }
 
-        /** */
+        /** sets the state of the selection object  */
         public SetSelectionState(state:boolean) {
             if(state) Transform.getMutable(this.entitySelection).scale = SELECTION_SCALE;
             else Transform.getMutable(this.entitySelection).scale = PARENT_SCALE_OFF;
@@ -376,7 +379,6 @@ export module TableCardSlot {
 
     /** disables the given object, hiding it from the scene but retaining it in data & pooling */
     export function Disable(object:TableCardSlotObject) {
-        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  add to inactive listing (ensure add is required)
         var posX = pooledObjectsInactive.getItemPos(object);
@@ -384,7 +386,7 @@ export module TableCardSlot {
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
+        if(pooledObjectsRegistry.containsKey(object.Key)) pooledObjectsRegistry.removeItem(object.Key);
 
         //send disable command
         object.Disable();
@@ -403,7 +405,6 @@ export module TableCardSlot {
 
     /** removes given object from game scene and engine */
     export function Destroy(object:TableCardSlotObject) {
-        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  remove from overhead listing
         pooledObjectsAll.removeItem(object);
@@ -412,7 +413,7 @@ export module TableCardSlot {
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
+        if(pooledObjectsRegistry.containsKey(object.Key)) pooledObjectsRegistry.removeItem(object.Key);
 
         //send destroy command
         object.Destroy();

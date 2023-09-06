@@ -7,6 +7,7 @@
     TeamContact: thecryptotrader69@gmail.com
 */
 
+/** all connectivity types */
 export enum GAME_CONNECTIVITY_TYPE {
     //full server experience, with mechanics mirroring/anti-cheat
     //  player can level-up
@@ -19,6 +20,19 @@ export enum GAME_CONNECTIVITY_TYPE {
     PEER_TO_PEER_LOCKED,
     //no account or ownership verification, enables all functions/deck
     //  options in the game as if player was logged in on an admin account
+}
+
+/** all possible game states */
+export enum GAME_STATE {
+    IDLE,   //no game has started
+    ACTIVE, //game is on-going
+    OVER,   //game has finished (displaying results)
+} 
+
+/** team types for table/who can register for table */
+export enum TABLE_TEAM_TYPES {
+    HUMAN, //human player
+    AI,     //AI/PvE player
 }
 
 /** represents the current state of the instance's connectivity,

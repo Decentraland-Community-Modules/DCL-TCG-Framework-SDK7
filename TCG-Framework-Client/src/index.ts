@@ -1,6 +1,5 @@
+import { TABLE_TEAM_TYPES } from "./tcg-framework/config/tcg-config";
 import { Player } from "./tcg-framework/config/tcg-player";
-import { CARD_TYPE, CardData } from "./tcg-framework/data/tcg-card-data";
-import { CardSubjectObject } from "./tcg-framework/tcg-card-subject-object";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
@@ -14,13 +13,23 @@ export function main()
 	Player.LoadPlayerData();
 
 	//create deck manager
-	DeckManager.SetPosition({ x:8, y:0, z:8 });
+	DeckManager.SetPosition({ x:24, y:0, z:6 });
 
-	//create card table
+	//create card tables
+	//	peer to peer
 	Table.Create({
 		tableID:0,
+		teamTypes: [TABLE_TEAM_TYPES.HUMAN,TABLE_TEAM_TYPES.HUMAN],
         parent: undefined,
-		position: { x:24, y:0, z:24 },
+		position: { x:14, y:0, z:24 },
+		rotation: { x:0, y:90, z:0 }
+	});
+	//	ai
+	Table.Create({
+		tableID:1,
+		teamTypes: [TABLE_TEAM_TYPES.HUMAN,TABLE_TEAM_TYPES.AI],
+        parent: undefined,
+		position: { x:34, y:0, z:24 },
 		rotation: { x:0, y:90, z:0 }
 	});
 

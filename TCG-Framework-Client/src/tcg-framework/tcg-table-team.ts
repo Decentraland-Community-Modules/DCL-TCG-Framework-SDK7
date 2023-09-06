@@ -1,11 +1,13 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { ColliderLayer, Entity, GltfContainer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { ColliderLayer, Entity, GltfContainer, InputAction, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableCardSlot } from "./tcg-table-card-slot";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
 import { PlayCard } from "./tcg-play-card";
 import { CardData, CardDataObject } from "./data/tcg-card-data";
+import { InteractionObject } from "./tcg-interaction-object";
+import { GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
     represents team on a table
@@ -22,11 +24,12 @@ export module TableTeam {
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table Team: ";
 
-    /** all possible team types */
-    export enum TEAM_TYPE {
-        LOCAL,  //local player
-        AI, //local ai
-        REMOTE, //remote auth
+    /** all lobby buttons */
+    export enum LOBBY_BUTTONS {
+        JOIN,
+        START,
+        LEAVE,
+        END_TURN
     }
 
     /** model location for this team's boarder*/
@@ -44,6 +47,10 @@ export module TableTeam {
     const CARD_HOLDER_OFFSET:Vector3 = { x:0, y:1.5, z:4.75 };
     const CARD_HOLDER_SCALE:Vector3 = { x:0.5, y:0.5, z:0.5 };
     const CARD_HOLDER_ROTATION:Vector3 = { x:30, y:180, z:0 };
+    
+    /** transform - buttons */
+    const BUTTON_SCALE_ON:Vector3 = { x:0.8, y:0.8, z:0.8 };
+    const BUTTON_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
 
     /** positions for card slots on field */
     const CARD_SLOT_POSITIONS:Vector3[] = [
@@ -55,7 +62,6 @@ export module TableTeam {
     ];
 
     /** indexing key */
-    export function GetKeyFromObject(data:TableTeamObject):string { return data.TableID+"-"+data.TeamID; };
     export function GetKeyFromData(data:TableTeamCreationData):string { return data.tableID+"-"+data.teamID; };
 
     /** pool of ALL existing objects */
@@ -81,8 +87,8 @@ export module TableTeam {
     /** component for on-click interactions */
     export const TableTeamComponentData = {
         //indexing
-        tableID:Schemas.String,
-        teamID:Schemas.String,
+        tableID:Schemas.Number,
+        teamID:Schemas.Number,
         //targeting (per button, ex: join/leave button)
         action:Schemas.String,
     }
@@ -92,8 +98,10 @@ export module TableTeam {
 	/** object interface used to define all data required to create a team */
 	export interface TableTeamCreationData {
         //indexing
-        tableID: string,
-        teamID: string,
+        tableID: number,
+        teamID: number,
+        //callbacks
+        callbackTable?: (key:string) => GAME_STATE,
         //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
@@ -116,6 +124,11 @@ export module TableTeam {
             //parent
             this.entityParent = engine.addEntity();
             Transform.create(this.entityParent, { parent: parent, rotation: Quaternion.fromEulerDegrees(0,-90,0) });
+            GltfContainer.create(this.entityParent, {
+                src: 'models/tcg-framework/menu-displays/display-tall.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
             //name
             this.entityName = engine.addEntity();
             Transform.create(this.entityName, { parent: this.entityParent, position: {x:0,y:0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
@@ -196,16 +209,27 @@ export module TableTeam {
         private isActive: boolean = true;
         public get IsActive():boolean { return this.isActive; };
 
-        /** represents the unique index of this slot's table, req for networking */
-        private tableID:string = "";
-        public get TableID():string { return this.tableID; };
+        /** unique index of this slot's table */
+        private tableID:number = -1;
+        public get TableID():string { return this.tableID.toString(); };
 
-        /** represents the unique index of this slot's team, req for networking */
-        private teamID:string = "";
-        public get TeamID():string { return this.teamID; };
+        /** unique index of this slot's team */
+        private teamID:number = -1;
+        public get TeamID():string { return this.teamID.toString(); };
+
+        /** unique key of this slot */
+        public get Key():string { return this.TableID+"-"+this.TeamID; };
 
         /** type of user registered to this table */
-        public TeamType: TEAM_TYPE = TEAM_TYPE.LOCAL;
+        public TeamType: TABLE_TEAM_TYPES = TABLE_TEAM_TYPES.HUMAN;
+
+        /** callback to get game state of table */
+        public callbackGetGameState:undefined|((key:string) => GAME_STATE);
+        /** returns current game state of table team is tied to */
+        public get GameState():undefined|GAME_STATE { 
+            if(this.callbackGetGameState) return this.callbackGetGameState(this.TableID);
+            else return undefined;
+        }
 
         /** current player's display name */
         public Player:undefined|string;
@@ -236,6 +260,15 @@ export module TableTeam {
         private entityBorder:Entity;
         /** battlefield's central terrain */
         private entityTerrain:Entity;
+
+        /** interaction object to join team */
+        public entityJoinTeam:Entity;
+        /** interaction object to leave team */
+        public entityLeaveTeam:Entity;
+        /** interaction object to start game */
+        public entityStartGame:Entity;
+        /** interaction object to end turn */
+        public entityEndTurn:Entity;
 
         /** card display parent (where player cards are stored) */
         private handCardParent:Entity;
@@ -297,6 +330,88 @@ export module TableTeam {
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
+
+            //create interaction buttons
+            //  join team
+            this.entityJoinTeam = engine.addEntity();
+            Transform.create(this.entityJoinTeam, {
+                parent: this.entityParent,
+                position: {x:0,y:2,z:-5.25},
+                scale: BUTTON_SCALE_ON,
+            });
+            GltfContainer.create(this.entityJoinTeam, {
+                src: 'models/tcg-framework/card-table/text-join.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            PointerEvents.createOrReplace(this.entityJoinTeam, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "JOIN GAME" }
+                  },
+                ]
+            });
+            //  leave team
+            this.entityLeaveTeam = engine.addEntity();
+            Transform.create(this.entityLeaveTeam, {
+                parent: this.entityParent,
+                position: {x:2,y:-1.25,z:0},
+                scale: BUTTON_SCALE_ON,
+            });
+            GltfContainer.create(this.entityLeaveTeam, {
+                src: 'models/tcg-framework/card-table/text-leave.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            PointerEvents.createOrReplace(this.entityLeaveTeam, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "LEAVE GAME" }
+                  },
+                ]
+            });
+            //  start game
+            this.entityStartGame = engine.addEntity();
+            Transform.create(this.entityStartGame, {
+                parent: this.entityParent,
+                position: {x:-2,y:-1.25,z:0},
+                scale: BUTTON_SCALE_ON,
+            });
+            GltfContainer.create(this.entityStartGame, {
+                src: 'models/tcg-framework/card-table/text-start.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            PointerEvents.createOrReplace(this.entityStartGame, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "START GAME" }
+                  },
+                ]
+            });
+            //  end turn
+            this.entityEndTurn = engine.addEntity();
+            Transform.create(this.entityEndTurn, {
+                parent: this.entityParent,
+                position: {x:0,y:-1.65,z:0},
+                scale: BUTTON_SCALE_ON,
+            });
+            GltfContainer.create(this.entityEndTurn, {
+                src: 'models/tcg-framework/card-table/text-end-turn.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            PointerEvents.createOrReplace(this.entityEndTurn, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "END TURN" }
+                  },
+                ]
+            });
             
             //create card holder
             this.handCardParent = engine.addEntity();
@@ -323,7 +438,29 @@ export module TableTeam {
             transformParent.position = PARENT_OFFSET_ON;
             transformParent.scale = PARENT_SCALE_ON;
             transformParent.rotation = Quaternion.fromEulerDegrees(data.rotation.x, data.rotation.y, data.rotation.z);
-        
+            
+            //update button interactions
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityJoinTeam, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                target: this.Key,
+                action: LOBBY_BUTTONS.JOIN,
+            });
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLeaveTeam, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                target: this.Key,
+                action: LOBBY_BUTTONS.LEAVE,
+            });
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityStartGame, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                target: this.Key,
+                action: LOBBY_BUTTONS.START,
+            });
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityEndTurn, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                target: this.Key,
+                action: LOBBY_BUTTONS.END_TURN,
+            });
+
             //clear previous terrain card
             this.TerrainCard = undefined;
             //clear previous card slot objects
@@ -332,12 +469,12 @@ export module TableTeam {
                 if(teamObject) teamObject.Disable();
             }
 
-            //create team objects
+            //create card slot objects
             for(let i:number=0; i<CARD_SLOT_POSITIONS.length; i++) {/**/
                 const teamObject:TableCardSlot.TableCardSlotObject = TableCardSlot.Create({
                     tableID: data.tableID,
                     teamID: data.teamID,
-                    slotID: i.toString(),
+                    slotID: i,
                     parent: this.entityParent,
                     position: CARD_SLOT_POSITIONS[i]
                 });
@@ -351,6 +488,7 @@ export module TableTeam {
             this.HealthCur = 60;
             this.EnergyCur = 3;
             this.EnergyGain = 1;
+
             //remove any hand cards
             while(this.handCards.size() > 0) {
                 const card = this.handCards.getItem(0);
@@ -361,6 +499,58 @@ export module TableTeam {
             this.PlayerDeck?.ShuffleCards();
             //reset all card slots
             this.UpdateCardSlotDisplay();
+        }
+
+        /** updates buttons display based on the current state */
+        public UpdateButtonStates() {
+            //process based on operator of this team
+            switch(this.TeamType) {
+                //human player
+                case TABLE_TEAM_TYPES.HUMAN:
+                    //if play
+                    switch(this.GameState) {
+                        //game is not started
+                        case GAME_STATE.IDLE:
+                            //if player is registered to team
+                            if(this.Player) {
+                                Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
+                                //
+                                Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+                            } 
+                            //if no player is registered to team
+                            else {
+                                Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_ON;
+                            }
+                            Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                        break;
+                        //game is on-going
+                        case GAME_STATE.ACTIVE:
+                            //if team has a player
+                            Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                        break;
+                        //game has finished
+                        case GAME_STATE.OVER:
+                            //if team has a player
+                            Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                        break;
+                    }
+                break;
+                //AI player
+                case TABLE_TEAM_TYPES.AI:
+                    //never show buttons if team is operated by AI
+                    Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                break;
+            }
         }
 
         /** updates the positions of all cards in the player's hand */
@@ -582,7 +772,6 @@ export module TableTeam {
 
     /** disables the given object, hiding it from the scene but retaining it in data & pooling */
     export function Disable(object:TableTeamObject) {
-        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  add to inactive listing (ensure add is required)
         var posX = pooledObjectsInactive.getItemPos(object);
@@ -590,7 +779,7 @@ export module TableTeam {
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
+        if(pooledObjectsRegistry.containsKey(object.Key)) pooledObjectsRegistry.removeItem(object.Key);
 
         //send disable command
         object.Disable();
@@ -609,7 +798,6 @@ export module TableTeam {
 
     /** removes given object from game scene and engine */
     export function Destroy(object:TableTeamObject) {
-        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  remove from overhead listing
         pooledObjectsAll.removeItem(object);
@@ -618,7 +806,7 @@ export module TableTeam {
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
+        if(pooledObjectsRegistry.containsKey(object.Key)) pooledObjectsRegistry.removeItem(object.Key);
 
         //send destroy command
         object.Destroy();

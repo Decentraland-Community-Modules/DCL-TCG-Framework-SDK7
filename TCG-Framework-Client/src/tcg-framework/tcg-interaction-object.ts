@@ -22,9 +22,10 @@ export module InteractionObject
 
     /** determines all possible card owners */
     export enum INTERACTION_TYPE {
-        DECK_MANAGER_FILTER = 0, //used for modifying view filters
-        DECK_MANAGER_MODIFY = 1, //used for de/increasing cards in deck 
-        GAME_TABLE = 10, //used by an active game table
+        DECK_MANAGER_FILTER = 0, //modifying view filters
+        DECK_MANAGER_MODIFY = 1, //de/increasing cards in deck 
+        GAME_TABLE = 10, //call from table button
+        GAME_TEAM = 20, //call from table team button
     }
     
     /** transform defaults - parental enabled */
@@ -70,8 +71,8 @@ export module InteractionObject
         //  0=table, 1=deck manager
         ownerType:Schemas.Number,
         //targeting
-        actionPrimary:Schemas.Number, //main action (ex: what table is being interacted with/filter type)
-        actionSecondary:Schemas.Number,//secondary detail (ex: table's specific button type/filter index)
+        target:Schemas.String,
+        action:Schemas.Number,
     }
 	/** define component, adding it to the engine as a managed behaviour */
     export const InteractionObjectComponent = engine.defineComponent("InteractionObjectComponentData", InteractionObjectComponentData);
@@ -80,9 +81,9 @@ export module InteractionObject
 	export interface InteractionObjectCreationData {
         //display type
         ownerType: INTERACTION_TYPE;
-        //indexing
-        actionPrimary:number;
-        actionSecondary:number;
+        //targeting
+        target:string;
+        action?:number;
         //text
         displayText?:string;
         interactionText?:string;
@@ -158,15 +159,13 @@ export module InteractionObject
             const transformText = Transform.getMutable(this.entityText);
             transformText.position = data.textPosition??TEXT_POSITION;
             transformText.scale = data.textScale??TEXT_SCALE;
-
             //text
             TextShape.getMutable(this.entityText).text = data.displayText??"";
-
             //component
             InteractionObjectComponent.createOrReplace(this.entityShape, {
                 ownerType:data.ownerType,
-                actionPrimary:data.actionPrimary??0,
-                actionSecondary:data.actionSecondary??0,
+                target:data.target,
+                action:data.action??-1,
             });
             
             //pointer event system

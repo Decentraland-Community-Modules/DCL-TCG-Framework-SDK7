@@ -9,6 +9,7 @@ import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
 import { CARD_TYPE, CardData } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
+import { GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
 
 
 /*      TRADING CARD GAME - CARD TABLE
@@ -39,25 +40,8 @@ export module Table {
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table: ";
 
-    /** all possible lobby states */
-    export enum LOBBY_STATE {
-        IDLE,   //no game has started
-        ACTIVE, //game is on-going
-        OVER,   //game has finished (displaying results)
-    } 
-
-    /** */
-    export enum LOBBY_BUTTONS {
-        JOIN,
-        START,
-        LEAVE,
-        END_TURN
-    }
-
     /** model location for this team's boarder*/
     const MODEL_DEFAULT_BORDER:string = 'models/tcg-framework/card-table/card-table-arena.glb';
-    /** model location for this default terrain */
-    const MODEL_TERRAIN_DEFAULT:string = 'models/tcg-framework/card-terrain/terrain-neutral.glb';
 
     /** number of cards players start */
     const STARTING_CARD_COUNT:number = 3;
@@ -79,10 +63,6 @@ export module Table {
     
     /** transform - lobby parent (join, leave, state) */
     const LOBBY_OFFSET:Vector3 = { x:0, y:8, z:0 };
-    
-    /** transform - lobby buttons */
-    const BUTTON_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
-    const BUTTON_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
 
     /** indexing key */
     export function GetKeyFromObject(data:TableObject):string { return data.TableID; };
@@ -111,7 +91,9 @@ export module Table {
 	/** object interface used to define all data required to create a team */
 	export interface TableTeamCreationData {
         //indexing
-        tableID: number,
+        tableID: number;
+        //type
+        teamTypes: [TABLE_TEAM_TYPES, TABLE_TEAM_TYPES];
         //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
@@ -127,13 +109,14 @@ export module Table {
         /** represents the unique index of this slot's table, req for networking */
         private tableID:number = -1;
         public get TableID():string { return this.tableID.toString(); };
-        
+
         /** id of the currently slotted card playdata */
         private slottedCard:undefined|string = undefined;
         public get SlottedCard():undefined|string { return this.slottedCard; }
 
-        private curState:LOBBY_STATE = LOBBY_STATE.IDLE;
-        public get CurState():LOBBY_STATE { return this.curState; };
+        /** current game state of the table */
+        private curState:GAME_STATE = GAME_STATE.IDLE;
+        public get CurState():GAME_STATE { return this.curState; };
 
         /** current player's turn */
         private curTurn:number = -1;
@@ -157,14 +140,6 @@ export module Table {
         private entityLobbyPlayers:Entity;
         /** display object, showing current turn state */
         private entityLobbyTurn:Entity;
-        /** interaction object to join game */
-        private entityLobbyJoin:Entity;
-        /** interaction object to start game */
-        private entityLobbyStart:Entity;
-        /** interaction object to leave lobby */
-        private entityLobbyLeave:Entity;
-        /** interaction object to end turn */
-        private entityLobbyEndTurn:Entity;
 
         //state display objects
         private entityStateDisplays:TableTeam.TeamDisplayObject[];
@@ -253,86 +228,6 @@ export module Table {
             textShape.outlineWidth = 0.1;
             textShape.fontSize = 8;
             textShape.text = "<UNDEFINED>'S TURN (ROUND ##)";
-            //  join button
-            this.entityLobbyJoin = engine.addEntity();
-            Transform.create(this.entityLobbyJoin, {
-                parent: this.entityLobbyParent,
-                position: {x:0,y:-1.25,z:0},
-                scale: {x:1,y:1,z:1},
-            });
-            GltfContainer.create(this.entityLobbyJoin, {
-                src: 'models/tcg-framework/card-table/text-join.glb',
-                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-                invisibleMeshesCollisionMask: undefined
-            });
-            PointerEvents.createOrReplace(this.entityLobbyJoin, {
-                pointerEvents: [
-                  { //primary key -> select card slot
-                    eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "JOIN GAME" }
-                  },
-                ]
-            });
-            //  start button
-            this.entityLobbyStart = engine.addEntity();
-            Transform.create(this.entityLobbyStart, {
-                parent: this.entityLobbyParent,
-                position: {x:-2,y:-1.25,z:0},
-                scale: {x:1,y:1,z:1},
-            });
-            GltfContainer.create(this.entityLobbyStart, {
-                src: 'models/tcg-framework/card-table/text-start.glb',
-                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-                invisibleMeshesCollisionMask: undefined
-            });
-            PointerEvents.createOrReplace(this.entityLobbyStart, {
-                pointerEvents: [
-                  { //primary key -> select card slot
-                    eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "START GAME" }
-                  },
-                ]
-            });
-            //  leave button
-            this.entityLobbyLeave = engine.addEntity();
-            Transform.create(this.entityLobbyLeave, {
-                parent: this.entityLobbyParent,
-                position: {x:2,y:-1.25,z:0},
-                scale: {x:1,y:1,z:1},
-            });
-            GltfContainer.create(this.entityLobbyLeave, {
-                src: 'models/tcg-framework/card-table/text-leave.glb',
-                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-                invisibleMeshesCollisionMask: undefined
-            });
-            PointerEvents.createOrReplace(this.entityLobbyLeave, {
-                pointerEvents: [
-                  { //primary key -> select card slot
-                    eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "LEAVE GAME" }
-                  },
-                ]
-            });
-            //  end turn button
-            this.entityLobbyEndTurn = engine.addEntity();
-            Transform.create(this.entityLobbyEndTurn, {
-                parent: this.entityLobbyParent,
-                position: {x:0,y:-1.65,z:0},
-                scale: {x:1,y:1,z:1},
-            });
-            GltfContainer.create(this.entityLobbyEndTurn, {
-                src: 'models/tcg-framework/card-table/text-end-turn.glb',
-                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-                invisibleMeshesCollisionMask: undefined
-            });
-            PointerEvents.createOrReplace(this.entityLobbyEndTurn, {
-                pointerEvents: [
-                  { //primary key -> select card slot
-                    eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "END TURN" }
-                  },
-                ]
-            });
 
             //create and set position for team displays
             this.entityStateDisplays = [];
@@ -386,146 +281,96 @@ export module Table {
             //create team objects
             for(let i:number=0; i<2; i++) {
                 const teamObject:TableTeam.TableTeamObject = TableTeam.Create({
-                    tableID: this.TableID,
-                    teamID: i.toString(),
+                    tableID: this.tableID,
+                    teamID: i,
                     parent: this.entityParent,
                     position: FIELD_TEAM_OFFSET[i],
                     rotation: FIELD_TEAM_ROTATION[i]
                 });
                 this.teamObjects.push(teamObject);
+
+                //if table is a PvE table, set ai 
+                if(data.teamTypes[i] == TABLE_TEAM_TYPES.AI) {
+                    this.teamObjects[i].Player = "Golemancer (lvl 1)";
+                    this.teamObjects[i].TeamType = TABLE_TEAM_TYPES.AI;
+                    this.teamObjects[i].PlayerDeck = Player.DeckPVE;
+                }
             }
             
-            //update button interactions
-            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLobbyJoin, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
-                actionPrimary: this.tableID,
-                actionSecondary: LOBBY_BUTTONS.JOIN,
-            });
-            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLobbyStart, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
-                actionPrimary: this.tableID,
-                actionSecondary: LOBBY_BUTTONS.START,
-            });
-            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLobbyLeave, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
-                actionPrimary: this.tableID,
-                actionSecondary: LOBBY_BUTTONS.LEAVE,
-            });
-            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLobbyEndTurn, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
-                actionPrimary: this.tableID,
-                actionSecondary: LOBBY_BUTTONS.END_TURN,
-            });
-            
-            //(DEMO ONLY)add NPC for combat
-            this.teamObjects[1].Player = "Golemancer (lvl 1)";
-            this.teamObjects[1].TeamType = TableTeam.TEAM_TYPE.AI;
-            this.teamObjects[1].PlayerDeck = Player.DeckPVE;
-
             //set default lobby state
-            this.SetLobbyState(LOBBY_STATE.IDLE);
+            this.SetLobbyState(GAME_STATE.IDLE);
             this.UpdatePlayerDisplay();
         }
 
         /** adds a player to the game */
-        public AddPlayerToTeam(player:string) {
-            if(isDebugging) console.log(debugTag+"adding player="+player+" to game...");
+        public AddPlayerToTeam(team:number, player:string) {
+            if(isDebugging) console.log(debugTag+"adding player="+player+" to team="+team+"...");
             //only allow changes if game is not in session
-            if(this.curState != LOBBY_STATE.IDLE) return;
-            //TODO: check if this player already exists
-
-            //attempt to get open slot
-            var teamPos:number = -1;
-            for(let i:number=0; i<this.teamObjects.length; i++) {
-                if(this.teamObjects[i].Player != undefined) continue;
-                teamPos = i;
-                break;
-            }
-            if(teamPos == -1) return;
+            if(this.curState != GAME_STATE.IDLE) return;
 
             //add player to team
-            this.teamObjects[teamPos].Player = player;
-            this.teamObjects[teamPos].PlayerDeck = Player.GetPlayerDeck();
+            this.teamObjects[team].Player = player;
+            this.teamObjects[team].PlayerDeck = Player.GetPlayerDeck();
 
             //update players tied to table
             this.UpdatePlayerDisplay();
-
-            //TODO: expand past single player experience
-            //manage buttons
-            Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
-            Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_ON;
-            Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_ON;
-            if(isDebugging) console.log(debugTag+"added player="+player+" to game (team="+teamPos+")!");
+            if(isDebugging) console.log(debugTag+"added player="+player+" to team="+team+"!");
         }
 
         /** removes a player from the game */
-        public RemovePlayerFromTeam(player:string) {
-            if(isDebugging) console.log(debugTag+"removing player="+player+" from game...");
+        public RemovePlayerFromTeam(team:number) {
+            if(isDebugging) console.log(debugTag+"removing player from team="+team+"...");
             //only allow changes if game is not in session
-            if(this.curState != LOBBY_STATE.IDLE) return;
+            if(this.curState != GAME_STATE.IDLE) return;
 
-            //attempt to find requested player
-            var teamPos:number = -1;
-            for(let i:number=0; i<this.teamObjects.length; i++) {
-                if(this.teamObjects[i].Player != player) continue;
-                teamPos = i;
-                break;
-            }
-            if(teamPos == -1) return;
 
             //add player to team
-            this.teamObjects[teamPos].Player = undefined;
-            this.teamObjects[teamPos].PlayerDeck = undefined;
+            this.teamObjects[team].Player = undefined;
+            this.teamObjects[team].PlayerDeck = undefined;
 
             //update players tied to table
             this.UpdatePlayerDisplay();
-            
-            //TODO: expand past single player experience
-            //manage buttons
-            Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_ON;
-            Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
-            Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-            if(isDebugging) console.log(debugTag+"removed player="+player+" from game (team="+teamPos+")!");
+            if(isDebugging) console.log(debugTag+"removed player from team="+team+"!");
         }
 
         //TODO: localize button controls based on which player has entered/is included in the game
         /** sets the lobby display state */
-        public SetLobbyState(state:LOBBY_STATE) {
+        public SetLobbyState(state:GAME_STATE) {
             this.curState = state;
             const textShape = TextShape.getMutable(this.entityLobbyState);
             switch(state) {
-                case LOBBY_STATE.IDLE:
+                case GAME_STATE.IDLE:
                     //update text
                     textShape.text = "JOIN TO PLAY";
                     //set button states
-                    Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_ON;
+                    /*Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_ON;
                     Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_OFF;*/
                     //hide team displays
                     this.entityStateDisplays[0].SetState(false);
                     this.entityStateDisplays[1].SetState(false);
                 break;
-                case LOBBY_STATE.ACTIVE:
+                case GAME_STATE.ACTIVE:
                     //update text
                     textShape.text = "IN SESSION";
                     //set button states
-                    Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
+                    /*Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_ON;
+                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_ON;*/
                     //show team displays
                     this.entityStateDisplays[0].SetState(true);
                     this.entityStateDisplays[1].SetState(true);
                 break;
-                case LOBBY_STATE.OVER:
+                case GAME_STATE.OVER:
                     //update text
                     textShape.text = "<GAME_RESULT>";//TODO: display who won the match
                     //set button states
-                    Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
+                    /*Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_OFF;*/
                     //show team displays
                     this.entityStateDisplays[0].SetState(true);
                     this.entityStateDisplays[1].SetState(true);
@@ -554,7 +399,7 @@ export module Table {
             this.selectedCardObject = undefined;
             this.selectedCardSlotTeam = undefined;
             this.selectedCardSlotIndex = undefined;
-            this.SetLobbyState(LOBBY_STATE.ACTIVE);
+            this.SetLobbyState(GAME_STATE.ACTIVE);
 
             //process each team
             for(let i:number=0; i<this.teamObjects.length; i++) {
@@ -593,7 +438,7 @@ export module Table {
             TextShape.getMutable(this.entityLobbyTurn).text = this.teamObjects[this.curTurn].Player +"'S TURN (ROUND: "+this.curRound+")";
 
             //if ai's turn, start processing
-            if(this.teamObjects[this.curTurn].TeamType == TableTeam.TEAM_TYPE.AI) {
+            if(this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPES.AI) {
                 SetAIState(true, this);
             }
 

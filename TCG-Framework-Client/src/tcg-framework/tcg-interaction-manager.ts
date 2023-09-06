@@ -5,6 +5,8 @@ import { DeckManager } from "./tcg-deck-manager";
 import { InteractionObject } from "./tcg-interaction-object";
 import { Table } from "./tcg-table";
 import { Player } from "./config/tcg-player";
+import { TableTeam } from "./tcg-table-team";
+import { GAME_STATE } from "./config/tcg-config";
 
 /*      TRADING CARD GAME - INTERACTION MANAGER
     used to process all interactions with tcg tables/card slots
@@ -26,20 +28,20 @@ export module InteractionManager {
             if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)) {
                 //get card component
                 const component = InteractionObject.InteractionObjectComponent.get(entity);
-                if(isDebugging) console.log(debugTag+"interaction object, type="+component.ownerType.toString()+", primary="+component.actionPrimary+", secondary="+component.actionSecondary);
+                if(isDebugging) console.log(debugTag+"interaction object, type="+component.ownerType.toString()+", target="+component.target+", action="+component.action);
                 
                 //process interaction based on ownership type
                 switch(component.ownerType) {
                     //deck manager -> filter toggles
                     case InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER:
-                        DeckManager.ToggleFilter(component.actionPrimary, component.actionSecondary);
+                        DeckManager.ToggleFilter(component.target, component.action);
                     break;
                     //deck manager -> controls (load/save deck, model anims)
                     case InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY:
                         //process interaction type type
-                        switch(component.actionPrimary) {
+                        switch(component.target) {
                             case DeckManager.DECK_INTERACTION_TYPE.SELECT:
-                                DeckManager.DeckInteractionSelect(component.actionSecondary);
+                                DeckManager.DeckInteractionSelect(component.action);
                             break;
                             case DeckManager.DECK_INTERACTION_TYPE.SAVE:
                                 DeckManager.DeckInteractionSave();
@@ -51,38 +53,41 @@ export module InteractionManager {
                     break;
                     //card table -> controls (join/leave game)
                     case InteractionObject.INTERACTION_TYPE.GAME_TABLE:
+                        //split given key
+                        const split:string[] = component.target.split('-');
                         //get targeted table
-                        const table = Table.GetByKey(component.actionPrimary.toString());
+                        const table = Table.GetByKey(split[0]);
                         if(table == undefined) {
-                            if(isDebugging) console.log(debugTag+"<WARNING> targeted table="+component.actionPrimary+" does not exist!");
+                            if(isDebugging) console.log(debugTag+"<WARNING> targeted table="+split[0]+" does not exist!");
                             return;            
                         }
+            
                         //process based on current state
-                            switch(table.CurState) {
-                                case Table.LOBBY_STATE.IDLE:
-                                    switch(component.actionSecondary) {
-                                        case Table.LOBBY_BUTTONS.JOIN:
-                                            table.AddPlayerToTeam(Player.DisplayName());
-                                        break;
-                                        case Table.LOBBY_BUTTONS.LEAVE:
-                                            table.RemovePlayerFromTeam(Player.DisplayName());
-                                        break;
-                                        case Table.LOBBY_BUTTONS.START:
-                                            table.StartGame();
-                                        break;
-                                    }
-                                break;
-                                case Table.LOBBY_STATE.ACTIVE:
-                                    switch(component.actionSecondary) {
-                                        case Table.LOBBY_BUTTONS.END_TURN:
-                                            table.NextTurn();
-                                        break;
-                                    }
-                                break;
-                                case Table.LOBBY_STATE.OVER:
-                                    
-                                break;
-                            }
+                        switch(table.CurState) {
+                            case GAME_STATE.IDLE:
+                                switch(component.action) {
+                                    case TableTeam.LOBBY_BUTTONS.JOIN:
+                                        table.AddPlayerToTeam(parseInt(split[1]), Player.DisplayName());
+                                    break;
+                                    case TableTeam.LOBBY_BUTTONS.LEAVE:
+                                        table.RemovePlayerFromTeam(parseInt(split[1]));
+                                    break;
+                                    case TableTeam.LOBBY_BUTTONS.START:
+                                        table.StartGame();
+                                    break;
+                                }
+                            break;
+                            case GAME_STATE.ACTIVE:
+                                switch(component.action) {
+                                    case TableTeam.LOBBY_BUTTONS.END_TURN:
+                                        table.NextTurn();
+                                    break;
+                                }
+                            break;
+                            case GAME_STATE.OVER:
+                                
+                            break;
+                        }
                     break;
                 }
             }
@@ -168,9 +173,9 @@ export module InteractionManager {
                 //get card component
                 const component = TableCardSlot.TableCardSlotComponent.get(entity);
                 if(isDebugging) console.log(debugTag+"table card slot, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
-                const table = Table.GetByKey(component.tableID);
+                const table = Table.GetByKey(component.tableID.toString());
                 if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
-                table.InteractionCardSlot(parseInt(component.teamID), parseInt(component.slotID));
+                table.InteractionCardSlot(component.teamID, component.slotID);
             }
         }
     }
