@@ -5,15 +5,15 @@ import { TableCardSlot } from "./tcg-table-card-slot";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
 import { PlayCard } from "./tcg-play-card";
-import { CardData, CardDataObject } from "./data/tcg-card-data";
 import { InteractionObject } from "./tcg-interaction-object";
-import { GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
+import { TABLE_GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
+import { PlayerLocal } from "./config/tcg-player-local";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
     represents team on a table
 
     TODO:
-    - add player registration controls
+    - display deck selection options
 
     PrimaryAuthors: TheCryptoTrader69 (Alex Pazder)
     TeamContact: thecryptotrader69@gmail.com
@@ -27,9 +27,10 @@ export module TableTeam {
     /** all lobby buttons */
     export enum LOBBY_BUTTONS {
         JOIN,
-        START,
         LEAVE,
-        END_TURN
+        READY,
+        UNREADY,
+        END_TURN,
     }
 
     /** model location for this team's boarder*/
@@ -49,7 +50,8 @@ export module TableTeam {
     const CARD_HOLDER_ROTATION:Vector3 = { x:30, y:180, z:0 };
     
     /** transform - buttons */
-    const BUTTON_SCALE_ON:Vector3 = { x:0.8, y:0.8, z:0.8 };
+    const BUTTON_SCALE_NORMAL:Vector3 = { x:0.5, y:0.5, z:0.5 };
+    const BUTTON_SCALE_SMALL:Vector3 = { x:0.25, y:0.25, z:0.25 };
     const BUTTON_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
 
     /** positions for card slots on field */
@@ -101,7 +103,7 @@ export module TableTeam {
         tableID: number,
         teamID: number,
         //callbacks
-        callbackTable?: (key:string) => GAME_STATE,
+        callbackTable?: (key:string) => TABLE_GAME_STATE,
         //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
@@ -112,6 +114,7 @@ export module TableTeam {
     export class TeamDisplayObject {
         //parent/pivot
         private entityParent:Entity;
+        private entityModel:Entity;
         private entityName:Entity;
         private entityHealth:Entity;
         private entityEnergy:Entity;
@@ -124,22 +127,25 @@ export module TableTeam {
             //parent
             this.entityParent = engine.addEntity();
             Transform.create(this.entityParent, { parent: parent, rotation: Quaternion.fromEulerDegrees(0,-90,0) });
-            GltfContainer.create(this.entityParent, {
-                src: 'models/tcg-framework/menu-displays/display-tall.glb',
+            //model
+            this.entityModel = engine.addEntity();
+            Transform.create(this.entityModel, { parent: this.entityParent, scale: {x:1.2,y:1.2,z:1.2}, rotation: Quaternion.fromEulerDegrees(0,180,0) });
+            GltfContainer.create(this.entityModel, {
+                src: 'models/tcg-framework/menu-displays/display-wide.glb',
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
             //name
             this.entityName = engine.addEntity();
-            Transform.create(this.entityName, { parent: this.entityParent, position: {x:0,y:0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            Transform.create(this.entityName, { parent: this.entityParent, position: {x:0,y:0.525,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.entityName);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
             textShape.textColor = Color4.White(); textShape.fontSize = 8;
             textShape.text = "<PLAYER_NAME>";
-            textShape.textAlign = TextAlignMode.TAM_MIDDLE_LEFT;
+            textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
             //health
             this.entityHealth = engine.addEntity();
-            Transform.create(this.entityHealth, { parent: this.entityParent, position: {x:0,y:-0.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            Transform.create(this.entityHealth, { parent: this.entityParent, position: {x:-1.15,y:0.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.entityHealth);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
             textShape.textColor = Color4.White(); textShape.fontSize = 8;
@@ -147,7 +153,7 @@ export module TableTeam {
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_LEFT;
             //energy
             this.entityEnergy = engine.addEntity();
-            Transform.create(this.entityEnergy, { parent: this.entityParent, position: {x:0,y:-0.5,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            Transform.create(this.entityEnergy, { parent: this.entityParent, position: {x:-1.15,y:0.0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.entityEnergy);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
             textShape.textColor = Color4.White(); textShape.fontSize = 8;
@@ -155,7 +161,7 @@ export module TableTeam {
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_LEFT;
             //deck
             this.entityDeck = engine.addEntity();
-            Transform.create(this.entityDeck, { parent: this.entityParent, position: {x:0,y:-0.75,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            Transform.create(this.entityDeck, { parent: this.entityParent, position: {x:0.225,y:0.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.entityDeck);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
             textShape.textColor = Color4.White(); textShape.fontSize = 8;
@@ -163,7 +169,7 @@ export module TableTeam {
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_LEFT;
             //hand
             this.entityHand = engine.addEntity();
-            Transform.create(this.entityHand, { parent: this.entityParent, position: {x:0,y:-1.0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            Transform.create(this.entityHand, { parent: this.entityParent, position: {x:0.225,y:0,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.entityHand);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
             textShape.textColor = Color4.White(); textShape.fontSize = 8;
@@ -171,7 +177,7 @@ export module TableTeam {
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_LEFT;
             //discard
             this.entityDiscard = engine.addEntity();
-            Transform.create(this.entityDiscard, { parent: this.entityParent, position: {x:0,y:-1.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
+            Transform.create(this.entityDiscard, { parent: this.entityParent, position: {x:0.225,y:-0.25,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.entityDiscard);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.1;
             textShape.textColor = Color4.White(); textShape.fontSize = 8;
@@ -224,12 +230,11 @@ export module TableTeam {
         public TeamType: TABLE_TEAM_TYPES = TABLE_TEAM_TYPES.HUMAN;
 
         /** callback to get game state of table */
-        public callbackGetGameState:undefined|((key:string) => GAME_STATE);
-        /** returns current game state of table team is tied to */
-        public get GameState():undefined|GAME_STATE { 
-            if(this.callbackGetGameState) return this.callbackGetGameState(this.TableID);
-            else return undefined;
+        private getGameState(key:string) { 
+            if(isDebugging) console.log(debugTag+"<WARNING> using default callback");
+            return TABLE_GAME_STATE.IDLE;
         }
+        public callbackGetGameState:(key:string) => TABLE_GAME_STATE = this.getGameState;
 
         /** current player's display name */
         public Player:undefined|string;
@@ -244,6 +249,14 @@ export module TableTeam {
         public GetCardData(target:PlayCardDeck.DECK_CARD_STATES, index:number) {
             return this.PlayerDeck?.CardsPerState[target].getItem(index);
         }
+
+        /** when true, this team is ready to start the game */
+        private readyState:boolean = false;
+        public get ReadyState():boolean {
+            if(this.TeamType == TABLE_TEAM_TYPES.AI) return true;
+            return this.readyState;
+        }
+        public set ReadyState(value:boolean) { this.readyState = value; }
 
         /** team's current health (at zero the lose) */
         public HealthCur:number = 0;
@@ -265,8 +278,10 @@ export module TableTeam {
         public entityJoinTeam:Entity;
         /** interaction object to leave team */
         public entityLeaveTeam:Entity;
-        /** interaction object to start game */
-        public entityStartGame:Entity;
+        /** interaction object to ready */
+        public entityReadyGame:Entity;
+        /** interaction object to ready */
+        public entityUnreadyGame:Entity;
         /** interaction object to end turn */
         public entityEndTurn:Entity;
 
@@ -336,8 +351,8 @@ export module TableTeam {
             this.entityJoinTeam = engine.addEntity();
             Transform.create(this.entityJoinTeam, {
                 parent: this.entityParent,
-                position: {x:0,y:2,z:-5.25},
-                scale: BUTTON_SCALE_ON,
+                position: {x:0,y:2.5,z:5.25},
+                scale: BUTTON_SCALE_NORMAL
             });
             GltfContainer.create(this.entityJoinTeam, {
                 src: 'models/tcg-framework/card-table/text-join.glb',
@@ -356,8 +371,8 @@ export module TableTeam {
             this.entityLeaveTeam = engine.addEntity();
             Transform.create(this.entityLeaveTeam, {
                 parent: this.entityParent,
-                position: {x:2,y:-1.25,z:0},
-                scale: BUTTON_SCALE_ON,
+                position: {x:-0.55,y:2.5,z:5.25},
+                scale: BUTTON_SCALE_SMALL,
             });
             GltfContainer.create(this.entityLeaveTeam, {
                 src: 'models/tcg-framework/card-table/text-leave.glb',
@@ -372,23 +387,43 @@ export module TableTeam {
                   },
                 ]
             });
-            //  start game
-            this.entityStartGame = engine.addEntity();
-            Transform.create(this.entityStartGame, {
+            //  ready
+            this.entityReadyGame = engine.addEntity();
+            Transform.create(this.entityReadyGame, {
                 parent: this.entityParent,
-                position: {x:-2,y:-1.25,z:0},
-                scale: BUTTON_SCALE_ON,
+                position: {x:0.55,y:2.5,z:5.25},
+                scale: BUTTON_SCALE_SMALL,
             });
-            GltfContainer.create(this.entityStartGame, {
-                src: 'models/tcg-framework/card-table/text-start.glb',
+            GltfContainer.create(this.entityReadyGame, {
+                src: 'models/tcg-framework/card-table/text-ready.glb',
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
-            PointerEvents.createOrReplace(this.entityStartGame, {
+            PointerEvents.createOrReplace(this.entityReadyGame, {
                 pointerEvents: [
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "START GAME" }
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "READY" }
+                  },
+                ]
+            });
+            //  unready
+            this.entityUnreadyGame = engine.addEntity();
+            Transform.create(this.entityUnreadyGame, {
+                parent: this.entityParent,
+                position: {x:0.55,y:2.5,z:5.25},
+                scale: BUTTON_SCALE_SMALL,
+            });
+            GltfContainer.create(this.entityUnreadyGame, {
+                src: 'models/tcg-framework/card-table/text-unready.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            PointerEvents.createOrReplace(this.entityUnreadyGame, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "UNREADY" }
                   },
                 ]
             });
@@ -396,8 +431,8 @@ export module TableTeam {
             this.entityEndTurn = engine.addEntity();
             Transform.create(this.entityEndTurn, {
                 parent: this.entityParent,
-                position: {x:0,y:-1.65,z:0},
-                scale: BUTTON_SCALE_ON,
+                position: {x:0,y:2.5,z:5.25},
+                scale: BUTTON_SCALE_NORMAL,
             });
             GltfContainer.create(this.entityEndTurn, {
                 src: 'models/tcg-framework/card-table/text-end-turn.glb',
@@ -430,6 +465,8 @@ export module TableTeam {
             this.tableID = data.tableID;
             this.teamID = data.teamID;
             //player details
+            if(data.callbackTable != undefined) this.callbackGetGameState = data.callbackTable;
+            this.readyState = false;
             this.Player = undefined;
             this.PlayerDeck = undefined;
             //transform
@@ -441,22 +478,27 @@ export module TableTeam {
             
             //update button interactions
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityJoinTeam, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
                 action: LOBBY_BUTTONS.JOIN,
             });
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLeaveTeam, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
                 action: LOBBY_BUTTONS.LEAVE,
             });
-            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityStartGame, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityReadyGame, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
-                action: LOBBY_BUTTONS.START,
+                action: LOBBY_BUTTONS.READY,
+            });
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityUnreadyGame, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
+                target: this.Key,
+                action: LOBBY_BUTTONS.UNREADY,
             });
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityEndTurn, {
-                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TEAM,
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
                 action: LOBBY_BUTTONS.END_TURN,
             });
@@ -507,37 +549,52 @@ export module TableTeam {
             switch(this.TeamType) {
                 //human player
                 case TABLE_TEAM_TYPES.HUMAN:
-                    //if play
-                    switch(this.GameState) {
+                    console.log("test");
+                    //process based on current state of table 
+                    switch(this.callbackGetGameState(this.TableID)) {
                         //game is not started
-                        case GAME_STATE.IDLE:
-                            //if player is registered to team
-                            if(this.Player) {
+                        case TABLE_GAME_STATE.IDLE:
+                            //if a player is registered to this team
+                            if(this.Player != undefined) {
                                 Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
-                                //
-                                Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+                                //if registered player is local player, display leave button
+                                if(this.Player == PlayerLocal.DisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
+                                else Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+
+                                //ready state toggling
+                                if(this.ReadyState) {
+                                    Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
+                                    Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_SMALL;
+                                } else {
+                                    Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_SMALL;
+                                    Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
+                                }
                             } 
-                            //if no player is registered to team
+                            //if no player is registered to this team
                             else {
-                                Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_ON;
+                                Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_NORMAL;
+                                Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
+                                Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
+                                Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             }
-                            Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
                         break;
                         //game is on-going
-                        case GAME_STATE.ACTIVE:
+                        case TABLE_GAME_STATE.ACTIVE:
                             //if team has a player
                             Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
-                            Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
                         break;
                         //game has finished
-                        case GAME_STATE.OVER:
+                        case TABLE_GAME_STATE.OVER:
                             //if team has a player
                             Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
-                            Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
                         break;
                     }
@@ -547,7 +604,8 @@ export module TableTeam {
                     //never show buttons if team is operated by AI
                     Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityStartGame).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
                 break;
             }

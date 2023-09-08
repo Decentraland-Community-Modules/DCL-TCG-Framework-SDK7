@@ -4,9 +4,9 @@ import { CardDisplayObject } from "./tcg-card-object";
 import { DeckManager } from "./tcg-deck-manager";
 import { InteractionObject } from "./tcg-interaction-object";
 import { Table } from "./tcg-table";
-import { Player } from "./config/tcg-player";
+import { PlayerLocal } from "./config/tcg-player-local";
 import { TableTeam } from "./tcg-table-team";
-import { GAME_STATE } from "./config/tcg-config";
+import { TABLE_GAME_STATE } from "./config/tcg-config";
 
 /*      TRADING CARD GAME - INTERACTION MANAGER
     used to process all interactions with tcg tables/card slots
@@ -32,11 +32,11 @@ export module InteractionManager {
                 
                 //process interaction based on ownership type
                 switch(component.ownerType) {
-                    //deck manager -> filter toggles
+                    //deck manager filters
                     case InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER:
                         DeckManager.ToggleFilter(component.target, component.action);
                     break;
-                    //deck manager -> controls (load/save deck, model anims)
+                    //deck manager controls (load/save deck, model anims)
                     case InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY:
                         //process interaction type type
                         switch(component.target) {
@@ -51,12 +51,24 @@ export module InteractionManager {
                             break;
                         }
                     break;
-                    //card table -> controls (join/leave game)
+                    //deck manager paging controls
+                    case InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING:
+                        //process interaction type type
+                        switch(component.target) {
+                            case "0":
+                                DeckManager.NextCardDisplayPage();
+                            break;
+                            case "1":
+                                DeckManager.PrevCardDisplayPage();
+                            break;
+                        }
+                    break;
+                    //card table controls
                     case InteractionObject.INTERACTION_TYPE.GAME_TABLE:
                         //split given key
-                        const split:string[] = component.target.split('-');
+                        var split:string[] = component.target.split('-');
                         //get targeted table
-                        const table = Table.GetByKey(split[0]);
+                        var table = Table.GetByKey(split[0]);
                         if(table == undefined) {
                             if(isDebugging) console.log(debugTag+"<WARNING> targeted table="+split[0]+" does not exist!");
                             return;            
@@ -64,27 +76,30 @@ export module InteractionManager {
             
                         //process based on current state
                         switch(table.CurState) {
-                            case GAME_STATE.IDLE:
+                            case TABLE_GAME_STATE.IDLE:
                                 switch(component.action) {
                                     case TableTeam.LOBBY_BUTTONS.JOIN:
-                                        table.AddPlayerToTeam(parseInt(split[1]), Player.DisplayName());
+                                        table.AddPlayerToTeam(parseInt(split[1]), PlayerLocal.DisplayName());
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.LEAVE:
                                         table.RemovePlayerFromTeam(parseInt(split[1]));
                                     break;
-                                    case TableTeam.LOBBY_BUTTONS.START:
-                                        table.StartGame();
+                                    case TableTeam.LOBBY_BUTTONS.READY:
+                                        table.SetReadyState(parseInt(split[1]), true);
+                                    break;
+                                    case TableTeam.LOBBY_BUTTONS.UNREADY:
+                                        table.SetReadyState(parseInt(split[1]), false);
                                     break;
                                 }
                             break;
-                            case GAME_STATE.ACTIVE:
+                            case TABLE_GAME_STATE.ACTIVE:
                                 switch(component.action) {
                                     case TableTeam.LOBBY_BUTTONS.END_TURN:
                                         table.NextTurn();
                                     break;
                                 }
                             break;
-                            case GAME_STATE.OVER:
+                            case TABLE_GAME_STATE.OVER:
                                 
                             break;
                         }

@@ -8,7 +8,7 @@ import { Color3, Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
 import { PlayCardDeck } from "./tcg-play-card-deck";
-import { Player } from "./config/tcg-player";
+import { PlayerLocal } from "./config/tcg-player-local";
 /*      TRADING CARD GAME - DECK MANAGER
     all utilities for creating & managing a decks of cards, this includes 
     creating new decks, adding/removing cards from a deck, and viewing available
@@ -60,13 +60,14 @@ export module DeckManager
     const DISPLAY_CHARACTER_OFFSET = [
         { x:0.0, y:0.46, z:0.0 },
         { x:0.0, y:0.46, z:0.0 },
-        { x:0.0, y:0.48, z:0.0 }
+        { x:0.0, y:0.48, z:-0.05 }
     ];
     const DISPLAY_CHARACTER_SCALE = [
-        { x:0.25, y:0.25, z:0.25 },
+        { x:0.1, y:0.1, z:0.1 },
         { x:0.25, y:0.25, z:0.25 },
         { x:0.0, y:0.0, z:0.0 }
     ];
+    const DISPLAY_CHARACTER_ANIMATION = [ 0,1,0 ];
     
     /** collsion area defaults */
     const TRIGGER_OFFSET = { x:0, y:1.5, z:-2 };
@@ -111,6 +112,7 @@ export module DeckManager
         OnTriggerExit
     );
 
+
     /** pedistal display model */
     const entityDisplayPedistal:Entity = engine.addEntity();
     Transform.create(entityDisplayPedistal, { parent: entityParent });
@@ -135,8 +137,60 @@ export module DeckManager
         scale: DISPLAY_CHARACTER_SCALE[0]
     });
     //add constant rotation
-    utils.perpetualMotions.startRotation(entityDisplayPedistalPoint, Quaternion.fromEulerDegrees(0, -15, 0))
+    utils.perpetualMotions.startRotation(entityDisplayPedistalPoint, Quaternion.fromEulerDegrees(0, -15, 0));
 
+    /** redefines the deck manager object's parent */
+    export function SetParent(parent: undefined|Entity) {
+        Transform.getMutable(entityParent).parent = parent;
+    }
+
+    /** redefines the deck manager object's position */
+    export function SetPosition(position: {x:number,y:number,z:number}) {
+        Transform.getMutable(entityParent).position = position;
+    }
+
+    /** redefines the deck manager object's rotation */
+    export function SetRotation(rotation: {x:number,y:number,z:number,w:number}) {
+        Transform.getMutable(entityParent).rotation = rotation;
+    }
+
+    /** sets the given animation */
+    function SetAnimation(value:number) {
+        //turn off animations
+        for(let i = 0; i < ANIM_KEYS_DECK_MANAGER.length; i++) {
+            Animator.getClip(entityDisplayModel, ANIM_KEYS_DECK_MANAGER[i]).playing = false;
+        }
+        //turn on animation
+        Animator.getClip(entityDisplayModel, ANIM_KEYS_DECK_MANAGER[value]).playing = true;
+    }
+
+    /** triggered when player enters the area */
+    function OnTriggerEntry() {
+        if(isDebugging) console.log(debugTag+"trigger entered");
+        SetAnimation(1);
+
+        //update display
+        utils.timers.setTimeout(
+            function() { 
+                GenerateCardObjects();
+                DeckInteractionSelect(0);
+                DeckInteractionLoad();
+                Transform.getMutable(deckInfoParent).scale = Vector3.One(); 
+                Transform.getMutable(filterParent).scale = Vector3.One(); 
+            },
+            1000
+        );
+    }
+
+    /** triggered when player exits the area */
+    function OnTriggerExit() { 
+        if(isDebugging) console.log(debugTag+"trigger exit"); 
+        SetAnimation(2);
+
+        ReleaseCardObjects();
+        Transform.getMutable(deckInfoParent).scale = Vector3.Zero();
+        Transform.getMutable(filterParent).scale = Vector3.Zero();
+    }
 
     //### DECK INTERACTION COMPONENTS
     const deckInfoParent:Entity = engine.addEntity();
@@ -187,7 +241,7 @@ export module DeckManager
             scale: { x:0.8, y:0.10, z:0.05 }
         }));
         Material.setPbrMaterial(deckButtonSelectors[i].entityShape, { albedoColor: Color4.White(), });
-        TextShape.getMutable(deckButtonSelectors[i].entityText).text = "DECK "+i+" - ("+Player.PlayerDecks[i]?.CardsAll.size()+")";
+        TextShape.getMutable(deckButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i]?.CardsAll.size()+")";
     }
     /** save deck button */
     const deckButtonSave = InteractionObject.Create({
@@ -220,7 +274,49 @@ export module DeckManager
     });
     
     /** reference to currently targeted deck */
-    var deckTargetContainer:PlayCardDeck.PlayCardDeckObject = Player.PlayerDecks[0];
+    var deckTargetContainer:PlayCardDeck.PlayCardDeckObject = PlayerLocal.PlayerDecks[0];
+
+    /** selects a new deck, loading it in for modification */
+    export function DeckInteractionSelect(index:number) {
+        if(isDebugging) console.log(debugTag+"selecting deck, key="+index); 
+
+        Material.setPbrMaterial(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.White(), });
+        //set reference
+        PlayerLocal.SetPlayerDeck(index);
+        deckTargetContainer = PlayerLocal.PlayerDecks[index];
+        Material.setPbrMaterial(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.Green(), });
+    }
+
+    /** called when player interacts with counter buttons */
+    export function DeckInteractionSave() {
+        if(isDebugging) console.log(debugTag+"saving deck, key="+PlayerLocal.GetPlayerDeckIndex()); 
+        //ensure deck has correct number of cards
+        if(deckLocalContainer.CardsAll.size() < PlayCardDeck.DECK_SIZE_MIN || deckLocalContainer.CardsAll.size() > PlayCardDeck.DECK_SIZE_MAX) {
+            if(isDebugging) console.log(debugTag+"deck not withing card limits, card count="+deckLocalContainer.CardsAll.size()); 
+            TextShape.getMutable(deckHeaderText).textColor = Color4.Red();
+            return;
+        }
+        
+        //save local deck to target deck
+        deckTargetContainer.Clone(deckLocalContainer);
+        TextShape.getMutable(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityText).text = "DECK "+PlayerLocal.GetPlayerDeckIndex()+" - ("+deckTargetContainer.CardsAll.size()+")";
+        TextShape.getMutable(deckHeaderText).textColor = Color4.Black();
+
+        //update count text
+        RedrawCardView();
+        UpdateCardCount();
+    }
+
+    /** called when player interacts with counter buttons */
+    export function DeckInteractionLoad() {
+        if(isDebugging) console.log(debugTag+"loading deck, key="+PlayerLocal.GetPlayerDeckIndex());
+        //load local deck from target deck
+        deckLocalContainer.Clone(deckTargetContainer);
+
+        //update count text
+        RedrawCardView();
+        UpdateCardCount();
+    }
 
     //### SELECTED CARD DETAILS
     /** which card slot is currently selected/displayed (-1 for no slot selected) */
@@ -231,11 +327,42 @@ export module DeckManager
     var cardDef:string = "";
 
     //### DISPLAYED CARD PAGE DETAILS 
+    /** currently selected card page */
+    var curPage:number = 0;
     /** references to all cards being used to display the current card page */
     var entityGridCards:CardDisplayObject.CardDisplayObject[] = [];
     /** display page current/count text */
     /** display page next */
     /** display page prev */
+
+    /** displays next page of cards */
+    export function NextCardDisplayPage() { //interaction object with action="0"
+        //inc page
+        curPage++;
+        
+        //check if current page is over page count (can do roll-over to zero or just cap)
+
+
+        //display page
+        UpdateCardDisplayPage();
+    }
+
+    /** displays previous page of cards */
+    export function PrevCardDisplayPage() { //interaction object with action="1"
+        //inc page
+        curPage--;
+        
+        //check if current page is over page count (can do roll-over to zero or just cap)
+
+
+        //display page
+        UpdateCardDisplayPage();
+    }
+
+    /** displays the given page of cards */
+    export function UpdateCardDisplayPage() {
+
+    }
 
     //### CARD FILTERING
     const filterParent:Entity = engine.addEntity();
@@ -290,7 +417,7 @@ export module DeckManager
             displayText:i.toString(),
             interactionText:"toggle cost "+i,
             parent: filterParent, 
-            position: { x:-0.675+(i*0.15), y:1.25, z:-0.025 },
+            position: { x:-0.675+(i*0.15), y:2.35, z:-0.025 },
             scale: { x:0.1, y:0.1, z:0.04, }
         }));
         Material.setPbrMaterial(filterCostObj[i].entityShape, {
@@ -323,58 +450,6 @@ export module DeckManager
         RedrawCardView();
     }
 
-    /** redefines the deck manager object's parent */
-    export function SetParent(parent: undefined|Entity) {
-        Transform.getMutable(entityParent).parent = parent;
-    }
-
-    /** redefines the deck manager object's position */
-    export function SetPosition(position: {x:number,y:number,z:number}) {
-        Transform.getMutable(entityParent).position = position;
-    }
-
-    /** redefines the deck manager object's rotation */
-    export function SetRotation(rotation: {x:number,y:number,z:number,w:number}) {
-        Transform.getMutable(entityParent).rotation = rotation;
-    }
-
-    /** sets the given animation */
-    function SetAnimation(value:number) {
-        //turn off animations
-        for(let i = 0; i < ANIM_KEYS_DECK_MANAGER.length; i++) {
-            Animator.getClip(entityDisplayModel, ANIM_KEYS_DECK_MANAGER[i]).playing = false;
-        }
-        //turn on animation
-        Animator.getClip(entityDisplayModel, ANIM_KEYS_DECK_MANAGER[value]).playing = true;
-    }
-
-    /** triggered when player enters the area */
-    function OnTriggerEntry() {
-        if(isDebugging) console.log(debugTag+"trigger entered");
-        SetAnimation(1);
-
-        //update display
-        utils.timers.setTimeout(
-            function() { 
-                GenerateCardObjects();
-                DeckInteractionSelect(0);
-                DeckInteractionLoad();
-                Transform.getMutable(deckInfoParent).scale = Vector3.One(); 
-                Transform.getMutable(filterParent).scale = Vector3.One(); 
-            },
-            1000
-        );
-    }
-
-    /** triggered when player exits the area */
-    function OnTriggerExit() { 
-        if(isDebugging) console.log(debugTag+"trigger exit"); 
-        SetAnimation(2);
-
-        ReleaseCardObjects();
-        Transform.getMutable(deckInfoParent).scale = Vector3.Zero();
-        Transform.getMutable(filterParent).scale = Vector3.Zero();
-    }
 
     /** displays a list of cards in the game, based on the current filters/page  */
     function GenerateCardObjects() {
@@ -447,48 +522,6 @@ export module DeckManager
         }
     }
 
-    /** selects a new deck, loading it in for modification */
-    export function DeckInteractionSelect(index:number) {
-        if(isDebugging) console.log(debugTag+"selecting deck, key="+index); 
-
-        Material.setPbrMaterial(deckButtonSelectors[Player.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.White(), });
-        //set reference
-        Player.SetPlayerDeck(index);
-        deckTargetContainer = Player.PlayerDecks[index];
-        Material.setPbrMaterial(deckButtonSelectors[Player.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.Green(), });
-    }
-
-    /** called when player interacts with counter buttons */
-    export function DeckInteractionSave() {
-        if(isDebugging) console.log(debugTag+"saving deck, key="+Player.GetPlayerDeckIndex()); 
-        //ensure deck has correct number of cards
-        if(deckLocalContainer.CardsAll.size() < PlayCardDeck.DECK_SIZE_MIN || deckLocalContainer.CardsAll.size() > PlayCardDeck.DECK_SIZE_MAX) {
-            if(isDebugging) console.log(debugTag+"deck not withing card limits, card count="+deckLocalContainer.CardsAll.size()); 
-            TextShape.getMutable(deckHeaderText).textColor = Color4.Red();
-            return;
-        }
-        
-        //save local deck to target deck
-        deckTargetContainer.Clone(deckLocalContainer);
-        TextShape.getMutable(deckButtonSelectors[Player.GetPlayerDeckIndex()].entityText).text = "DECK "+Player.GetPlayerDeckIndex()+" - ("+deckTargetContainer.CardsAll.size()+")";
-        TextShape.getMutable(deckHeaderText).textColor = Color4.Black();
-
-        //update count text
-        RedrawCardView();
-        UpdateCardCount();
-    }
-
-    /** called when player interacts with counter buttons */
-    export function DeckInteractionLoad() {
-        if(isDebugging) console.log(debugTag+"loading deck, key="+Player.GetPlayerDeckIndex());
-        //load local deck from target deck
-        deckLocalContainer.Clone(deckTargetContainer);
-
-        //update count text
-        RedrawCardView();
-        UpdateCardCount();
-    }
-
     /** called when player interacts with counter buttons */
     export function CardInteractionCounterButton(slotID:string, change:number) {
         //get card object
@@ -524,7 +557,7 @@ export module DeckManager
             scale: { x:1, y:1, z:1, },
             rotation: { x:0, y:0, z:0, }
         });
-        card.SetAnimation(0);
+        card.SetAnimation(DISPLAY_CHARACTER_ANIMATION[dataDef.type]);
         //update transform
         const transform = Transform.getOrCreateMutable(entityDisplayPedistalPoint);
         transform.position = DISPLAY_CHARACTER_OFFSET[dataDef.type];

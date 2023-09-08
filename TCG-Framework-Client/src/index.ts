@@ -1,5 +1,5 @@
 import { TABLE_TEAM_TYPES } from "./tcg-framework/config/tcg-config";
-import { Player } from "./tcg-framework/config/tcg-player";
+import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
@@ -10,7 +10,7 @@ import { Table } from "./tcg-framework/tcg-table";
 export function main() 
 {
 	//load player
-	Player.LoadPlayerData();
+	PlayerLocal.LoadPlayerData();
 
 	//create deck manager
 	DeckManager.SetPosition({ x:24, y:0, z:6 });

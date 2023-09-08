@@ -1,30 +1,15 @@
-import { executeTask } from "@dcl/sdk/ecs"
 import { getUserData } from "~system/UserIdentity"
 import { PlayCardDeck } from "../tcg-play-card-deck";
 import { CARD_DATA_ID } from "../data/tcg-card-data";
-
-/** defines all possible connectivity/load states */
-enum PLAYER_CONNECTIVITY_STATE {
-    UNINITIALIZED, //no attempt has been made to load player data
-    CONNECTING, //actively attempting connection
-    CONNECTED, //successfully established connection 
-    FAILED, //failed to establish connection (likely guest wallet)
-}
-/** defines all possible account types */
-enum PLAYER_ACCOUNT_TYPE {
-    UNINITIALIZED,
-    GUEST, //guest/not logged in with a wallet
-    STANDARD, //logged in with a web3 wallet
-    PREMIUM, //logged in and confirmed to own cards
-}
-/*      TRADING CARD GAME - PLAYER INSTANCE
+import { PLAYER_ACCOUNT_TYPE, PLAYER_CONNECTIVITY_STATE } from "./tcg-config";
+/*      TRADING CARD GAME - LOCAL PLAYER
     contains properties and configurations regarding the local player's
     instance, such as if they are logged in via web3, their display name, and wallet.
 
     PrimaryAuthors: TheCryptoTrader69 (Alex Pazder)
     TeamContact: thecryptotrader69@gmail.com
 */
-export module Player {
+export module PlayerLocal {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
@@ -50,6 +35,12 @@ export module Player {
     var displayName:string;
     export function DisplayName():string { return displayName;}
 
+    /** id of local player's current table */
+    export var CurTableID:undefined|number;
+    /** id of local player's current team */
+    export var CurTeamID:undefined|number;
+
+    /** player's currently selected deck (used for playing at card tables) */
     var curDeck:number = 0;
     export function GetPlayerDeckIndex():number { return curDeck; }
     export function GetPlayerDeck():PlayCardDeck.PlayCardDeckObject { return PlayerDecks[curDeck]; }

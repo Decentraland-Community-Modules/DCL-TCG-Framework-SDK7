@@ -2,14 +2,12 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
 import { Animator, Billboard, ColliderLayer, Entity, GltfContainer, InputAction, Material, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableTeam } from "./tcg-table-team";
-import { InteractionObject } from "./tcg-interaction-object";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { Player } from "./config/tcg-player";
+import { PlayerLocal } from "./config/tcg-player-local";
 import { PlayCardDeck } from "./tcg-play-card-deck";
-import { CardDisplayObject } from "./tcg-card-object";
 import { CARD_TYPE, CardData } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
-import { GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
+import { TABLE_GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
 
 
 /*      TRADING CARD GAME - CARD TABLE
@@ -65,8 +63,13 @@ export module Table {
     const LOBBY_OFFSET:Vector3 = { x:0, y:8, z:0 };
 
     /** indexing key */
-    export function GetKeyFromObject(data:TableObject):string { return data.TableID; };
     export function GetKeyFromData(data:TableTeamCreationData):string { return data.tableID.toString(); };
+    /** table state callback */
+    export function CallbackGetTableState(key:string):TABLE_GAME_STATE {
+        const table = Table.GetByKey(key);
+        if(table != undefined) return table.CurState;
+        else return TABLE_GAME_STATE.IDLE; 
+    }
 
     /** pool of ALL existing objects */
     var pooledObjectsAll:List<TableObject> = new List<TableObject>();
@@ -115,8 +118,8 @@ export module Table {
         public get SlottedCard():undefined|string { return this.slottedCard; }
 
         /** current game state of the table */
-        private curState:GAME_STATE = GAME_STATE.IDLE;
-        public get CurState():GAME_STATE { return this.curState; };
+        private curState:TABLE_GAME_STATE = TABLE_GAME_STATE.IDLE;
+        public get CurState():TABLE_GAME_STATE { return this.curState; };
 
         /** current player's turn */
         private curTurn:number = -1;
@@ -150,7 +153,7 @@ export module Table {
         /** all team objects */
         public teamObjects: TableTeam.TableTeamObject[] = [];
 
-        /**  */
+        /** returns the table's player state string */
         public GetPlayerString():string {
             //TODO: fix for #v#
             var str:string = "";
@@ -164,9 +167,16 @@ export module Table {
         
             return str;
         }
-        /**  */
+        /** updates the table's player state display */
         public UpdatePlayerDisplay() {
             TextShape.getMutable(this.entityLobbyPlayers).text = this.GetPlayerString();
+        }
+        /** updates the table team's buttons */
+        public UpdateTableButtons() {
+            for(let i:number=0; i<this.teamObjects.length; i++) {
+                //update team buttons
+                this.teamObjects[i].UpdateButtonStates();
+            }
         }
 
         /** prepares field team for use */
@@ -234,10 +244,10 @@ export module Table {
             for(let i:number=0; i<2; i++) {
                 this.entityStateDisplays.push(new TableTeam.TeamDisplayObject(this.entityParent));
             }
-            this.entityStateDisplays[0].SetPosition({x:4, y:3.2, z:-3.5});
-            this.entityStateDisplays[0].SetRotation({x:0,y:240,z:0});
-            this.entityStateDisplays[1].SetPosition({x:3.5, y:3.2, z:2.25});
-            this.entityStateDisplays[1].SetRotation({x:0,y:300,z:0});
+            this.entityStateDisplays[0].SetPosition({x:5, y:2.5, z:-2.75});
+            this.entityStateDisplays[0].SetRotation({x:0,y:200,z:0});
+            this.entityStateDisplays[1].SetPosition({x:5, y:2.5, z:2.75});
+            this.entityStateDisplays[1].SetRotation({x:0,y:340,z:0});
 
             //(DEMO ONLY)add NPC for combat
             this.characterNPC = CardSubjectObject.Create({
@@ -283,6 +293,7 @@ export module Table {
                 const teamObject:TableTeam.TableTeamObject = TableTeam.Create({
                     tableID: this.tableID,
                     teamID: i,
+                    callbackTable: CallbackGetTableState,
                     parent: this.entityParent,
                     position: FIELD_TEAM_OFFSET[i],
                     rotation: FIELD_TEAM_ROTATION[i]
@@ -293,84 +304,88 @@ export module Table {
                 if(data.teamTypes[i] == TABLE_TEAM_TYPES.AI) {
                     this.teamObjects[i].Player = "Golemancer (lvl 1)";
                     this.teamObjects[i].TeamType = TABLE_TEAM_TYPES.AI;
-                    this.teamObjects[i].PlayerDeck = Player.DeckPVE;
+                    this.teamObjects[i].PlayerDeck = PlayerLocal.DeckPVE;
                 }
             }
             
             //set default lobby state
-            this.SetLobbyState(GAME_STATE.IDLE);
+            this.SetLobbyState(TABLE_GAME_STATE.IDLE);
             this.UpdatePlayerDisplay();
+            //update team buttons
+            this.UpdateTableButtons();
         }
 
         /** adds a player to the game */
         public AddPlayerToTeam(team:number, player:string) {
             if(isDebugging) console.log(debugTag+"adding player="+player+" to team="+team+"...");
             //only allow changes if game is not in session
-            if(this.curState != GAME_STATE.IDLE) return;
+            if(this.curState != TABLE_GAME_STATE.IDLE) return;
+
+            //if player already belongs to a table 
+            if(PlayerLocal.CurTableID != undefined && PlayerLocal.CurTeamID != undefined) {
+                if(isDebugging) console.log(debugTag+"player is already registered to table="+PlayerLocal.CurTableID+" to team="+PlayerLocal.CurTeamID);
+                //remove player from table/team
+                GetByKey(PlayerLocal.CurTableID.toString())?.RemovePlayerFromTeam(PlayerLocal.CurTeamID);
+            }
 
             //add player to team
             this.teamObjects[team].Player = player;
-            this.teamObjects[team].PlayerDeck = Player.GetPlayerDeck();
+            this.teamObjects[team].PlayerDeck = PlayerLocal.GetPlayerDeck();
+            //link table to local player
+            PlayerLocal.CurTableID = this.tableID;
+            PlayerLocal.CurTeamID = team;
 
             //update players tied to table
             this.UpdatePlayerDisplay();
-            if(isDebugging) console.log(debugTag+"added player="+player+" to team="+team+"!");
+            //update team buttons
+            this.UpdateTableButtons();
+            if(isDebugging) console.log(debugTag+"added player="+this.teamObjects[team].Player+" to team="+team+"!");
         }
 
         /** removes a player from the game */
         public RemovePlayerFromTeam(team:number) {
             if(isDebugging) console.log(debugTag+"removing player from team="+team+"...");
             //only allow changes if game is not in session
-            if(this.curState != GAME_STATE.IDLE) return;
+            if(this.curState != TABLE_GAME_STATE.IDLE) return;
 
-
-            //add player to team
+            //remove player from team
             this.teamObjects[team].Player = undefined;
             this.teamObjects[team].PlayerDeck = undefined;
+            //unlink table from local player
+            PlayerLocal.CurTableID = undefined;
+            PlayerLocal.CurTeamID = undefined;
+            //reset ready state
+            this.SetReadyState(team, false);
 
             //update players tied to table
             this.UpdatePlayerDisplay();
+            //update team buttons
+            this.UpdateTableButtons();
             if(isDebugging) console.log(debugTag+"removed player from team="+team+"!");
         }
 
-        //TODO: localize button controls based on which player has entered/is included in the game
         /** sets the lobby display state */
-        public SetLobbyState(state:GAME_STATE) {
+        public SetLobbyState(state:TABLE_GAME_STATE) {
             this.curState = state;
             const textShape = TextShape.getMutable(this.entityLobbyState);
             switch(state) {
-                case GAME_STATE.IDLE:
+                case TABLE_GAME_STATE.IDLE:
                     //update text
                     textShape.text = "JOIN TO PLAY";
-                    //set button states
-                    /*Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_ON;
-                    Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_OFF;*/
                     //hide team displays
                     this.entityStateDisplays[0].SetState(false);
                     this.entityStateDisplays[1].SetState(false);
                 break;
-                case GAME_STATE.ACTIVE:
+                case TABLE_GAME_STATE.ACTIVE:
                     //update text
                     textShape.text = "IN SESSION";
-                    //set button states
-                    /*Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_ON;*/
                     //show team displays
                     this.entityStateDisplays[0].SetState(true);
                     this.entityStateDisplays[1].SetState(true);
                 break;
-                case GAME_STATE.OVER:
+                case TABLE_GAME_STATE.OVER:
                     //update text
-                    textShape.text = "<GAME_RESULT>";//TODO: display who won the match
-                    //set button states
-                    /*Transform.getMutable(this.entityLobbyJoin).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyStart).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyLeave).scale = BUTTON_SCALE_OFF;
-                    Transform.getMutable(this.entityLobbyEndTurn).scale = BUTTON_SCALE_OFF;*/
+                    textShape.text = "<GAME_RESULT>";
                     //show team displays
                     this.entityStateDisplays[0].SetState(true);
                     this.entityStateDisplays[1].SetState(true);
@@ -389,6 +404,22 @@ export module Table {
             }
         }
 
+        /** sets the given team's ready state */
+        public SetReadyState(team:number, state:boolean) {
+            if(isDebugging) console.log(debugTag+"table="+this.TableID+" setting team="+team+" ready state to "+state+"...");
+            
+            //update team's state
+            this.teamObjects[team].ReadyState = state;
+            //update team buttons
+            this.UpdateTableButtons();
+
+            //if both of player are ready, start game
+            for(let i:number=0; i<this.teamObjects.length; i++) {
+                if(!this.teamObjects[i].ReadyState) return;
+            }
+            this.StartGame();
+        }
+
         /** prepares both sides and starts the game */
         public StartGame() {
             if(isDebugging) console.log(debugTag+"table="+this.TableID+" starting game...");
@@ -399,7 +430,7 @@ export module Table {
             this.selectedCardObject = undefined;
             this.selectedCardSlotTeam = undefined;
             this.selectedCardSlotIndex = undefined;
-            this.SetLobbyState(GAME_STATE.ACTIVE);
+            this.SetLobbyState(TABLE_GAME_STATE.ACTIVE);
 
             //process each team
             for(let i:number=0; i<this.teamObjects.length; i++) {
@@ -412,6 +443,7 @@ export module Table {
                 }
             }
 
+            //start next turn
             this.NextTurn();
             if(isDebugging) console.log(debugTag+"table="+this.TableID+" started game!");
         }
@@ -442,6 +474,8 @@ export module Table {
                 SetAIState(true, this);
             }
 
+            //update team buttons
+            this.UpdateTableButtons();
             if(isDebugging) console.log(debugTag+"table="+this.TableID+" started new turn="+this.curTurn+", round="+this.curRound+"!");
         }
         
@@ -453,8 +487,8 @@ export module Table {
             if(this.teamObjects[team].Player == undefined) return;
 
             //ensure caller is part of the team or the local AI
-            if(!aiPVE && this.teamObjects[team].Player != Player.DisplayName()) {
-                if(isDebugging) console.log(debugTag+"local player="+Player.DisplayName+" did not belong to required team="+team
+            if(!aiPVE && this.teamObjects[team].Player != PlayerLocal.DisplayName()) {
+                if(isDebugging) console.log(debugTag+"local player="+PlayerLocal.DisplayName+" did not belong to required team="+team
                     +", owner="+this.teamObjects[team].Player);
                 return;
             }
@@ -485,8 +519,8 @@ export module Table {
             if(this.teamObjects[team].Player == undefined) return;
 
             //ensure caller is part of the team or the local AI
-            if(!aiPVE && this.teamObjects[team].Player != Player.DisplayName()) {
-                if(isDebugging) console.log(debugTag+"local player="+Player.DisplayName+" did not belong to required team="+team
+            if(!aiPVE && this.teamObjects[team].Player != PlayerLocal.DisplayName()) {
+                if(isDebugging) console.log(debugTag+"local player="+PlayerLocal.DisplayName+" did not belong to required team="+team
                     +", owner="+this.teamObjects[team].Player);
                 return;
             }
@@ -739,7 +773,6 @@ export module Table {
 
     /** disables the given object, hiding it from the scene but retaining it in data & pooling */
     export function Disable(object:TableObject) {
-        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  add to inactive listing (ensure add is required)
         var posX = pooledObjectsInactive.getItemPos(object);
@@ -747,7 +780,7 @@ export module Table {
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
+        if(pooledObjectsRegistry.containsKey(object.TableID)) pooledObjectsRegistry.removeItem(object.TableID);
 
         //send disable command
         object.Disable();
@@ -766,7 +799,6 @@ export module Table {
 
     /** removes given object from game scene and engine */
     export function Destroy(object:TableObject) {
-        const key:string = GetKeyFromObject(object);
         //adjust collections
         //  remove from overhead listing
         pooledObjectsAll.removeItem(object);
@@ -775,7 +807,7 @@ export module Table {
         //  remove from active listing
         pooledObjectsActive.removeItem(object);
         //  remove from active registry (if exists)
-        if(pooledObjectsRegistry.containsKey(key)) pooledObjectsRegistry.removeItem(key);
+        if(pooledObjectsRegistry.containsKey(object.TableID)) pooledObjectsRegistry.removeItem(object.TableID);
 
         //send destroy command
         object.Destroy();

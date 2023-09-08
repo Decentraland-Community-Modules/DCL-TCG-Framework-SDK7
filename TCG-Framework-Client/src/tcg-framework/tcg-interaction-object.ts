@@ -24,8 +24,8 @@ export module InteractionObject
     export enum INTERACTION_TYPE {
         DECK_MANAGER_FILTER = 0, //modifying view filters
         DECK_MANAGER_MODIFY = 1, //de/increasing cards in deck 
-        GAME_TABLE = 10, //call from table button
-        GAME_TEAM = 20, //call from table team button
+        DECK_MANAGER_PAGING = 2,
+        GAME_TABLE = 10, //call from table/team buttons
     }
     
     /** transform defaults - parental enabled */
