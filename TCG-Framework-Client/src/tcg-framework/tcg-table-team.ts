@@ -6,7 +6,7 @@ import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
 import { PlayCard } from "./tcg-play-card";
 import { InteractionObject } from "./tcg-interaction-object";
-import { TABLE_GAME_STATE, TABLE_TEAM_TYPES } from "./config/tcg-config";
+import { TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { PlayerLocal } from "./config/tcg-player-local";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
@@ -46,8 +46,10 @@ export module TableTeam {
 
     /** transform - card holder */
     const CARD_HOLDER_OFFSET:Vector3 = { x:0, y:1.5, z:4.75 };
-    const CARD_HOLDER_SCALE:Vector3 = { x:0.5, y:0.5, z:0.5 };
-    const CARD_HOLDER_ROTATION:Vector3 = { x:30, y:180, z:0 };
+    const CARD_HOLDER_SCALE:Vector3 = { x:0.95, y:0.95, z:0.95 };
+    const CARD_HOLDER_ROTATION:Vector3 = { x:50, y:180, z:0 };
+    const CARD_SCALE:Vector3 = { x:0.125, y:0.125, z:0.125 };
+
     
     /** transform - buttons */
     const BUTTON_SCALE_NORMAL:Vector3 = { x:0.5, y:0.5, z:0.5 };
@@ -193,8 +195,18 @@ export module TableTeam {
         }
 
         /** updates the display view based on the given team */
+        public ResetView(team:TableTeamObject) {
+            TextShape.getMutable(this.entityName).text = team.RegisteredPlayer??"<ERROR: NO PLAYER>";
+            TextShape.getMutable(this.entityHealth).text = "HEALTH: --";
+            TextShape.getMutable(this.entityEnergy).text = "ENERGY: --";
+            TextShape.getMutable(this.entityDeck).text = "DECK: --";
+            TextShape.getMutable(this.entityHand).text = "HAND: --";
+            TextShape.getMutable(this.entityDiscard).text = "DISCARD: --";
+        }
+
+        /** updates the display view based on the given team */
         public UpdateView(team:TableTeamObject) {
-            TextShape.getMutable(this.entityName).text = team.Player??"<ERROR: NO PLAYER>";
+            TextShape.getMutable(this.entityName).text = team.RegisteredPlayer??"<ERROR: NO PLAYER>";
             TextShape.getMutable(this.entityHealth).text = "HEALTH: "+team.HealthCur;
             TextShape.getMutable(this.entityEnergy).text = "ENERGY: "+team.EnergyCur+" ("+team.EnergyGain+")";
             TextShape.getMutable(this.entityDeck).text = "DECK: "+team.GetCardCount(PlayCardDeck.DECK_CARD_STATES.DECK);
@@ -212,7 +224,7 @@ export module TableTeam {
     /** represents a team on a card field */
     export class TableTeamObject {
         /** when true this object is reserved in-scene */
-        private isActive: boolean = true;
+        private isActive:boolean = true;
         public get IsActive():boolean { return this.isActive; };
 
         /** unique index of this slot's table */
@@ -227,33 +239,36 @@ export module TableTeam {
         public get Key():string { return this.TableID+"-"+this.TeamID; };
 
         /** type of user registered to this table */
-        public TeamType: TABLE_TEAM_TYPES = TABLE_TEAM_TYPES.HUMAN;
+        public TeamType:TABLE_TEAM_TYPE = TABLE_TEAM_TYPE.HUMAN;
 
         /** callback to get game state of table */
-        private getGameState(key:string) { 
+        private getGameState(key:string) {
             if(isDebugging) console.log(debugTag+"<WARNING> using default callback");
             return TABLE_GAME_STATE.IDLE;
         }
         public callbackGetGameState:(key:string) => TABLE_GAME_STATE = this.getGameState;
 
+        /** this team's current game state */
+        public TurnState:TABLE_TURN_TYPE = TABLE_TURN_TYPE.INACTIVE;
+
         /** current player's display name */
-        public Player:undefined|string;
+        public RegisteredPlayer:undefined|string;
         /** player's currently selected deck (where cards are pulled from) */
-        public PlayerDeck:undefined|PlayCardDeck.PlayCardDeckObject;
+        public RegisteredDeck:undefined|PlayCardDeck.PlayCardDeckObject;
         /** returns card count per targeted collection */
         public GetCardCount(target:PlayCardDeck.DECK_CARD_STATES) {
-            if(!this.PlayerDeck) return 0;
-            return this.PlayerDeck.CardsPerState[target].size();
+            if(!this.RegisteredDeck) return 0;
+            return this.RegisteredDeck.CardsPerState[target].size();
         }
         /** returns card's play data based on given index */
         public GetCardData(target:PlayCardDeck.DECK_CARD_STATES, index:number) {
-            return this.PlayerDeck?.CardsPerState[target].getItem(index);
+            return this.RegisteredDeck?.CardsPerState[target].getItem(index);
         }
 
         /** when true, this team is ready to start the game */
         private readyState:boolean = false;
         public get ReadyState():boolean {
-            if(this.TeamType == TABLE_TEAM_TYPES.AI) return true;
+            if(this.TeamType == TABLE_TEAM_TYPE.AI) return true;
             return this.readyState;
         }
         public set ReadyState(value:boolean) { this.readyState = value; }
@@ -287,12 +302,17 @@ export module TableTeam {
 
         /** card display parent (where player cards are stored) */
         private handCardParent:Entity;
+        private handCardObject:Entity;
         private handCards:List<CardDisplayObject.CardDisplayObject> = new List<CardDisplayObject.CardDisplayObject>();
         public GetHandCard(ID:string):undefined|CardDisplayObject.CardDisplayObject {
             for(let i:number=0; i<this.handCards.size(); i++) {
                 if(this.handCards.getItem(i).SlotID == ID) return this.handCards.getItem(i);
             }
             return undefined;
+        }
+        public SetHandState(state:boolean) {
+            if(state) Transform.getMutable(this.handCardParent).scale = CARD_HOLDER_SCALE;
+            else Transform.getMutable(this.handCardParent).scale = PARENT_SCALE_OFF;
         }
 
         /** current terrain card */
@@ -431,7 +451,7 @@ export module TableTeam {
             this.entityEndTurn = engine.addEntity();
             Transform.create(this.entityEndTurn, {
                 parent: this.entityParent,
-                position: {x:0,y:2.5,z:5.25},
+                position: {x:0,y:3.25,z:0},
                 scale: BUTTON_SCALE_NORMAL,
             });
             GltfContainer.create(this.entityEndTurn, {
@@ -448,13 +468,27 @@ export module TableTeam {
                 ]
             });
             
-            //create card holder
+            //card holder
+            //  parental object
             this.handCardParent = engine.addEntity();
             Transform.create(this.handCardParent, {
                 parent: this.entityParent,
                 position: CARD_HOLDER_OFFSET,
                 scale: CARD_HOLDER_SCALE,
                 rotation: Quaternion.fromEulerDegrees(CARD_HOLDER_ROTATION.x, CARD_HOLDER_ROTATION.y, CARD_HOLDER_ROTATION.z)
+            });
+            //  display object
+            this.handCardObject = engine.addEntity();
+            Transform.create(this.handCardObject, {
+                parent: this.handCardParent,
+                position: {x:0,y:0,z:0},
+                scale: {x:1,y:1,z:1},
+                rotation: Quaternion.fromEulerDegrees(0, 180, 0)
+            });
+            GltfContainer.create(this.handCardObject, {
+                src: 'models/tcg-framework/menu-displays/display-wide.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
             });
         }
 
@@ -467,8 +501,13 @@ export module TableTeam {
             //player details
             if(data.callbackTable != undefined) this.callbackGetGameState = data.callbackTable;
             this.readyState = false;
-            this.Player = undefined;
-            this.PlayerDeck = undefined;
+            this.RegisteredPlayer = undefined;
+            this.RegisteredDeck = PlayCardDeck.Create({
+                key: this.Key,
+                type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL
+            });
+            //hand displays
+            this.SetHandState(false);
             //transform
             const transformParent = Transform.getMutable(this.entityParent);
             transformParent.parent = data.parent;
@@ -512,7 +551,7 @@ export module TableTeam {
             }
 
             //create card slot objects
-            for(let i:number=0; i<CARD_SLOT_POSITIONS.length; i++) {/**/
+            for(let i:number=0; i<CARD_SLOT_POSITIONS.length; i++) {
                 const teamObject:TableCardSlot.TableCardSlotObject = TableCardSlot.Create({
                     tableID: data.tableID,
                     teamID: data.teamID,
@@ -538,7 +577,7 @@ export module TableTeam {
                 CardDisplayObject.Disable(card);
             }
             //shuffle decks
-            this.PlayerDeck?.ShuffleCards();
+            this.RegisteredDeck?.ShuffleCards();
             //reset all card slots
             this.UpdateCardSlotDisplay();
         }
@@ -548,25 +587,31 @@ export module TableTeam {
             //process based on operator of this team
             switch(this.TeamType) {
                 //human player
-                case TABLE_TEAM_TYPES.HUMAN:
-                    console.log("test");
+                case TABLE_TEAM_TYPE.HUMAN:
                     //process based on current state of table 
                     switch(this.callbackGetGameState(this.TableID)) {
                         //game is not started
                         case TABLE_GAME_STATE.IDLE:
                             //if a player is registered to this team
-                            if(this.Player != undefined) {
+                            if(this.RegisteredPlayer != undefined) {
                                 Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                                 //if registered player is local player, display leave button
-                                if(this.Player == PlayerLocal.DisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
+                                if(this.RegisteredPlayer == PlayerLocal.DisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
                                 else Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
 
-                                //ready state toggling
-                                if(this.ReadyState) {
+                                //if local player owns table
+                                if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
+                                    //ready state toggling
+                                    if(this.ReadyState) {
+                                        Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
+                                        Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_SMALL;
+                                    } else {
+                                        Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_SMALL;
+                                        Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
+                                    }
+                                }
+                                else {
                                     Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
-                                    Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_SMALL;
-                                } else {
-                                    Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_SMALL;
                                     Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                                 }
                             } 
@@ -586,7 +631,13 @@ export module TableTeam {
                             Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
-                            Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                            //if local player's turn
+                            if(PlayerLocal.DisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
+                                Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_SMALL; 
+                            } 
+                            else {
+                                Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                            } 
                         break;
                         //game has finished
                         case TABLE_GAME_STATE.OVER:
@@ -600,7 +651,7 @@ export module TableTeam {
                     }
                 break;
                 //AI player
-                case TABLE_TEAM_TYPES.AI:
+                case TABLE_TEAM_TYPE.AI:
                     //never show buttons if team is operated by AI
                     Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
@@ -613,15 +664,24 @@ export module TableTeam {
 
         /** updates the positions of all cards in the player's hand */
         public UpdateCardObjectDisplay(selected:string="") {
-            //
+            var posY = [0,0];
+            if(this.handCards.size() > 5) posY = [0.25,-0.25];
+            //process every card in the player's hand
             for(let i:number=0; i<this.handCards.size(); i++) {
-                //calc position, anchored at middle
-                var pos = {x:(1.15*Math.round(i/2)),y:0,z:0};
-                if(i%2 == 1) pos.x = pos.x*-1
+                //calc position #math it bro :sip:
+                var index = i%5;
+                var cardsInRow = this.handCards.size()%5;
+                if(i<(this.handCards.size()-cardsInRow)) cardsInRow = 5;
+                var posX = index-((cardsInRow-1)*0.5);
+                var pos = {
+                    x:0.4*posX,
+                    y:posY[Math.floor(i/5)],
+                    z:0
+                };
                 //calc selection offset
                 if(this.handCards.getItem(i).SlotID == selected) {
-                    pos.y = 0.225;
-                    pos.z = -0.2;
+                    pos.y += 0.1125;
+                    pos.z += -0.1;
                 }
                 //set pos
                 this.handCards.getItem(i).SetPosition(pos);
@@ -640,18 +700,18 @@ export module TableTeam {
         /** draws a card from the player's deck and places it in their hand, generating the required  */
         public DrawCard() {
             //ensure deck exists
-            if(!this.PlayerDeck) {
+            if(!this.RegisteredDeck) {
                 if(isDebugging) console.log(debugTag+"no player deck found!");
                 return undefined;
             }
             //ensure targeted state collection has cards left
-            if(this.PlayerDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].size() == 0) {
+            if(this.RegisteredDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].size() == 0) {
                 if(isDebugging) console.log(debugTag+"no cards remaining in targeted collection!");
                 return undefined;
             }
 
             //get top card from deck
-            const card = this.PlayerDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].getItem(0);
+            const card = this.RegisteredDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].getItem(0);
             //move card to collection
             this.MoveCardBetweenCollections(card, PlayCardDeck.DECK_CARD_STATES.DECK, PlayCardDeck.DECK_CARD_STATES.HAND);
             //create card display object for hand 
@@ -662,27 +722,27 @@ export module TableTeam {
 
         /** moves a card within the deck from one collection to another */
         public MoveCardBetweenCollections(card:PlayCard.PlayCardDataObject, origin:PlayCardDeck.DECK_CARD_STATES, target:PlayCardDeck.DECK_CARD_STATES) {
-            if(isDebugging) console.log(debugTag+"moving card="+card.Key+" from origin="+origin+" ("+this.PlayerDeck?.CardsPerState[origin].size()
-                +") to target="+target+"("+this.PlayerDeck?.CardsPerState[target].size()+")...");
+            if(isDebugging) console.log(debugTag+"moving card="+card.Key+" from origin="+origin+" ("+this.RegisteredDeck?.CardsPerState[origin].size()
+                +") to target="+target+"("+this.RegisteredDeck?.CardsPerState[target].size()+")...");
 
             //ensure deck exists
-            if(!this.PlayerDeck) {
+            if(!this.RegisteredDeck) {
                 if(isDebugging) console.log(debugTag+"no player deck found!");
                 return undefined;
             }
             //ensure targeted state collection has cards left
-            if(this.PlayerDeck.CardsPerState[origin].size() == 0) {
+            if(this.RegisteredDeck.CardsPerState[origin].size() == 0) {
                 if(isDebugging) console.log(debugTag+"no cards remaining in targeted collection!");
                 return undefined;
             }
 
             //remove card from origin collection
-            this.PlayerDeck.CardsPerState[origin].removeItem(card);
+            this.RegisteredDeck.CardsPerState[origin].removeItem(card);
             //add card to target collection
-            this.PlayerDeck.CardsPerState[target].addItem(card);
+            this.RegisteredDeck.CardsPerState[target].addItem(card);
 
-            if(isDebugging) console.log(debugTag+"moved card="+card.Key+" from origin="+origin+" ("+this.PlayerDeck?.CardsPerState[origin].size()
-                +") to target="+target+"("+this.PlayerDeck?.CardsPerState[target].size()+")!");
+            if(isDebugging) console.log(debugTag+"moved card="+card.Key+" from origin="+origin+" ("+this.RegisteredDeck?.CardsPerState[origin].size()
+                +") to target="+target+"("+this.RegisteredDeck?.CardsPerState[target].size()+")!");
         }
 
         /** adds given card's object to hand */
@@ -701,7 +761,7 @@ export module TableTeam {
                 counter: false,
                 //position
                 parent: this.handCardParent,
-                scale: { x:0.4, y:0.4, z:0.4 },
+                scale: CARD_SCALE,
             });
             //add display object to hand collection
             this.handCards.addItem(cardObject);

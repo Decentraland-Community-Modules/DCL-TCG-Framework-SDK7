@@ -1,6 +1,6 @@
 import { Color4, Quaternion, Scalar, Vector3 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
-import { Entity, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 
 /*      TRADING CARD GAME - INTERACTION OBJECT
     objects used to act as interaction points for the player throughout the scene
@@ -89,8 +89,9 @@ export module InteractionObject
         interactionText?:string;
 		textPosition?: { x:number; y:number; z:number; }; //new position for object
 		textScale?: { x:number; y:number; z:number; }; //new scale for object
-        //position
+        //transform
         parent?: Entity; //entity to parent object under 
+        model?: string; //model location, if no path is given a cube primitive will be created instead
 		position?: { x:number; y:number; z:number; }; //new position for object
 		scale?: { x:number; y:number; z:number; }; //new scale for object
 		rotation?: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
@@ -126,14 +127,6 @@ export module InteractionObject
             //  create entity
             this.entityShape = engine.addEntity();
             Transform.create(this.entityShape, { parent:this.entity });
-            //  add custom model
-            MeshRenderer.setBox(this.entityShape);
-            MeshCollider.setBox(this.entityShape);
-            /*GltfContainer.create(this.entityFrame, {
-                src: MODEL_CARD_FRAME,
-                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-                invisibleMeshesCollisionMask: undefined
-            });*/
             
             //create text
             this.entityText = engine.addEntity();
@@ -148,25 +141,45 @@ export module InteractionObject
         /** initializes the  */
         public Initialize(data: InteractionObjectCreationData) {
             this.isActive = true;
-            //transform parent
+            //parent
             const transform = Transform.getMutable(this.entity);
             transform.parent = data.parent;
             transform.position = data.position??PARENT_POSITION_ON;
             transform.scale = data.scale??PARENT_SCALE_ON;
             const rot = data.rotation??PARENT_ROTATION_ON;
             transform.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
-            //transform text
-            const transformText = Transform.getMutable(this.entityText);
-            transformText.position = data.textPosition??TEXT_POSITION;
-            transformText.scale = data.textScale??TEXT_SCALE;
-            //text
-            TextShape.getMutable(this.entityText).text = data.displayText??"";
+
+            //display object
+            if(data.model != undefined) {
+                //remove cube attributes
+                MeshRenderer.deleteFrom(this.entityShape);
+                MeshCollider.deleteFrom(this.entityShape);
+                //set custom model
+                GltfContainer.createOrReplace(this.entityShape, {
+                    src: data.model,
+                    visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                    invisibleMeshesCollisionMask: undefined
+                });
+            }
+            else {
+                //remove custom model
+                GltfContainer.deleteFrom(this.entityShape);
+                //set primitive cube
+                MeshRenderer.setBox(this.entityShape);
+                MeshCollider.setBox(this.entityShape);
+            }
             //component
             InteractionObjectComponent.createOrReplace(this.entityShape, {
                 ownerType:data.ownerType,
                 target:data.target,
                 action:data.action??-1,
             });
+
+            //display text
+            const transformText = Transform.getMutable(this.entityText);
+            transformText.position = data.textPosition??TEXT_POSITION;
+            transformText.scale = data.textScale??TEXT_SCALE;
+            TextShape.getMutable(this.entityText).text = data.displayText??"";
             
             //pointer event system
             PointerEvents.createOrReplace(this.entityShape, {

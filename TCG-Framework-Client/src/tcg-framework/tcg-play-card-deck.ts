@@ -13,8 +13,7 @@ import { PlayCard } from "./tcg-play-card";
     PrimaryAuthors: TheCryptoTrader69 (Alex Pazder)
     TeamContact: thecryptotrader69@gmail.com
 */
-export module PlayCardDeck
-{
+export module PlayCardDeck {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
@@ -84,9 +83,11 @@ export module PlayCardDeck
      * can contain multiple entries/owner proofs, on a per instance basis  
     */
     export class PlayCardDeckPiece {
-        public Count:number = 0;
+        public DefID:number;
+        public Count:number;
 
-        constructor(count:number) {
+        constructor(id:number, count:number) {
+            this.DefID = id;
             this.Count = count;
         }
         //TODO: add instance sub-keying/add ownership veri/use NFTs to increase total count
@@ -121,26 +122,23 @@ export module PlayCardDeck
         ];
 
         /** holds the number of cards registered per ID */
-        public RegisteredCardCounts: Dictionary<PlayCardDeckPiece> = new Dictionary<PlayCardDeckPiece>();
+        public RegisteredCardCountList:List<PlayCardDeckPiece> = new List<PlayCardDeckPiece>();
+        public RegisteredCardCountDict:Dictionary<PlayCardDeckPiece> = new Dictionary<PlayCardDeckPiece>();
 
         /** initializes the object */
         public Initialize(data: PlayCardDeckDataCreationData) {
             this.isActive = true;
             //indexing
             this.key = data.key;
+            //collections
+            this.RegisteredCardCountList = new List<PlayCardDeckPiece>();
+            this.RegisteredCardCountDict = new Dictionary<PlayCardDeckPiece>();
         }
 
+        /** returns the count of a cards corrisponding to the given definition */
         public GetCardCount(def:number):number {
-            if(!this.RegisteredCardCounts.containsKey(def.toString())) return 0;
-            else return this.RegisteredCardCounts.getItem(def.toString()).Count;
-        }
-
-        public SetCardCount(def:number, value:number) {
-            if(!this.RegisteredCardCounts.containsKey(def.toString())) 
-                this.RegisteredCardCounts.addItem(def.toString(), new PlayCardDeckPiece(value));
-            else this.RegisteredCardCounts.getItem(def.toString()).Count = value;
-
-            //TODO: if overhead per-piece gets large, cull each < 0 piece
+            if(!this.RegisteredCardCountDict.containsKey(def.toString())) return 0;
+            else return this.RegisteredCardCountDict.getItem(def.toString()).Count;
         }
 
         /** adds a single instance of the given card data index */
@@ -161,9 +159,17 @@ export module PlayCardDeck
             this.CardsAll.addItem(card);
             this.CardsPerState[DECK_CARD_STATES.DECK].addItem(card);
             
-            //modify count reg
-            if(!this.RegisteredCardCounts.containsKey(def.toString())) this.RegisteredCardCounts.addItem(def.toString(), new PlayCardDeckPiece(1));
-            else this.RegisteredCardCounts.getItem(def.toString()).Count++;
+            //update count of registered cards
+            if(!this.RegisteredCardCountDict.containsKey(def.toString())) {
+                //create new entry object
+                const entry = new PlayCardDeckPiece(def, 1);
+                this.RegisteredCardCountList.addItem(entry)
+                this.RegisteredCardCountDict.addItem(def.toString(), entry);
+            }
+            else {
+                //update entry object
+                this.RegisteredCardCountDict.getItem(def.toString()).Count++;
+            } 
             if(isDebugging) console.log(debugTag+"added card to deck="+this.key+", ID="+def+"!");
         }
 
@@ -199,7 +205,13 @@ export module PlayCardDeck
             PlayCard.Disable(card);
             
             //modify count reg
-            this.RegisteredCardCounts.getItem(def.toString()).Count--;
+            const entry = this.RegisteredCardCountDict.getItem(def.toString());
+            entry.Count--;
+            if(entry.Count == 0) {
+                this.RegisteredCardCountList.removeItem(entry)
+                this.RegisteredCardCountDict.removeItem(entry.DefID.toString());
+            }
+
             if(isDebugging) console.log(debugTag+"removed card from deck="+this.key+", ID="+def+"!");
         }
 
@@ -223,8 +235,7 @@ export module PlayCardDeck
         }
 
         /** shuffles all cards in the deck, randomizing order */
-        public ShuffleCards()
-        {
+        public ShuffleCards() {
             let card:PlayCard.PlayCardDataObject;
             let swap:number;
             let count = this.CardsPerState[DECK_CARD_STATES.DECK].size();
@@ -239,8 +250,12 @@ export module PlayCardDeck
 
         /** remove & release all cards in this deck */
         public Clean() {
-            //reset registered card counts
-            this.RegisteredCardCounts = new Dictionary<PlayCardDeckPiece>();
+            //remove registered card counts
+            while(this.RegisteredCardCountList.size() > 0) {
+                const entry = this.RegisteredCardCountList.getItem(0);
+                this.RegisteredCardCountList.removeItem(entry);
+                this.RegisteredCardCountDict.removeItem(entry.Count.toString());
+            }
             //remove all previous cards
             var index:number = 0;
             while(index < this.CardsAll.size()) {
@@ -268,6 +283,37 @@ export module PlayCardDeck
             }
             if(isDebugging) console.log(debugTag+"cloning deckLocal="+this.key+" (count="+this.CardsAll.size()
                 +"), deckLocal="+deck.key+" (count="+deck.CardsAll.size()+")!");
+        }
+
+        /** returns a serialized string representing all cards in this deck */
+        public Serialize():string {
+            var serial:string = "";
+
+            //process every registered card
+            for(let i:number=0; i<this.RegisteredCardCountList.size(); i++) {
+                const entry = this.RegisteredCardCountList.getItem(i);
+                serial += entry.DefID+":"+entry.Count+"-";
+            }
+            serial = serial.slice(0,-1);
+
+            if(isDebugging) console.log(debugTag+"serialized deck, serial="+serial);
+            return serial;
+        }
+
+        /** initializes this deck based on the given serial string */
+        public Deserial(serial:string) {
+            if(isDebugging) console.log(debugTag+"initializing deck deck based on serial="+serial);
+            //remove all previous cards
+            this.Clean();
+
+            //add all cards from serial
+            const split:string[] = serial.split('-');
+            for(let i:number=0; i<this.RegisteredCardCountList.size(); i++) {
+                const entrySplit = split[i].split(':');
+                for(let j:number=0; j<parseInt(entrySplit[1]); j++) {
+                    this.AddCard(parseInt(entrySplit[0]));
+                }
+            }
         }
     }
     

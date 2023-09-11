@@ -79,23 +79,23 @@ export module InteractionManager {
                             case TABLE_GAME_STATE.IDLE:
                                 switch(component.action) {
                                     case TableTeam.LOBBY_BUTTONS.JOIN:
-                                        table.AddPlayerToTeam(parseInt(split[1]), PlayerLocal.DisplayName());
+                                        table.LocalAddPlayerToTeam(parseInt(split[1]), PlayerLocal.DisplayName());
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.LEAVE:
-                                        table.RemovePlayerFromTeam(parseInt(split[1]));
+                                        table.LocalRemovePlayerFromTeam(parseInt(split[1]));
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.READY:
-                                        table.SetReadyState(parseInt(split[1]), true);
+                                        table.LocalSetPlayerReadyState(parseInt(split[1]), true);
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.UNREADY:
-                                        table.SetReadyState(parseInt(split[1]), false);
+                                        table.LocalSetPlayerReadyState(parseInt(split[1]), false);
                                     break;
                                 }
                             break;
                             case TABLE_GAME_STATE.ACTIVE:
                                 switch(component.action) {
                                     case TableTeam.LOBBY_BUTTONS.END_TURN:
-                                        table.NextTurn();
+                                        table.LocalNextTurn();
                                     break;
                                 }
                             break;
