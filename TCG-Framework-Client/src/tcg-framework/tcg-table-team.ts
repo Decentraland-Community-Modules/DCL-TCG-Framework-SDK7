@@ -699,6 +699,7 @@ export module TableTeam {
 
         /** draws a card from the player's deck and places it in their hand, generating the required  */
         public DrawCard() {
+            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" is drawing card...");
             //ensure deck exists
             if(!this.RegisteredDeck) {
                 if(isDebugging) console.log(debugTag+"no player deck found!");
@@ -718,6 +719,7 @@ export module TableTeam {
             this.AddHandObject(card);
             //
             this.UpdateCardObjectDisplay();
+            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" has drawn card="+card.Key+"!");
         }
 
         /** moves a card within the deck from one collection to another */

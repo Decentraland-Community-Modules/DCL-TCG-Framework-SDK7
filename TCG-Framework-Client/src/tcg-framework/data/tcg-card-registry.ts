@@ -64,7 +64,7 @@ export class CardEntry {
     from the correct source/setting (defined by network type)
 */
 export class CardDataRegistry {
-    static IsDebugging:boolean = true;
+    static IsDebugging:boolean = false;
 
     /** when true system is fully loaded and ready for use */
     private isInitialized:boolean = false;

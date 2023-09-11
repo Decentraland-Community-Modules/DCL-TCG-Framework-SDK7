@@ -461,12 +461,20 @@ export module Table {
                 this.entityStateDisplays[1].SetState(false);
             }
 
-            //remove player from team
-            this.teamObjects[team].RegisteredPlayer = undefined;
-            this.teamObjects[team].RegisteredDeck = undefined;
-
             //reset ready state
             this.LocalSetPlayerReadyState(team, false);
+
+            //remove player from team
+            this.teamObjects[team].RegisteredPlayer = undefined;
+
+            //clear deck
+            const deck = this.teamObjects[team].RegisteredDeck;
+            if(deck != undefined) {
+                deck.Clean();
+            } else {
+                console.log("<ERROR>: table="+this.tableID+", team="+team+" does not have a valid deck, likely mismanaged table states");
+                return;
+            }
 
             //update players tied to table
             this.UpdatePlayerDisplay();
@@ -487,7 +495,7 @@ export module Table {
             
             //if player is readying, send deck for master
             var serial = "";
-            if(state) PlayerLocal.GetPlayerDeck().Serialize();
+            if(state) serial = PlayerLocal.GetPlayerDeck().Serialize();
 
             //send networking call
             Table.EmitSetPlayerReadyState(this.TableID, team, state, serial);
@@ -500,16 +508,17 @@ export module Table {
             this.teamObjects[team].ReadyState = state;
             this.teamObjects[team].UpdateButtonStates();
 
-            //register deck to table
-            this.teamObjects[team].RegisteredDeck = PlayerLocal.GetPlayerDeck();
+            //deserialize team's deck (if team is de-readying, deck will be cleared)
+            const deck = this.teamObjects[team].RegisteredDeck;
+            if(deck != undefined) {
+                deck.Deserial(serial);
+            } else {
+                console.log("<ERROR>: table="+this.tableID+", team="+team+" does not have a valid deck, likely mismanaged table states");
+                return;
+            }
 
             //if local player is table owner
             if(PlayerLocal.DisplayName() == this.TableOwner) {
-                //if player does not belong to team
-                if(PlayerLocal.DisplayName() != this.teamObjects[team].RegisteredPlayer) {
-                    this.teamObjects[team].RegisteredDeck?.Deserial(serial);
-                }
-
                 //if both of player are ready, start game
                 for(let i:number=0; i<this.teamObjects.length; i++) {
                     if(!this.teamObjects[i].ReadyState) return;
