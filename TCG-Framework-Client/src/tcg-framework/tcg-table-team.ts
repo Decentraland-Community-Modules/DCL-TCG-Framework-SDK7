@@ -579,7 +579,7 @@ export module TableTeam {
             //shuffle decks
             this.RegisteredDeck?.ShuffleCards();
             //reset all card slots
-            this.UpdateCardSlotDisplay();
+            this.UpdateSlotDisplay();
         }
 
         /** updates buttons display based on the current state */
@@ -689,7 +689,7 @@ export module TableTeam {
         }
 
         /** updates the display of card slot */
-        public UpdateCardSlotDisplay(selected:number=-1) {
+        public UpdateSlotDisplay(selected:number=-1) {
             //
             for(let i:number=0; i<this.cardSlotObjects.length; i++) {
                 if(i == selected) this.cardSlotObjects[i].SetSelectionState(true);
