@@ -47,13 +47,13 @@ export enum TABLE_GAME_STATE {
 } 
 
 /** team types for table/who can register for table */
-export enum TABLE_TEAM_TYPES {
+export enum TABLE_TEAM_TYPE {
     HUMAN, //human player
     AI, //AI/PvE player
 }
 
-/** represents the current state of the instance's connectivity,
- *  this follows a fail-through approach: if the game cannot connect
- *  to the server it will automatically fallback to peer-to-peer connectivity
- */
-export var ConnectivityState:SCENE_CONNECTIVITY_TYPE;
+/** table team's turn state */
+export enum TABLE_TURN_TYPE {
+    ACTIVE,
+    INACTIVE,
+}

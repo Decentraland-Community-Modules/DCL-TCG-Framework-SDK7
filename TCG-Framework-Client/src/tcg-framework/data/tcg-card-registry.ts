@@ -10,6 +10,7 @@
     contact: TheCryptoTrader69@gmail.com 
 */
 
+import { Entity, EntityMappingMode, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, engine } from "@dcl/sdk/ecs";
 import Dictionary, { List } from "../../utilities/collections";
 import { CARD_DATA_ID, CardData, CardDataObject} from "./tcg-card-data";
 import { CardTextureData, CardTextureDataObject } from "./tcg-card-texture-data";
@@ -63,7 +64,7 @@ export class CardEntry {
     from the correct source/setting (defined by network type)
 */
 export class CardDataRegistry {
-    static IsDebugging:boolean = true;
+    static IsDebugging:boolean = false;
 
     /** when true system is fully loaded and ready for use */
     private isInitialized:boolean = false;
@@ -157,6 +158,58 @@ export class CardDataRegistry {
         }
 
         if (CardDataRegistry.IsDebugging) console.log("Card Registry: initialized, total count=" + this.cardRegistryAll.size());
+    }
+
+    public PrewarmIndex:number = 0;
+    public PrewarmEntity:Entity = engine.addEntity();
+    /** used to prewarm asset when a scene starts, cycling through each provided model */
+    public async PrewarmAssetStart() {
+        //prepare holder entity
+        Transform.create(this.PrewarmEntity, {
+            position: {x:8,y:-2,z:8},
+            scale: {x:0,y:0,z:0}
+        });
+
+        //process every model
+        GltfContainer.createOrReplace(this.PrewarmEntity, {src: CardData[this.PrewarmIndex].objPath});
+
+        //add processing system
+        engine.addSystem(this.PrewarmAssetCheck);
+    }
+    
+    /** */
+    public PrewarmAssetFinish() {
+        engine.removeEntity(this.PrewarmEntity);
+        engine.removeSystem(this.PrewarmAssetCheck);
+    }
+
+    /**  */
+    private PrewarmAssetCheck(deltaTime:number) {
+        //get loading state
+        const loadingState = GltfContainerLoadingState.getOrNull(CardDataRegistry.Instance.PrewarmEntity);
+        if (!loadingState) return
+        //process loading state (check for load completion)
+        switch (loadingState.currentState) {
+            case LoadingState.FINISHED:
+                //console.log("asset index="+CardDataRegistry.Instance.PrewarmIndex+" finished loading successfully");
+                //push next index
+                CardDataRegistry.Instance.PrewarmIndex++;
+                //if prewarm finished, halt processing
+                if(CardDataRegistry.Instance.PrewarmIndex >= CardData.length) {
+                    CardDataRegistry.Instance.PrewarmAssetFinish();
+                }
+                //if not, load next asset 
+                else {
+                    GltfContainer.createOrReplace(CardDataRegistry.Instance.PrewarmEntity, {src: CardData[CardDataRegistry.Instance.PrewarmIndex].objPath});
+                }
+            break
+            case LoadingState.FINISHED_WITH_ERROR:
+                //console.log("asset index="+CardDataRegistry.Instance.PrewarmIndex+" finished loading with errors (check model path & file validity)");
+            break
+            case LoadingState.UNKNOWN:
+                //console.log("<ERROR> failed to get load state (likely invalid model path)");
+            break
+        }
     }
 
     //### FACTIONS

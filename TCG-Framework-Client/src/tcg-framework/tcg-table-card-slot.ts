@@ -87,6 +87,7 @@ export module TableCardSlot {
         //position
         parent: undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
+        scale?: { x:number; y:number; z:number; };
 	}
 
     /** represents a single card slot within a card field team */
@@ -240,7 +241,7 @@ export module TableCardSlot {
             const transformParent = Transform.getMutable(this.entityParent);
             transformParent.parent = data.parent;
             transformParent.position = data.position;
-            //transformParent.scale = INTERACTION_SCALE;
+            transformParent.scale = data.scale??{x:1,y:1,z:1};
             //transformParent.rotation = Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z);
             //component
             TableCardSlotComponent.createOrReplace(this.entityInteraction, {

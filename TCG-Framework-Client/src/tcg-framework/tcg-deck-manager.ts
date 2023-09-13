@@ -397,6 +397,7 @@ export module DeckManager {
             displayText:i.toString(),
             interactionText:"toggle "+CardFactionData[i].name,
             parent: filterParent, 
+            model: "models/utilities/Menu3D_Button_Square.glb",
             position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
             scale: { x:0.1, y:0.1, z:0.04, }
         }));

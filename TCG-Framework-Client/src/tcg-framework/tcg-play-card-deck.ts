@@ -13,8 +13,7 @@ import { PlayCard } from "./tcg-play-card";
     PrimaryAuthors: TheCryptoTrader69 (Alex Pazder)
     TeamContact: thecryptotrader69@gmail.com
 */
-export module PlayCardDeck
-{
+export module PlayCardDeck {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
@@ -84,9 +83,11 @@ export module PlayCardDeck
      * can contain multiple entries/owner proofs, on a per instance basis  
     */
     export class PlayCardDeckPiece {
-        public Count:number = 0;
+        public DefID:number;
+        public Count:number;
 
-        constructor(count:number) {
+        constructor(id:number, count:number) {
+            this.DefID = id;
             this.Count = count;
         }
         //TODO: add instance sub-keying/add ownership veri/use NFTs to increase total count
@@ -94,10 +95,6 @@ export module PlayCardDeck
 
     /** contains all pieces that make up a single card deck */
     export class PlayCardDeckObject {
-        //TODO: add sub-roller to redo indexes of cards based on def, not this overhead uid
-        private curIndex:number = 0;
-        private get nextIndex():number { return this.curIndex++; }
-
         /** when true this object is reserved in-scene */
         private isActive: boolean = true;
         public get IsActive():boolean { return this.isActive; };
@@ -121,76 +118,89 @@ export module PlayCardDeck
         ];
 
         /** holds the number of cards registered per ID */
-        public RegisteredCardCounts: Dictionary<PlayCardDeckPiece> = new Dictionary<PlayCardDeckPiece>();
+        public RegisteredCardCountList:List<PlayCardDeckPiece> = new List<PlayCardDeckPiece>();
+        public RegisteredCardCountDict:Dictionary<PlayCardDeckPiece> = new Dictionary<PlayCardDeckPiece>();
 
         /** initializes the object */
         public Initialize(data: PlayCardDeckDataCreationData) {
             this.isActive = true;
             //indexing
             this.key = data.key;
+            //collections
+            this.RegisteredCardCountList = new List<PlayCardDeckPiece>();
+            this.RegisteredCardCountDict = new Dictionary<PlayCardDeckPiece>();
         }
 
+        /** returns the count of a cards corrisponding to the given definition */
         public GetCardCount(def:number):number {
-            if(!this.RegisteredCardCounts.containsKey(def.toString())) return 0;
-            else return this.RegisteredCardCounts.getItem(def.toString()).Count;
-        }
-
-        public SetCardCount(def:number, value:number) {
-            if(!this.RegisteredCardCounts.containsKey(def.toString())) 
-                this.RegisteredCardCounts.addItem(def.toString(), new PlayCardDeckPiece(value));
-            else this.RegisteredCardCounts.getItem(def.toString()).Count = value;
-
-            //TODO: if overhead per-piece gets large, cull each < 0 piece
+            if(!this.RegisteredCardCountDict.containsKey(def.toString())) return 0;
+            else return this.RegisteredCardCountDict.getItem(def.toString()).Count;
         }
 
         /** adds a single instance of the given card data index */
-        public AddCard(def:number) {
-            if(isDebugging) console.log(debugTag+"adding card to deck="+this.key+", ID="+def+"...");
+        public AddCard(defIndex:number) {
+            if(isDebugging) console.log(debugTag+"adding card to deck="+this.key+", def="+defIndex+"...");
             //ensure card instance limit is not over max
-            if(this.GetCardCount(def) >= CARD_LIMIT_PER_TYPE[CardData[def].type]) {
-                if(isDebugging) console.log(debugTag+"failed to add card - too many instances in deck!");
+            if(this.GetCardCount(defIndex) >= CARD_LIMIT_PER_TYPE[CardData[defIndex].type]) {
+                if(isDebugging) console.log(debugTag+"failed to add card - too many instances of cards in deck (count="+this.GetCardCount(defIndex)+")!");
                 return;
             } 
 
             //create instance of card
             const card = PlayCard.Create({
-                key: this.key+"-"+def+"-"+this.nextIndex,  //key: deck's unique key + card data unique key
-                defIndex: def,
+                deck: this.key,
+                index: this.GetCardCount(defIndex),
+                defIndex: defIndex,
             });
             //add card to deck
             this.CardsAll.addItem(card);
             this.CardsPerState[DECK_CARD_STATES.DECK].addItem(card);
             
-            //modify count reg
-            if(!this.RegisteredCardCounts.containsKey(def.toString())) this.RegisteredCardCounts.addItem(def.toString(), new PlayCardDeckPiece(1));
-            else this.RegisteredCardCounts.getItem(def.toString()).Count++;
-            if(isDebugging) console.log(debugTag+"added card to deck="+this.key+", ID="+def+"!");
+            //update count of registered cards
+            if(!this.RegisteredCardCountDict.containsKey(defIndex.toString())) {
+                //create new entry object
+                const entry = new PlayCardDeckPiece(defIndex, 1);
+                this.RegisteredCardCountList.addItem(entry)
+                this.RegisteredCardCountDict.addItem(defIndex.toString(), entry);
+            }
+            else {
+                //update entry object
+                this.RegisteredCardCountDict.getItem(defIndex.toString()).Count += 1;
+            } 
+            if(isDebugging) console.log(debugTag+"added card to deck="+this.key+" (size="+this.CardsAll.size()+"), def="+
+                defIndex+" (count="+this.GetCardCount(defIndex)+"), cardKey="+card.Key+"!");
         }
 
         //TODO: atm it is assumed the deck will be in a neutral state with all cards set to deck-state (not in-hand ect.)
         /** removes a single instance of the given card data */
-        public RemoveCard(def:number) {
-            if(isDebugging) console.log(debugTag+"removing card from deck="+this.key+", ID="+def+"...");
+        public RemoveCard(defIndex:number) {
+            if(isDebugging) console.log(debugTag+"removing card from deck="+this.key+", def="+defIndex+"...");
             //check if requested card exists
-            if(this.GetCardCount(def) <= 0) {
+            if(this.GetCardCount(defIndex) <= 0) {
                 if(isDebugging) console.log(debugTag+"failed to remove card - no instances in deck!");
                 return;
             } 
 
             //find an instance of the targeted card def
+            //NOTE: we must ensure we remove the card with the highest sub-index to keep keying integrity
             var index:number = 0;
             var card:undefined|PlayCard.PlayCardDataObject = undefined;
             while(index<this.CardsAll.size()) {
                 //check entry for targeted card
-                card = this.CardsAll.getItem(index);
-                if(card.DefIndex == def) break;
+                const test = this.CardsAll.getItem(index);
+                if(test.DefIndex == defIndex) {
+                    //only update target card if no card exists or next card has higher index 
+                    if(card == undefined) card = test;
+                    else if(test.Index > card.Index) card = test;
+                }
                 index++;
             }
 
-            if(!card) {
+            if(card == undefined) {
                 console.log("ERROR: faulty deck remove!");
                 return;
             }
+            const cardKey:string = card.Key;
 
             //remove instance of card
             this.CardsAll.removeItem(card);
@@ -199,8 +209,15 @@ export module PlayCardDeck
             PlayCard.Disable(card);
             
             //modify count reg
-            this.RegisteredCardCounts.getItem(def.toString()).Count--;
-            if(isDebugging) console.log(debugTag+"removed card from deck="+this.key+", ID="+def+"!");
+            const entry = this.RegisteredCardCountDict.getItem(defIndex.toString());
+            entry.Count -= 1;
+            if(entry.Count == 0) {
+                this.RegisteredCardCountList.removeItem(entry)
+                this.RegisteredCardCountDict.removeItem(entry.DefID.toString());
+            }
+
+            if(isDebugging) console.log(debugTag+"removed card from deck="+this.key+" (size="+this.CardsAll.size()+"), def="+
+                defIndex+" (count="+this.GetCardCount(defIndex)+"), cardIndex="+cardKey+"!");
         }
 
         /** resets all cards their normal playable state (all def-values & in deck, not in hand/discard) */
@@ -223,8 +240,7 @@ export module PlayCardDeck
         }
 
         /** shuffles all cards in the deck, randomizing order */
-        public ShuffleCards()
-        {
+        public ShuffleCards() {
             let card:PlayCard.PlayCardDataObject;
             let swap:number;
             let count = this.CardsPerState[DECK_CARD_STATES.DECK].size();
@@ -239,18 +255,23 @@ export module PlayCardDeck
 
         /** remove & release all cards in this deck */
         public Clean() {
-            //reset registered card counts
-            this.RegisteredCardCounts = new Dictionary<PlayCardDeckPiece>();
-            //remove all previous cards
-            var index:number = 0;
-            while(index < this.CardsAll.size()) {
-                const card = this.CardsAll.getItem(index);
+            if(isDebugging) console.log(debugTag+"cleaning deck="+this.Key+", cardCount="+this.CardsAll.size()+" cardReg="+this.RegisteredCardCountList.size()+"...");
+            //remove registered card counts
+            while(this.RegisteredCardCountList.size() > 0) {
+                const entry = this.RegisteredCardCountList.getItem(0);
+                this.RegisteredCardCountList.removeItem(entry);
+                this.RegisteredCardCountDict.removeItem(entry.DefID.toString());
+            }
+            //remove all cards
+            while(this.CardsAll.size() > 0) {
+                const card = this.CardsAll.getItem(0);
                 //remove instance of card
                 this.CardsAll.removeItem(card);
                 this.CardsPerState[DECK_CARD_STATES.DECK].removeItem(card);
                 //disable card
                 PlayCard.Disable(card);
             }
+            if(isDebugging) console.log(debugTag+"cleaned deck="+this.Key+", cardCount="+this.CardsAll.size()+" cardReg="+this.RegisteredCardCountList.size()+"!");
         }
 
         /** copies over all cards from one deck to another */
@@ -268,6 +289,38 @@ export module PlayCardDeck
             }
             if(isDebugging) console.log(debugTag+"cloning deckLocal="+this.key+" (count="+this.CardsAll.size()
                 +"), deckLocal="+deck.key+" (count="+deck.CardsAll.size()+")!");
+        }
+
+        /** returns a serialized string representing all cards in this deck */
+        public Serialize():string {
+            var serial:string = "";
+
+            //process every registered card
+            for(let i:number=0; i<this.RegisteredCardCountList.size(); i++) {
+                const entry = this.RegisteredCardCountList.getItem(i);
+                serial += entry.DefID+":"+entry.Count+"-";
+            }
+            serial = serial.slice(0,-1);
+
+            if(isDebugging) console.log(debugTag+"serialized deck, serial="+serial);
+            return serial;
+        }
+
+        /** initializes this deck based on the given serial string */
+        public Deserial(serial:string) {
+            if(isDebugging) console.log(debugTag+"deserializing deck="+this.Key+", serial="+serial);
+            //remove all previous cards
+            this.Clean();
+
+            //add all cards from serial
+            const split:string[] = serial.split('-');
+            for(let i:number=0; i<split.length; i++) {
+                const entrySplit = split[i].split(':');
+                for(let j:number=0; j<parseInt(entrySplit[1]); j++) {
+                    this.AddCard(parseInt(entrySplit[0]));
+                }
+            }
+            if(isDebugging) console.log(debugTag+"deserialized deck="+this.Key+", size="+this.CardsAll.size());
         }
     }
     

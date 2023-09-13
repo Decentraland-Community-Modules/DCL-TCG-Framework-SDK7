@@ -29,8 +29,13 @@ export module PlayCard
     }
 
     /** indexing key */
-    export function GetKeyFromObject(data:PlayCardDataObject):string { return data.Key; };
-    export function GetKeyFromData(data:PlayCardDataCreationData):string { return data.key; };
+    export function GetKeyFromData(data:PlayCardDataCreationData):string { 
+        var key:string = "";
+        if(data.deck != undefined) key += data.deck;
+        key += "-"+data.defIndex+"-";
+        if(data.index != undefined) key += data.index;
+        return key; 
+    };
 
     /** pool of ALL existing objects */
     var pooledObjectsAll:List<PlayCardDataObject> = new List<PlayCardDataObject>();
@@ -56,7 +61,11 @@ export module PlayCard
 	/** object interface used to define all data required to create a new object */
 	export interface PlayCardDataCreationData {
         //indexing 
-        key: string;
+        //  option 1 (used by deck manager)
+        key?:string; //defines the key for card using a pre-set string (overwrites option 2)
+        //  option 2 (used by card tables)
+        deck?:string;
+        index?:number;
         //target
         defIndex: number,
 	}
@@ -75,9 +84,17 @@ export module PlayCard
         /** current state of the card */
         public CardState:CARD_STATE_TYPE = 0;
 
-        /** represents the unique index of this slot's table, req for networking */
+        /** unique index of this slot's table, req for networking */
         private key:string = "";
         public get Key():string { return this.key; };
+
+        /** index of deck that currently owns this card */
+        private deck:string = "";
+        public get Deck():string { return this.deck; }
+        
+        /** sub index of card, derived from the number of cards of the same def that exist within the deck */
+        private index:number = 0;
+        public get Index():number { return this.index; }
 
         /** core definition for this card (this should be expanded to target play data) */
         private defIndex:number = -1;
@@ -103,12 +120,17 @@ export module PlayCard
         public Armour:number = 0;
 
         /** initializes the  */
-        public Initialize(data: PlayCardDataCreationData) {
+        public Initialize(data:PlayCardDataCreationData) {
             this.isActive = true;
-            //indexing
-            this.key = data.key;
             //load in stats
             this.SetCard(data.defIndex);
+            //indexing
+            if(data.key != undefined) this.key = data.key;
+            else {
+                if(data.deck != undefined) this.deck = data.deck;
+                if(data.index != undefined) this.index = data.index;
+                this.key = this.deck+"-"+this.defIndex+"-"+this.index;
+            }
         }
 
         /** resets the card with the current data def */
@@ -138,7 +160,11 @@ export module PlayCard
     
     /** provides a new card object (either pre-existing & un-used or entirely new) */
     export function Create(data:PlayCardDataCreationData):PlayCardDataObject {
-        const key:string = GetKeyFromData(data);
+        //get key (option 1 overwrites option 2)
+        var key:string = "";
+        if(data.key != undefined && data.key != "") key = data.key;
+        else key = GetKeyFromData(data);
+
         var object:undefined|PlayCardDataObject = undefined;
         if(isDebugging) console.log(debugTag+"attempting to create new object, key="+key+"...");
         
@@ -165,7 +191,7 @@ export module PlayCard
 
         //initialize object
         object.Initialize(data);
-
+        
         //add object to active collection (ensure only 1 entry)
         var posX = pooledObjectsActive.getItemPos(object);
         if(posX == -1) pooledObjectsActive.addItem(object);
@@ -190,7 +216,7 @@ export module PlayCard
 
     /** disables the given object, hiding it from the scene but retaining it in data & pooling */
     export function Disable(object:PlayCardDataObject) {
-        const key:string = GetKeyFromObject(object);
+        const key:string = object.Key;
         //adjust collections
         //  add to inactive listing (ensure add is required)
         var posX = pooledObjectsInactive.getItemPos(object);
@@ -214,7 +240,7 @@ export module PlayCard
 
     /** removes given object from game scene and engine */
     export function Destroy(object:PlayCardDataObject) {
-        const key:string = GetKeyFromObject(object);
+        const key:string = object.Key;
         //adjust collections
         //  remove from overhead listing
         pooledObjectsAll.removeItem(object);
