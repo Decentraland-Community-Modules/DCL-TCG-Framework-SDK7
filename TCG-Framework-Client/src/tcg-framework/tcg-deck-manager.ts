@@ -1,9 +1,9 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, Schemas, TextAlignMode, TextShape, Texture, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
 import { Color3, Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
@@ -21,8 +21,7 @@ import { PlayerLocal } from "./config/tcg-player-local";
     PrimaryAuthors: TheCryptoTrader69 (Alex Pazder)
     TeamContact: thecryptotrader69@gmail.com
 */
-export module DeckManager
-{
+export module DeckManager {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
@@ -32,6 +31,7 @@ export module DeckManager
     const MODEL_DECK_MANAGER:string = 'models/tcg-framework/deck-manager/tcg-deck-manager-prototype-1.glb';
     /** pedistal display model location */
     const MODEL_PEDISTAL:string = 'models/tcg-framework/deck-manager/tcg-deck-manager-prototype-1-pedistal.glb';
+
     /** animation keys */
     const ANIM_KEYS_DECK_MANAGER:string[] = [
         "state_inactive",
@@ -50,7 +50,7 @@ export module DeckManager
     enum FILTER_TYPE {
         FACTION="faction",
         TYPE="type",
-        COST="cost"
+        COST="cost",
     }
 
     /** core display object defaults */
@@ -111,7 +111,6 @@ export module DeckManager
         OnTriggerEntry,
         OnTriggerExit
     );
-
 
     /** pedistal display model */
     const entityDisplayPedistal:Entity = engine.addEntity();
@@ -193,6 +192,7 @@ export module DeckManager
     }
 
     //### DECK INTERACTION COMPONENTS
+    /**creates a parent to attatch components to the right display */
     const deckInfoParent:Entity = engine.addEntity();
     Transform.create(deckInfoParent,{
         parent:entityParent,
@@ -329,42 +329,60 @@ export module DeckManager
     //### DISPLAYED CARD PAGE DETAILS 
     /** currently selected card page */
     var curPage:number = 0;
+    /**number of cards on a page */
+    var cardsPerPage:number = DISPLAY_GRID_SIZE_X*DISPLAY_GRID_SIZE_Y;
+    /** number of pages that can be displayed */
+    function maxPage():number{
+        return Math.ceil(getCardLength()/cardsPerPage); 
+    }
+
+    /** number of cards after being filtered */
+    function getCardLength():number{
+        var index = 0;
+        var cardLength = 0;
+        var cardData;
+
+        while(index < CardData.length) {
+            //set card data
+            cardData = CardData[index];
+            //push to next card data
+            index++;
+
+            //check filters
+            //  faction
+            if(!filterFactionMask[cardData.faction]) continue;
+            //  type
+            else if(!filterTypeMask[cardData.type]) continue;
+            //  cost
+            else if(!filterCostMask[cardData.attributeCost]) continue;
+
+            cardLength++;
+        }
+        return cardLength;
+    }
     /** references to all cards being used to display the current card page */
     var entityGridCards:CardDisplayObject.CardDisplayObject[] = [];
-    /** display page current/count text */
-    /** display page next */
-    /** display page prev */
 
     /** displays next page of cards */
-    export function NextCardDisplayPage() { //interaction object with action="0"
-        //inc page
-        curPage++;
-        
+    export function NextCardDisplayPage() { 
         //check if current page is over page count (can do roll-over to zero or just cap)
-
-
-        //display page
-        UpdateCardDisplayPage();
+        if (curPage +1 >= maxPage()) return;
+        //display next page
+        curPage++;
+        RedrawCardView();
     }
 
     /** displays previous page of cards */
-    export function PrevCardDisplayPage() { //interaction object with action="1"
-        //inc page
-        curPage--;
-        
+    export function PrevCardDisplayPage() { 
         //check if current page is over page count (can do roll-over to zero or just cap)
-
-
-        //display page
-        UpdateCardDisplayPage();
-    }
-
-    /** displays the given page of cards */
-    export function UpdateCardDisplayPage() {
-
+        if (curPage -1 < 0) return;
+        //display prev page
+        curPage--;
+        RedrawCardView();
     }
 
     //### CARD FILTERING
+    /** filter objects - per cost */
     const filterParent:Entity = engine.addEntity();
     Transform.create(filterParent, {parent:entityParent});
     /** filter objects - per faction */
@@ -450,6 +468,123 @@ export module DeckManager
         RedrawCardView();
     }
 
+    //### PAGE SELECTOR
+    /**Page up */
+    const buttonPageInc = InteractionObject.Create({
+        ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
+        target:"0", 
+        displayText:">",
+        interactionText:"Page Up",
+        parent: filterParent, 
+        position: { x:0.2, y:1.25, z:-0.025 },
+        scale: { x:0.1, y:0.1, z:0.04, }
+    });
+    Material.setPbrMaterial(buttonPageInc.entityShape, {
+        albedoColor: Color4.Green(),
+    });
+    /** page down */
+    const buttonPageDec = InteractionObject.Create({
+        ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
+        target:"1", 
+        displayText:"<",
+        interactionText:"Page down",
+        parent: filterParent, 
+        position: { x:-0.2, y:1.25, z:-0.025 },
+        scale: { x:0.1, y:0.1, z:0.04, }
+    });
+    Material.setPbrMaterial(buttonPageDec.entityShape, {
+        albedoColor: Color4.Green(),
+    });
+    
+    /** page number background */
+    const pageNumberBackground:Entity = engine.addEntity();
+    Transform.create(pageNumberBackground,{
+        parent:filterParent,
+        position: { x:0, y:1.25, z:-0.025 },
+        scale: { x:0.25, y:0.1, z:0.04, }
+    });
+    MeshRenderer.setBox(pageNumberBackground);
+    
+    /** page text */
+    const pageText:Entity = engine.addEntity();
+    Transform.create(pageText,{
+        parent:pageNumberBackground,
+        position: { x:0, y:0.0, z:-0.52 },
+        scale: { x:0.4, y:0.8, z:0.1, },
+    });
+    TextShape.create(pageText, { text: "",//curPage+"/"+maxPage(), 
+        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+    });
+    
+    //### LEFT DIPLAY PORT 
+    /**creates a parent to attatch components to the left display */
+    const cardInfoParent:Entity = engine.addEntity();
+    Transform.create(cardInfoParent,{
+        parent:filterParent,
+        position: { x:-2.05, y:1.7, z:-0.325 },
+        rotation: Quaternion.fromEulerDegrees(0,-35,0)
+    });
+
+    /** card name background */
+    const cardNameBackground:Entity = engine.addEntity();
+    Transform.create(cardNameBackground,{
+        parent:cardInfoParent,
+        position: { x:0, y:0.5, z:-0.09 },
+        scale: { x:1, y:0.17, z:0.01, },
+    });
+    MeshRenderer.setBox(cardNameBackground);
+
+    /** card name header text */
+    const cardNameText:Entity = engine.addEntity();
+    Transform.create(cardNameText,{
+        parent:cardNameBackground,
+        position: { x:0, y:0.0, z:-0.52 },
+        scale: { x:0.055, y:0.4, z:0.1, },
+    });
+    TextShape.create(cardNameText, { text: "CARD_DEF_NAME", 
+        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+    });
+
+    /** card info background */
+    const cardInfoBackground:Entity = engine.addEntity();
+    Transform.create(cardInfoBackground,{
+        parent:cardInfoParent,
+        position: { x:-0.2, y:-0.00, z:-0.09 },
+        scale: { x:0.9, y:0.8, z:0.01, },
+    });
+    MeshRenderer.setBox(cardInfoBackground);
+    
+    /** card info text */
+    const cardInfoText:Entity = engine.addEntity();
+    Transform.create(cardInfoText,{
+        parent:cardInfoBackground,
+        position: { x:-0.45, y:0.43, z:-0.52 },
+        scale: { x:0.06, y:0.06, z:0.1, },
+    });
+    TextShape.create(cardInfoText, { text: "Rarity: \nFaction: \nType: \nCost: \nHealth: \nArmor: \nDamage:", 
+        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
+    });
+
+    //displays enlarged card decal
+        //create new card object
+        const card = CardDisplayObject.Create({
+            ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
+            slotID: "dm-preview",
+            def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
+            parent: cardInfoParent,
+            position: {
+                x:0.45, 
+                y:0.11, 
+                z:-0.1 
+            },
+            scale: { x:0.15, y:0.15, z:0.15, },
+        });
+
+    //displays detailed stats (health, defence, etc.)
+
+    //description of card
+
+
 
     /** displays a list of cards in the game, based on the current filters/page  */
     function GenerateCardObjects() {
@@ -484,6 +619,14 @@ export module DeckManager
         //process all display card objects
         var indexDisplay: number = 0;
         var indexData: number = 0;
+        var curProcessingPage: number = 0;
+        //ensures current page never exceeds max page
+        if(curPage >= maxPage()) curPage = maxPage() - 1;
+        //ensures page number does not display 0 when filtering from no cards being shown to cards being shown
+        if(curPage < 0 && maxPage() != 0 ) curPage = 0;
+        console.log(curPage);
+        //updates the page numbers
+        TextShape.getMutable(pageText).text = (curPage +1)+"/"+maxPage();
         while(indexDisplay < entityGridCards.length) {
             //attempt to get next card data
             var cardData:undefined|CardDataObject = undefined;
@@ -500,6 +643,12 @@ export module DeckManager
                 else if(!filterTypeMask[cardData.type]) cardData = undefined;
                 //  cost
                 else if(!filterCostMask[cardData.attributeCost]) cardData = undefined;
+
+                //displays cards based on current page 
+                if(curProcessingPage < curPage*cardsPerPage){
+                    curProcessingPage++;
+                    cardData = undefined;
+                }
 
                 //if card data was found, exit
                 if(cardData != undefined) break;
@@ -546,6 +695,7 @@ export module DeckManager
         if(isDebugging) console.log(debugTag+"player interacted with card, key="+slotID); 
 
         const dataDef = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
+        const cardStatData = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
         //create character display model
         const card = CardSubjectObject.Create({
             key: "tcg-dm",
@@ -562,6 +712,34 @@ export module DeckManager
         const transform = Transform.getOrCreateMutable(entityDisplayPedistalPoint);
         transform.position = DISPLAY_CHARACTER_OFFSET[dataDef.type];
         transform.scale = DISPLAY_CHARACTER_SCALE[dataDef.type];
+        //update selection view
+        TextShape.getMutable(cardNameText).text = dataDef.name;
+        
+        if(dataDef.type == 0){
+        TextShape.getMutable(cardInfoText).text = 
+            "Type:"+CARD_TYPE_STRINGS[dataDef.type]+
+            "\nCost:"+dataDef.attributeCost+
+            "\nDesc:"+dataDef.desc;
+        }
+        else if(dataDef.type == 1){
+        TextShape.getMutable(cardInfoText).text = 
+            "Type:"+CARD_TYPE_STRINGS[dataDef.type]+
+            "\nFaction:"+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
+            "\nCost:"+dataDef.attributeCost+
+            "\nHealth:"+dataDef.attributeCharacter?.unitHealth+
+            "\nArmor:"+dataDef.attributeCharacter?.unitArmour+
+            "\nDamage:"+dataDef.attributeCharacter?.unitAttack+
+            "\nDesc:"+dataDef.desc;
+        }
+        else if(dataDef.type == 2){
+        TextShape.getMutable(cardInfoText).text = 
+            "Type:"+CARD_TYPE_STRINGS[dataDef.type]+
+            "\nFaction:"+dataDef.faction.toString+
+            "\nCost:"+dataDef.attributeCost
+            "\nDesc:"+dataDef.desc;
+            
+
+        }
     }
 
     /** releases all card objects in the current display grid */
