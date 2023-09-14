@@ -492,17 +492,17 @@ export module CardDisplayObject
             //  pointer event system
             PointerEvents.createOrReplace(this.entityCoreFrameObject, {
                 pointerEvents: [
-                    { //primary key -> attempt select
+                    { //primary mouse -> attempt select
                         eventType: PointerEventType.PET_DOWN,
-                        eventInfo: { button: InputAction.IA_POINTER, hoverText: "select "+def.name }
+                        eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT "+def.name }
                     },
                     { //primary key -> attempt select
                         eventType: PointerEventType.PET_DOWN,
-                        eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "select "+def.name }
+                        eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "SELECT "+def.name }
                     },
                     { //secondary key -> attempt action
                         eventType: PointerEventType.PET_DOWN,
-                        eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "activate "+def.name }
+                        eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "ACTIVATE "+def.name }
                     },
                 ]
             });

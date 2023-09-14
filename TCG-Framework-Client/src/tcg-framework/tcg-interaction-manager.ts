@@ -78,24 +78,27 @@ export module InteractionManager {
                         switch(table.CurState) {
                             case TABLE_GAME_STATE.IDLE:
                                 switch(component.action) {
-                                    case TableTeam.LOBBY_BUTTONS.JOIN:
+                                    case TableTeam.LOBBY_BUTTONS.TEAM_JOIN:
                                         table.LocalAddPlayerToTeam(parseInt(split[1]), PlayerLocal.DisplayName());
                                     break;
-                                    case TableTeam.LOBBY_BUTTONS.LEAVE:
+                                    case TableTeam.LOBBY_BUTTONS.TEAM_LEAVE:
                                         table.LocalRemovePlayerFromTeam(parseInt(split[1]));
                                     break;
-                                    case TableTeam.LOBBY_BUTTONS.READY:
+                                    case TableTeam.LOBBY_BUTTONS.TEAM_READY:
                                         table.LocalSetPlayerReadyState(parseInt(split[1]), true);
                                     break;
-                                    case TableTeam.LOBBY_BUTTONS.UNREADY:
+                                    case TableTeam.LOBBY_BUTTONS.TEAM_UNREADY:
                                         table.LocalSetPlayerReadyState(parseInt(split[1]), false);
                                     break;
                                 }
                             break;
                             case TABLE_GAME_STATE.ACTIVE:
                                 switch(component.action) {
-                                    case TableTeam.LOBBY_BUTTONS.END_TURN:
+                                    case TableTeam.LOBBY_BUTTONS.GAME_END_TURN:
                                         table.LocalNextTurn();
+                                    break;
+                                    case TableTeam.LOBBY_BUTTONS.GAME_LEAVE:
+                                        table.LocalForfeitGame();
                                     break;
                                 }
                             break;
@@ -184,13 +187,23 @@ export module InteractionManager {
         const activatedEntites = engine.getEntitiesWith(TableCardSlot.TableCardSlotComponent);
         for (const [entity] of activatedEntites) {
             //interaction: primary key => un/select slot
-            if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)) {
+            if (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN, entity)
+            || inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN, entity)) {
                 //get card component
                 const component = TableCardSlot.TableCardSlotComponent.get(entity);
-                if(isDebugging) console.log(debugTag+"table card slot, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
+                if(isDebugging) console.log(debugTag+"table card slot selected, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
                 const table = Table.GetByKey(component.tableID.toString());
                 if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
                 table.InteractionSlot(component.teamID, component.slotID);
+            }
+            //interaction: secondary key -> attempt action
+            if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN, entity)) {
+                //get card component
+                const component = TableCardSlot.TableCardSlotComponent.get(entity);
+                if(isDebugging) console.log(debugTag+"table card slot activated, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
+                const table = Table.GetByKey(component.tableID.toString());
+                if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
+                table.LocalUnitAttack();
             }
         }
     }

@@ -95,7 +95,7 @@ export interface CardDataObject {
     attributeCost:number;
     attributeCharacter?:CardCharacterDataObject;
     //effects
-    keywords: CardEffectDataObject []; //all associated keywords/effects of card
+    keywords:CardEffectDataObject[]; //all associated keywords/effects of card
 }
 
 /** character attribute portions */

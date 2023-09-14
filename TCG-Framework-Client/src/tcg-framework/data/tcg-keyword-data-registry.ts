@@ -6,7 +6,7 @@
 */
 
 import Dictionary, { List } from "../../utilities/collections";
-import { CardKeywordData, CardKeywordDataObject } from "./tcg-keyword-data";
+import { CARD_KEYWORD_ID, CardKeywordData, CardKeywordDataObject } from "./tcg-keyword-data";
 
 
 /** defines a single accessory's live data in-scene */
@@ -81,9 +81,9 @@ export class CardKeywordRegistry {
     public GetDefByPos(index: number): CardKeywordDataObject { return this.GetEntryByPos(index).DataDef; }
 
     /** returns entry of given id */
-    public CallbackGetEntryByID(id: string): CardKeywordEntry { return CardKeywordRegistry.Instance.GetEntryByID(id); }
-    public GetEntryByID(id: string): CardKeywordEntry { return this.entryRegistryViaID.getItem(id); }
+    public CallbackGetEntryByID(id: CARD_KEYWORD_ID): CardKeywordEntry { return CardKeywordRegistry.Instance.GetEntryByID(id); }
+    public GetEntryByID(id: CARD_KEYWORD_ID): CardKeywordEntry { return this.entryRegistryViaID.getItem(id.toString()); }
     /** returns def of given id */
-    public CallbackGetDefByID(id: string): CardKeywordDataObject { return CardKeywordRegistry.Instance.GetDefByID(id); }
-    public GetDefByID(id: string): CardKeywordDataObject { return this.GetEntryByID(id).DataDef; }
+    public CallbackGetDefByID(id: CARD_KEYWORD_ID): CardKeywordDataObject { return CardKeywordRegistry.Instance.GetDefByID(id); }
+    public GetDefByID(id:CARD_KEYWORD_ID): CardKeywordDataObject { return this.GetEntryByID(id).DataDef; }
 }

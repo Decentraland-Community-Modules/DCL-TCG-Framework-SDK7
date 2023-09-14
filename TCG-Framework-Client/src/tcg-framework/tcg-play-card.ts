@@ -1,5 +1,7 @@
 import Dictionary, { List } from "../utilities/collections";
-import { CARD_TYPE, CardData, CardDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
+import { CARD_KEYWORD_EFFECT_TYPE, CARD_KEYWORD_ID, CardKeywordDataObject } from "./data/tcg-keyword-data";
+import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 
 /*      TRADING CARD GAME - PLAY CARD
     data representing a card that is currently in play & managed by a
@@ -70,9 +72,20 @@ export module PlayCard
         defIndex: number,
 	}
 
-    /** represents all key words */
-    export class Keyword {
+    /** represents a keyword that is active on the card */
+    export class ActiveKeywordEffect {
+        /** id of active effect */
+        public ID:CARD_KEYWORD_ID;
+        /** how powerful effect is */
+        public Strength:number;
+        /** how long effect will be active */
+        public Duration:number;
 
+        constructor(id:CARD_KEYWORD_ID, strength:number, duration:number) {
+            this.ID = id;
+            this.Strength = strength;
+            this.Duration = duration;    
+        }
     }
 
     /** contains all pieces that make up a card's playing data */
@@ -101,17 +114,16 @@ export module PlayCard
         public get DefIndex():number { return this.defIndex; };
         public get DefData():CardDataObject { return CardData[this.defIndex]; }
 
-        //DETAILS
+        //## DETAILS
         /**  rarity of the card */
         rarity:number = 0;
         
-        //STATS - GENERAL
+        //## GENERAL STATS
         /** cost */
         public Cost:number = 0;
-        /** keywords/effects */
-        public Keywords:number[] = [];
 
-        //STATS - CHARACTERS
+        //## CHARACTER STATS
+        public ActionRemaining:boolean = false;
         /** health */
         public Health:number = 0;
         /** attack */
@@ -119,7 +131,27 @@ export module PlayCard
         /** armour */
         public Armour:number = 0;
 
-        /** initializes the  */
+        //## KEYWORDS/EFFECTS
+        /** all effects that are active on this card */
+        public ActiveEffects:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
+        /** keywords that apply effects against cards interacted with by this card (ex: true damage/rend) */
+        public EffectsOffensive:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
+        /** keywords that modify incoming effects from other cards (ex: block/ward) */
+        public EffectsDefensive:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
+        /** effects to be processed at the start of a turn (ex: healing, growth, etc. ) */
+        public EffectsTurnStart:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
+        /** effects to be processed at the end of a turn (ex: poison, burn, etc.) */
+        public EffectsTurnEnd:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
+
+        /** returns true if this card has the given effect */
+        public HasEffectActive(id:CARD_KEYWORD_ID):boolean {
+            for(let i:number=0; i<this.ActiveEffects.size(); i++) {
+                if(this.ActiveEffects.getItem(i).ID == id) return true; 
+            }
+            return false;
+        }
+
+        /** initializes card play data with  */
         public Initialize(data:PlayCardDataCreationData) {
             this.isActive = true;
             //load in stats
@@ -131,6 +163,115 @@ export module PlayCard
                 if(data.index != undefined) this.index = data.index;
                 this.key = this.deck+"-"+this.defIndex+"-"+this.index;
             }
+        }
+
+        /** processes an interaction from a foriegn card */
+        //TODO: there are a lot of targeting assumptions being made atm (ex: if an enemy unit is interacting with a card we assume
+        //  the target card is a unit as well), we may want to flesh this out a bit with more restrictions/catches
+        public ProcessInteractionFromCard(card:PlayCard.PlayCardDataObject) {
+            if(isDebugging) console.log(debugTag+"processing card play between target="+this.Key+" source="+card.Key+"...");
+            
+            //if external card is a unit
+            if(card.DefData.type == CARD_TYPE.CHARACTER) {
+                //local card takes damage to health
+                const damage = card.Attack - this.Armour;
+                if(damage > 0) {
+                    this.Health -= damage;
+                    //play flinch animation
+                    //play impact sound
+                } else {
+                    //play armour deflect animation
+                    //play deflect sound
+                }
+            }
+
+            //process all offensive effects from other card
+            for(let i:number=0; i<card.EffectsOffensive.size(); i++) {
+                this.ApplyEffect(card.EffectsOffensive.getItem(i));
+            }
+
+            if(isDebugging) console.log(debugTag+"processed card play between target="+this.Key+" source="+card.Key+"...");
+        }
+
+        /** processes an action against this card from an external effect */
+        public ApplyEffect(effect:ActiveKeywordEffect) {
+            //get keyword def
+            const keyword = CardKeywordRegistry.Instance.GetDefByID(effect.ID);
+            if(isDebugging) console.log(debugTag+"applying effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
+            
+            //deternime how keyword should be processed based on effect type (what keyword is being applied)
+            switch(effect.ID) {
+                //deals damage to character's health
+                case CARD_KEYWORD_ID.STRIKE:
+
+                break;
+                case CARD_KEYWORD_ID.BLEED:
+                    break;
+                case CARD_KEYWORD_ID.BURN:
+                    break;
+                case CARD_KEYWORD_ID.REND:
+                    break;
+                case CARD_KEYWORD_ID.MELT:
+                    break;
+                case CARD_KEYWORD_ID.HEAL:
+                    break;
+                case CARD_KEYWORD_ID.MEND:
+                    break;
+                case CARD_KEYWORD_ID.EXPAND:
+                    break;
+                case CARD_KEYWORD_ID.GROWTH:
+                    break;
+                case CARD_KEYWORD_ID.FORTIFY:
+                    break;
+                case CARD_KEYWORD_ID.SHARPEN:
+                    break;
+                case CARD_KEYWORD_ID.EMPOWERED:
+                    break;
+                case CARD_KEYWORD_ID.GUARD:
+                    break;
+                case CARD_KEYWORD_ID.SHEILDED:
+                    break;
+                case CARD_KEYWORD_ID.STEALTH:
+                    break;
+                case CARD_KEYWORD_ID.DISABLE:
+                    break;
+                case CARD_KEYWORD_ID.REFRESH:
+                    break;
+                case CARD_KEYWORD_ID.DRAIN:
+                    break;
+                case CARD_KEYWORD_ID.ANNIHILATION:
+                    break;
+                case CARD_KEYWORD_ID.EXHAUST:
+                    break;
+            }
+
+            if(isDebugging) console.log(debugTag+"applyed effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
+        }
+
+        /** processes all effects that are applicable at the start of the owning player's turn */
+        public ProcessTurnStartEffects() {
+            //check for stun
+
+            //re-enable card's action
+            this.ActionRemaining = true;
+
+        }
+
+        /** processes all effects that are applicable at the end of the owning player's turn */
+        public ProcessTurnEndEffects() {
+
+
+        }
+
+        /** processes an effect provided by a keyword */
+        public ProcessEffect(keyword:CardKeywordDataObject, strength:number) {
+            
+            //
+
+
+            //process effects/keywords from foriegn card
+
+
         }
 
         /** resets the card with the current data def */
@@ -145,9 +286,9 @@ export module PlayCard
             this.defIndex = index
             this.Cost = def.attributeCost;
             //keywords/effects
-            this.Keywords = [];
-            for(let i:number=0;i<def.keywords.length;i++) {
-
+            while(this.ActiveEffects.size() > 0) {
+                const effect = this.ActiveEffects.getItem(0)
+                this.ActiveEffects.removeItem(effect);
             }
             //character stats
             if(def.attributeCharacter) {

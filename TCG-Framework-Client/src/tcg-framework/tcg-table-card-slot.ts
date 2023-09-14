@@ -93,8 +93,7 @@ export module TableCardSlot {
     /** represents a single card slot within a card field team */
     export class TableCardSlotObject {
         /** when true this object is reserved in-scene */
-        private isActive: boolean = true;
-        public get IsActive():boolean { return this.isActive; };
+        public IsActive: boolean = true;
 
         /** unique index of this slot's table */
         private tableID:number = -1;
@@ -112,8 +111,8 @@ export module TableCardSlot {
         public get Key():string { return this.TableID+"-"+this.TeamID+"-"+this.SlotID; };
 
         /** id of the currently slotted card playdata */
-        private slottedCard:undefined|string = undefined;
-        public get SlottedCard():undefined|string { return this.slottedCard; }
+        private slottedCard:undefined|PlayCard.PlayCardDataObject = undefined;
+        public get SlottedCard():undefined|PlayCard.PlayCardDataObject { return this.slottedCard; }
 
         /** parental position */
         private entityParent:Entity;
@@ -232,7 +231,7 @@ export module TableCardSlot {
 
         /** prepares the card slot for use by a table team */
         public Initialize(data:TableCardSlotCreationData) {
-            this.isActive = true;
+            this.IsActive = true;
             //indexing
             this.tableID = data.tableID;
             this.teamID = data.teamID;
@@ -252,10 +251,18 @@ export module TableCardSlot {
             //pointer event system
             PointerEvents.createOrReplace(this.entityInteraction, {
                 pointerEvents: [
-                  { //primary key -> select card slot
+                    { //primary mouse -> select card slot
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Select Card Slot "+this.Key }
-                  },
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT "+this.Key }
+                    },
+                    { //primary key -> attempt select
+                      eventType: PointerEventType.PET_DOWN,
+                      eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "SELECT "+this.Key }
+                    },
+                    { //secondary key -> attempt action
+                      eventType: PointerEventType.PET_DOWN,
+                      eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "ACTIVATE "+this.Key }
+                    },
                 ]
             });
 
@@ -273,7 +280,7 @@ export module TableCardSlot {
 
         /** applies a card to this card slot (displaying character or effect) */
         public ApplyCard(data:PlayCard.PlayCardDataObject) {
-            this.slottedCard = data.Key;
+            this.slottedCard = data;
             //enable card parent
             const transformParent = Transform.getMutable(this.entityParent);
             transformParent.scale = PARENT_SCALE_ON;
@@ -289,19 +296,23 @@ export module TableCardSlot {
             });
             //show character stats
             Transform.getMutable(this.statsParent).scale = STATS_SCALE;
-            this.UpdateStatDisplay(data);
+            this.UpdateStatDisplay();
         }
 
-        public UpdateStatDisplay(data:PlayCard.PlayCardDataObject) {
-            TextShape.getMutable(this.statsName).text = data.DefData.name;
-            TextShape.getMutable(this.statsAction).text = "ACTIVE: "+"TRUE";
-            TextShape.getMutable(this.statsHealth).text = "HP: "+data.Health.toString();
-            TextShape.getMutable(this.statsAttack).text = "ATK: "+data.Attack.toString();
-            TextShape.getMutable(this.statsArmour).text = "DEF: "+data.Armour.toString();
+        /** redraws stats */
+        public UpdateStatDisplay() {
+            if(this.slottedCard == undefined) return;
+
+            TextShape.getMutable(this.statsName).text = this.slottedCard.DefData.name;
+            TextShape.getMutable(this.statsAction).text = "ACTIVE: "+this.slottedCard.ActionRemaining;
+            TextShape.getMutable(this.statsHealth).text = "HP: "+this.slottedCard.Health.toString();
+            TextShape.getMutable(this.statsAttack).text = "ATK: "+this.slottedCard.Attack.toString();
+            TextShape.getMutable(this.statsArmour).text = "DEF: "+this.slottedCard.Armour.toString();
         }
 
         /** clears an existing card from this card slot */
         public ClearCard() {
+            this.slottedCard = undefined;
             //hide card character
             const transformCharacter = Transform.getMutable(this.entityCharacter);
             transformCharacter.position = DISAPLAY_OFFSET_OFF;
@@ -312,7 +323,7 @@ export module TableCardSlot {
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
-            this.isActive = false;
+            this.IsActive = false;
             this.ClearCard();
             //hide card parent
             const transformParent = Transform.getMutable(this.entityParent);

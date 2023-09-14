@@ -1,6 +1,6 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { ColliderLayer, Entity, GltfContainer, InputAction, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableCardSlot } from "./tcg-table-card-slot";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
@@ -26,11 +26,12 @@ export module TableTeam {
 
     /** all lobby buttons */
     export enum LOBBY_BUTTONS {
-        JOIN,
-        LEAVE,
-        READY,
-        UNREADY,
-        END_TURN,
+        TEAM_JOIN,
+        TEAM_LEAVE,
+        TEAM_READY,
+        TEAM_UNREADY,
+        GAME_END_TURN,
+        GAME_LEAVE,
     }
 
     /** model location for this team's boarder*/
@@ -50,7 +51,6 @@ export module TableTeam {
     const CARD_HOLDER_ROTATION:Vector3 = { x:50, y:180, z:0 };
     const CARD_SCALE:Vector3 = { x:0.125, y:0.125, z:0.125 };
 
-    
     /** transform - buttons */
     const BUTTON_SCALE_NORMAL:Vector3 = { x:0.5, y:0.5, z:0.5 };
     const BUTTON_SCALE_SMALL:Vector3 = { x:0.25, y:0.25, z:0.25 };
@@ -299,6 +299,8 @@ export module TableTeam {
         public entityUnreadyGame:Entity;
         /** interaction object to end turn */
         public entityEndTurn:Entity;
+        /** interaction object to leaving the game/forfeiting */
+        public entityForfeit:Entity;
 
         /** card display parent (where player cards are stored) */
         private handCardParent:Entity;
@@ -336,6 +338,9 @@ export module TableTeam {
             if(this.cardSlotObjects[index].SlottedCard != undefined) return true;
             else return false;
         }
+        public IsCardSlotAction(index:number):boolean {
+            return this.cardSlotObjects[index].IsActive;
+        }
 
         /** prepares field team for use */
         constructor() {
@@ -345,6 +350,16 @@ export module TableTeam {
                 position: PARENT_OFFSET_ON,
                 scale: PARENT_SCALE_ON,
             });
+            //quick fix: collision buffer to stop player from getting trapped by the hand display object
+            //TODO: cage player only when game is on-going
+            const handBuffer = engine.addEntity();
+            Transform.create(handBuffer, {
+                parent: this.entityParent,
+                position: CARD_HOLDER_OFFSET,
+                scale: {x:2,y:0.75,z:1},
+            });
+            //MeshRenderer.setBox(handBuffer);
+            MeshCollider.setBox(handBuffer,ColliderLayer.CL_PHYSICS);
 
             //create border object
             this.entityBorder = engine.addEntity();
@@ -451,7 +466,7 @@ export module TableTeam {
             this.entityEndTurn = engine.addEntity();
             Transform.create(this.entityEndTurn, {
                 parent: this.entityParent,
-                position: {x:0,y:3.25,z:0},
+                position: {x:0,y:4.25,z:0},
                 scale: BUTTON_SCALE_NORMAL,
             });
             GltfContainer.create(this.entityEndTurn, {
@@ -464,6 +479,26 @@ export module TableTeam {
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
                     eventInfo: { button: InputAction.IA_POINTER, hoverText: "END TURN" }
+                  },
+                ]
+            });
+            //  forfeit game (exits game as loss)
+            this.entityForfeit = engine.addEntity();
+            Transform.create(this.entityForfeit, {
+                parent: this.entityParent,
+                position: {x:0,y:5.25,z:0},
+                scale: BUTTON_SCALE_NORMAL,
+            });
+            GltfContainer.create(this.entityForfeit, {
+                src: 'models/tcg-framework/card-table/text-leave.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
+            PointerEvents.createOrReplace(this.entityForfeit, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "FORFEIT GAME" }
                   },
                 ]
             });
@@ -519,27 +554,32 @@ export module TableTeam {
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityJoinTeam, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
-                action: LOBBY_BUTTONS.JOIN,
+                action: LOBBY_BUTTONS.TEAM_JOIN,
             });
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityLeaveTeam, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
-                action: LOBBY_BUTTONS.LEAVE,
+                action: LOBBY_BUTTONS.TEAM_LEAVE,
             });
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityReadyGame, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
-                action: LOBBY_BUTTONS.READY,
+                action: LOBBY_BUTTONS.TEAM_READY,
             });
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityUnreadyGame, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
-                action: LOBBY_BUTTONS.UNREADY,
+                action: LOBBY_BUTTONS.TEAM_UNREADY,
             });
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityEndTurn, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
-                action: LOBBY_BUTTONS.END_TURN,
+                action: LOBBY_BUTTONS.GAME_END_TURN,
+            });
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityForfeit, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
+                target: this.Key,
+                action: LOBBY_BUTTONS.GAME_LEAVE,
             });
 
             //clear previous terrain card
@@ -623,6 +663,7 @@ export module TableTeam {
                                 Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             }
                             Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_OFF; 
                         break;
                         //game is on-going
                         case TABLE_GAME_STATE.ACTIVE:
@@ -634,10 +675,12 @@ export module TableTeam {
                             //if local player's turn
                             if(PlayerLocal.DisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
                                 Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_SMALL; 
+                                Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_SMALL; 
                             } 
                             else {
                                 Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
-                            } 
+                                Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_OFF; 
+                            }
                         break;
                         //game has finished
                         case TABLE_GAME_STATE.OVER:
@@ -647,6 +690,7 @@ export module TableTeam {
                             Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                            Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_OFF; 
                         break;
                     }
                 break;
@@ -658,7 +702,44 @@ export module TableTeam {
                     Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                     Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_OFF;
+                    Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_OFF; 
                 break;
+            }
+        }
+
+        /**  */
+        public TurnStart() {
+            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn started");
+
+            //add energy to team's pool
+            this.EnergyCur += this.EnergyGain;
+            //add cards to team's hand
+            this.DrawCard();
+            //new team's start turn effects
+            for(let i:number=0; i<this.cardSlotObjects.length; i++) {
+                //if there is a card tied to the slot
+                const slot = this.cardSlotObjects[i];
+                if(slot.SlottedCard != undefined) {
+                    //process card's start turn effects
+                    slot.SlottedCard.ProcessTurnStartEffects();
+                    slot.UpdateStatDisplay();
+                }
+            }
+        }
+
+        /** */
+        public TurnEnd() { 
+            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn ended");
+
+            //process previous team's end turn effects
+            for(let i:number=0; i<this.cardSlotObjects.length; i++) {
+                //if there is a card tied to the slot
+                const slot = this.cardSlotObjects[i];
+                if(slot.SlottedCard != undefined) {
+                    //process card's end turn effects
+                    slot.SlottedCard.ProcessTurnEndEffects();
+                    slot.UpdateStatDisplay();
+                }
             }
         }
 
@@ -796,7 +877,7 @@ export module TableTeam {
             if(isDebugging) console.log(debugTag+"clearing display object based on card="+card.Key);
             //apply charcter display object to slot
             for(let i:number = 0; i<this.cardSlotObjects.length; i++) {
-                if(this.cardSlotObjects[i].SlottedCard == card.Key) {
+                if(this.cardSlotObjects[i].SlottedCard == card) {
                     this.cardSlotObjects[i].ClearCard();
                     return;
                 }
@@ -810,13 +891,25 @@ export module TableTeam {
             this.cardSlotObjects[index].ClearCard();
         }
 
+        /** releases all cards controlled by this team */
+        public ReleaseCards() {
+            //disable all card object
+            while(this.handCards.size() > 0) {
+                const cardObject = this.handCards.getItem(0);
+                this.handCards.removeItem(cardObject);
+                CardDisplayObject.Disable(cardObject);
+            }
+        }
+
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
             this.isActive = false;
-            //disable all attached table teams
+            //disable all card object
+            this.ReleaseCards();
+            //disable all slot object
             while(this.cardSlotObjects.length > 0) {
-                const teamObject = this.cardSlotObjects.pop();
-                if(teamObject) teamObject.Disable();
+                const slotObject = this.cardSlotObjects.pop();
+                if(slotObject) TableCardSlot.Disable(slotObject);
             }
 
             //hide card parent
@@ -827,10 +920,12 @@ export module TableTeam {
 
         /** removes objects from game scene and engine */
         public Destroy() {
-            //destroy all attached table teams
+            //disable all card object
+            this.ReleaseCards();
+            //disable all slot object
             while(this.cardSlotObjects.length > 0) {
-                const teamObject = this.cardSlotObjects.pop();
-                if(teamObject) teamObject.Destroy();
+                const slotObject = this.cardSlotObjects.pop();
+                if(slotObject) TableCardSlot.Disable(slotObject);
             }
 
             //destroy game object
