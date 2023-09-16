@@ -842,7 +842,11 @@ export module Table {
             //process by card type
             switch(card.DefData.type) {
                 case CARD_TYPE.SPELL:
-
+                    //move card from hand to field
+                    team.MoveCardBetweenCollections(card, 
+                        PlayCardDeck.DECK_CARD_STATES.HAND,
+                        PlayCardDeck.DECK_CARD_STATES.FIELD
+                    );
                 break;
                 case CARD_TYPE.CHARACTER:
                     //move card from hand to field
@@ -958,7 +962,9 @@ export module Table {
             if(isDebugging) console.log(debugTag+"deselected slot{target0="+this.selectionTargets[0]+", target1="+this.selectionTargets[1]+"}!");
         }
 
-        //## FIELD SLOTS UNIT ATTACKS
+        //## 
+
+        //## UNIT ATTACKS
         /**  */
         public LocalUnitAttack() {
             //ensure targets are slots

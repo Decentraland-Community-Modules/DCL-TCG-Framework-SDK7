@@ -240,7 +240,7 @@ export module DeckManager {
             position: { x:0, y:0.29-(i*0.125), z:-0.1 },
             scale: { x:0.8, y:0.10, z:0.05 }
         }));
-        Material.setPbrMaterial(deckButtonSelectors[i].entityShape, { albedoColor: Color4.White(), });
+        Material.setPbrMaterial(deckButtonSelectors[i].entityInteraction, { albedoColor: Color4.White(), });
         TextShape.getMutable(deckButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i]?.CardsAll.size()+")";
     }
     /** save deck button */
@@ -268,23 +268,19 @@ export module DeckManager {
 
     //### DECK DETAILS
     /** local deck data capsule (overwritten/saved to player's actual decks) */
-    var deckLocalContainer = PlayCardDeck.Create({
-        key: 'deck-manager',
-        type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL
-    });
-    
+    var deckLocalContainer = PlayCardDeck.Create({ key: 'deck-manager', type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL });
     /** reference to currently targeted deck */
     var deckTargetContainer:PlayCardDeck.PlayCardDeckObject = PlayerLocal.PlayerDecks[0];
-
+    
     /** selects a new deck, loading it in for modification */
     export function DeckInteractionSelect(index:number) {
         if(isDebugging) console.log(debugTag+"selecting deck, key="+index); 
 
-        Material.setPbrMaterial(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.White(), });
+        Material.setPbrMaterial(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityInteraction, { albedoColor: Color4.White(), });
         //set reference
         PlayerLocal.SetPlayerDeck(index);
         deckTargetContainer = PlayerLocal.PlayerDecks[index];
-        Material.setPbrMaterial(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityShape, { albedoColor: Color4.Green(), });
+        Material.setPbrMaterial(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityInteraction, { albedoColor: Color4.Green(), });
     }
 
     /** called when player interacts with counter buttons */
@@ -318,19 +314,14 @@ export module DeckManager {
         UpdateCardCount();
     }
 
-    //### SELECTED CARD DETAILS
-    /** which card slot is currently selected/displayed (-1 for no slot selected) */
-    var cardSelection:number = 0;
-    /** rarity of selected card */
-    var cardRarity:number = 0;
-    /** def key of selected card */
-    var cardDef:string = "";
-
     //### DISPLAYED CARD PAGE DETAILS 
     /** currently selected card page */
     var curPage:number = 0;
     /**number of cards on a page */
     var cardsPerPage:number = DISPLAY_GRID_SIZE_X*DISPLAY_GRID_SIZE_Y;
+    /** references to all cards being used to display the current card page */
+    var entityGridCards:CardDisplayObject.CardDisplayObject[] = [];
+
     /** number of pages that can be displayed */
     function maxPage():number{
         return Math.ceil(getCardLength()/cardsPerPage); 
@@ -360,8 +351,6 @@ export module DeckManager {
         }
         return cardLength;
     }
-    /** references to all cards being used to display the current card page */
-    var entityGridCards:CardDisplayObject.CardDisplayObject[] = [];
 
     /** displays next page of cards */
     export function NextCardDisplayPage() { 
@@ -386,28 +375,7 @@ export module DeckManager {
     const filterParent:Entity = engine.addEntity();
     Transform.create(filterParent, {parent:entityParent});
 
-    /** filter objects - per faction background*/
-    var filterFactionSymMask:boolean[] = [];
-    var filterFactionSymObj:InteractionObject.InteractionObject[] = [];
-    for(let i:number=0; i<CardFactionData.length; i++) {
-        filterFactionSymMask.push(true);
-        filterFactionSymObj.push(InteractionObject.Create({
-            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
-            target:FILTER_TYPE.FACTION, 
-            action:i,
-            interactionText:"toggle "+CardFactionData[i].name,
-            parent: filterParent, 
-            model: "models/tcg-framework/menu-buttons/faction-symbol"+[i]+".glb",
-            position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
-            scale: { x:0.08, y:0.08, z:0.04, }
-        }));
-        Material.setPbrMaterial(filterFactionSymObj[i].entityShape, {
-            albedoColor: Color4.Green(),
-        });
-    }
-    MeshRenderer
-
-    /** filter objects - per faction symbols*/
+    /** filter objects - per faction (fire, water, etc.) */
     var filterFactionMask:boolean[] = [];
     var filterFactionObj:InteractionObject.InteractionObject[] = [];
     for(let i:number=0; i<CardFactionData.length; i++) {
@@ -417,36 +385,17 @@ export module DeckManager {
             target:FILTER_TYPE.FACTION, 
             action:i,
             interactionText:"toggle "+CardFactionData[i].name,
+            modelInteraction: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
+            animCount:3,
+            modelSecondary:"models/tcg-framework/menu-buttons/symbol-faction-"+CardFactionData[i].name+".glb",
             parent: filterParent, 
-            model: "models/tcg-framework/menu-buttons/button-background0.glb",
             position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
             scale: { x:0.07, y:0.07, z:0.04, }
         }));
-        Material.setPbrMaterial(filterFactionObj[i].entityShape, {
-            albedoColor: Color4.Green(),
-        });
+        //set green background
+        filterFactionObj[i].SetAnimation(1);
     }
-    /** filter objects - per type Symbol*/
-    var filterTypeSymMask:boolean[] = [];
-    var filterTypeSymObj:InteractionObject.InteractionObject[] = [];
-    for(let i:number=0; i<CARD_TYPE_STRINGS.length; i++) {
-        filterTypeSymMask.push(true);
-        filterTypeSymObj.push(InteractionObject.Create({
-            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
-            target:FILTER_TYPE.TYPE, 
-            action:i,
-            //displayText:i.toString(),
-            interactionText:"toggle "+CARD_TYPE_STRINGS[i],
-            parent: filterParent, 
-            model: "models/tcg-framework/menu-buttons/button-type"+[i]+".glb",
-            position: { x:-0.95, y:2-(i*0.2), z:-0.025 },
-            scale: { x:0.07, y:0.07, z:0.04, }
-        }));
-        Material.setPbrMaterial(filterTypeSymObj[i].entityShape, {
-            albedoColor: Color4.Green(),
-        });
-    }
-    /** filter objects - per type Background*/
+    /** filter objects - per type (spell, character, terrain)*/
     var filterTypeMask:boolean[] = [];
     var filterTypeObj:InteractionObject.InteractionObject[] = [];
     for(let i:number=0; i<CARD_TYPE_STRINGS.length; i++) {
@@ -455,16 +404,16 @@ export module DeckManager {
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
             target:FILTER_TYPE.TYPE, 
             action:i,
-            //displayText:i.toString(),
             interactionText:"toggle "+CARD_TYPE_STRINGS[i],
+            modelInteraction: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
+            animCount:3,
+            modelSecondary:"models/tcg-framework/menu-buttons/symbol-type-"+CARD_TYPE_STRINGS[i]+".glb",
             parent: filterParent, 
-            model: "models/tcg-framework/menu-buttons/button-background0.glb",
             position: { x:-0.95, y:2-(i*0.2), z:-0.025 },
             scale: { x:0.07, y:0.07, z:0.04, }
         }));
-        Material.setPbrMaterial(filterTypeObj[i].entityShape, {
-            albedoColor: Color4.Green(),
-        });
+        //set green background
+        filterTypeObj[i].SetAnimation(1);
     }
     /** filter objects - per cost */
     var filterCostMask:boolean[] = [];
@@ -477,14 +426,14 @@ export module DeckManager {
             action:i,
             displayText:i.toString(),
             interactionText:"toggle cost "+i,
+            modelInteraction: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
+            animCount:3,
             parent: filterParent, 
-            model: "models/tcg-framework/menu-buttons/button-background0.glb",
             position: { x:-0.675+(i*0.15), y:2.35, z:-0.025 },
             scale: { x:0.07, y:0.07, z:0.04, }
         }));
-        Material.setPbrMaterial(filterCostObj[i].entityShape, {
-            albedoColor: Color4.Green(),
-        });
+        //set green background
+        filterCostObj[i].SetAnimation(1);
     }
 
     /** toggles filter of given type */
@@ -492,20 +441,20 @@ export module DeckManager {
         if(isDebugging) console.log(debugTag+"toggling filter tag type="+type+", index="+index);
         switch(type) {
             case 
-                FILTER_TYPE.FACTION: filterFactionMask[index] = !filterFactionMask[index]; 
-                if(filterFactionMask[index]) Material.setPbrMaterial(filterFactionObj[index].entityShape, { albedoColor: Color4.Green(), });
-                else Material.setPbrMaterial(filterFactionObj[index].entityShape, { albedoColor: Color4.Red(), });
+                FILTER_TYPE.FACTION: filterFactionMask[index] = !filterFactionMask[index];
+                if(filterFactionMask[index]) filterFactionObj[index].SetAnimation(1);
+                else filterFactionObj[index].SetAnimation(2);
             break;
             case 
-                FILTER_TYPE.TYPE: filterTypeMask[index] = !filterTypeMask[index]; 
-                if(filterTypeMask[index]) Material.setPbrMaterial(filterTypeObj[index].entityShape, { albedoColor: Color4.Green(), });
-                else Material.setPbrMaterial(filterTypeObj[index].entityShape, { albedoColor: Color4.Red(), });
+                FILTER_TYPE.TYPE: filterTypeMask[index] = !filterTypeMask[index];
+                if(filterTypeMask[index]) filterTypeObj[index].SetAnimation(1);
+                else filterTypeObj[index].SetAnimation(2);
 
             break;
             case 
-                FILTER_TYPE.COST: filterCostMask[index] = !filterCostMask[index]; 
-                if(filterCostMask[index]) Material.setPbrMaterial(filterCostObj[index].entityShape, { albedoColor: Color4.Green(), });
-                else Material.setPbrMaterial(filterCostObj[index].entityShape, { albedoColor: Color4.Red(), });
+                FILTER_TYPE.COST: filterCostMask[index] = !filterCostMask[index];
+                if(filterCostMask[index]) filterCostObj[index].SetAnimation(1);
+                else filterCostObj[index].SetAnimation(2);
 
             break;
         }
@@ -523,7 +472,7 @@ export module DeckManager {
         position: { x:0.2, y:1.25, z:-0.025 },
         scale: { x:0.1, y:0.1, z:0.04, }
     });
-    Material.setPbrMaterial(buttonPageInc.entityShape, {
+    Material.setPbrMaterial(buttonPageInc.entityInteraction, {
         albedoColor: Color4.Green(),
     });
     /** page down */
@@ -536,7 +485,7 @@ export module DeckManager {
         position: { x:-0.2, y:1.25, z:-0.025 },
         scale: { x:0.1, y:0.1, z:0.04, }
     });
-    Material.setPbrMaterial(buttonPageDec.entityShape, {
+    Material.setPbrMaterial(buttonPageDec.entityInteraction, {
         albedoColor: Color4.Green(),
     });
     
@@ -630,19 +579,15 @@ export module DeckManager {
     });
     
     //displays enlarged card decal
-        //create new card object
-        const card = CardDisplayObject.Create({
-            ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
-            slotID: "dm-preview",
-            def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
-            parent: cardInfoParent,
-            position: {
-                x:0.45, 
-                y:0.11, 
-                z:-0.1 
-            },
-            scale: { x:0.15, y:0.15, z:0.15, },
-        });
+    //create new card object
+    const card = CardDisplayObject.Create({
+        ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
+        slotID: "dm-preview",
+        def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
+        parent: cardInfoParent,
+        position: { x:0.45, y:0.11, z:-0.1 },
+        scale: { x:0.15, y:0.15, z:0.15, },
+    });
 
     //displays detailed stats (health, defence, etc.)
 

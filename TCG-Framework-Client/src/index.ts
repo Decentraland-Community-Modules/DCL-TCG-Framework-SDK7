@@ -1,15 +1,28 @@
+import { Entity, GltfContainer, Transform, engine } from "@dcl/sdk/ecs";
 import { TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
 import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { CardDataRegistry } from "./tcg-framework/data/tcg-card-registry";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
+import { InteractionObject } from "./tcg-framework/tcg-interaction-object";
 
 /**
  * main function that initializes scene and prepares it for play
  */
 export function main() 
 {
+	/*const test:Entity = engine.addEntity();
+	Transform.create(test, { 
+		position:{x:0,y:1,z:1},
+		scale:{x:0.2,y:0.2,z:0.2},
+	});
+	GltfContainer.createOrReplace(test, {
+		src: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
+		visibleMeshesCollisionMask: undefined,
+		invisibleMeshesCollisionMask: undefined
+	});*/
+
 	//load player
 	PlayerLocal.LoadPlayerData();
 
