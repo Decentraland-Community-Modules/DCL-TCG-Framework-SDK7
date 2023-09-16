@@ -186,7 +186,7 @@ export module InteractionObject
                 pointerEvents: [
                   {
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: data.interactionText??"" }
+                    eventInfo: { button: InputAction.IA_POINTER, maxDistance:40, hoverText: (data.interactionText??"") },
                   },
                 ]
             });
