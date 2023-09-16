@@ -385,7 +385,29 @@ export module DeckManager {
     /** filter objects - per cost */
     const filterParent:Entity = engine.addEntity();
     Transform.create(filterParent, {parent:entityParent});
-    /** filter objects - per faction */
+
+    /** filter objects - per faction background*/
+    var filterFactionSymMask:boolean[] = [];
+    var filterFactionSymObj:InteractionObject.InteractionObject[] = [];
+    for(let i:number=0; i<CardFactionData.length; i++) {
+        filterFactionSymMask.push(true);
+        filterFactionSymObj.push(InteractionObject.Create({
+            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
+            target:FILTER_TYPE.FACTION, 
+            action:i,
+            interactionText:"toggle "+CardFactionData[i].name,
+            parent: filterParent, 
+            model: "models/tcg-framework/menu-buttons/faction-symbol"+[i]+".glb",
+            position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
+            scale: { x:0.08, y:0.08, z:0.04, }
+        }));
+        Material.setPbrMaterial(filterFactionSymObj[i].entityShape, {
+            albedoColor: Color4.Green(),
+        });
+    }
+    MeshRenderer
+
+    /** filter objects - per faction symbols*/
     var filterFactionMask:boolean[] = [];
     var filterFactionObj:InteractionObject.InteractionObject[] = [];
     for(let i:number=0; i<CardFactionData.length; i++) {
@@ -394,18 +416,37 @@ export module DeckManager {
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
             target:FILTER_TYPE.FACTION, 
             action:i,
-            displayText:i.toString(),
             interactionText:"toggle "+CardFactionData[i].name,
             parent: filterParent, 
-            model: "models/utilities/Menu3D_Button_Square.glb",
+            model: "models/tcg-framework/menu-buttons/button-background0.glb",
             position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
-            scale: { x:0.1, y:0.1, z:0.04, }
+            scale: { x:0.07, y:0.07, z:0.04, }
         }));
         Material.setPbrMaterial(filterFactionObj[i].entityShape, {
             albedoColor: Color4.Green(),
         });
     }
-    /** filter objects - per type */
+    /** filter objects - per type Symbol*/
+    var filterTypeSymMask:boolean[] = [];
+    var filterTypeSymObj:InteractionObject.InteractionObject[] = [];
+    for(let i:number=0; i<CARD_TYPE_STRINGS.length; i++) {
+        filterTypeSymMask.push(true);
+        filterTypeSymObj.push(InteractionObject.Create({
+            ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
+            target:FILTER_TYPE.TYPE, 
+            action:i,
+            //displayText:i.toString(),
+            interactionText:"toggle "+CARD_TYPE_STRINGS[i],
+            parent: filterParent, 
+            model: "models/tcg-framework/menu-buttons/button-type"+[i]+".glb",
+            position: { x:-0.95, y:2-(i*0.2), z:-0.025 },
+            scale: { x:0.07, y:0.07, z:0.04, }
+        }));
+        Material.setPbrMaterial(filterTypeSymObj[i].entityShape, {
+            albedoColor: Color4.Green(),
+        });
+    }
+    /** filter objects - per type Background*/
     var filterTypeMask:boolean[] = [];
     var filterTypeObj:InteractionObject.InteractionObject[] = [];
     for(let i:number=0; i<CARD_TYPE_STRINGS.length; i++) {
@@ -414,11 +455,12 @@ export module DeckManager {
             ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_FILTER,
             target:FILTER_TYPE.TYPE, 
             action:i,
-            displayText:i.toString(),
+            //displayText:i.toString(),
             interactionText:"toggle "+CARD_TYPE_STRINGS[i],
             parent: filterParent, 
+            model: "models/tcg-framework/menu-buttons/button-background0.glb",
             position: { x:-0.95, y:2-(i*0.2), z:-0.025 },
-            scale: { x:0.1, y:0.1, z:0.04, }
+            scale: { x:0.07, y:0.07, z:0.04, }
         }));
         Material.setPbrMaterial(filterTypeObj[i].entityShape, {
             albedoColor: Color4.Green(),
@@ -436,8 +478,9 @@ export module DeckManager {
             displayText:i.toString(),
             interactionText:"toggle cost "+i,
             parent: filterParent, 
+            model: "models/tcg-framework/menu-buttons/button-background0.glb",
             position: { x:-0.675+(i*0.15), y:2.35, z:-0.025 },
-            scale: { x:0.1, y:0.1, z:0.04, }
+            scale: { x:0.07, y:0.07, z:0.04, }
         }));
         Material.setPbrMaterial(filterCostObj[i].entityShape, {
             albedoColor: Color4.Green(),
@@ -550,22 +593,42 @@ export module DeckManager {
     const cardInfoBackground:Entity = engine.addEntity();
     Transform.create(cardInfoBackground,{
         parent:cardInfoParent,
-        position: { x:-0.2, y:-0.00, z:-0.09 },
-        scale: { x:0.9, y:0.8, z:0.01, },
+        position: { x:-0.2, y:0.10, z:-0.09 },
+        scale: { x:0.9, y:0.50, z:0.01, },
     });
     MeshRenderer.setBox(cardInfoBackground);
     
-    /** card info text */
-    const cardInfoText:Entity = engine.addEntity();
-    Transform.create(cardInfoText,{
-        parent:cardInfoBackground,
-        position: { x:-0.45, y:0.43, z:-0.52 },
-        scale: { x:0.06, y:0.06, z:0.1, },
+    /** card desc background */
+    const cardDescBackground:Entity = engine.addEntity();
+    Transform.create(cardDescBackground,{
+        parent:cardInfoParent,
+        position: { x:0, y:-0.25, z:-0.09 },
+        scale: { x:1.3, y:0.18, z:0.01, },
     });
-    TextShape.create(cardInfoText, { text: "Rarity: \nFaction: \nType: \nCost: \nHealth: \nArmor: \nDamage:", 
+    MeshRenderer.setBox(cardDescBackground);
+    
+    /** card info base text */
+    const cardInfoBaseText:Entity = engine.addEntity();
+    Transform.create(cardInfoBaseText,{
+        parent:cardInfoBackground,
+        position: { x:-0.45, y:0.53, z:-0.52 },
+        scale: { x:0.06, y:0.09, z:0.1, },
+    });
+    TextShape.create(cardInfoBaseText, { text: "\nFaction: \nType: \nCost:", 
         textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
     });
 
+    /** card desc text */
+    const cardDescText:Entity = engine.addEntity();
+    Transform.create(cardDescText,{
+        parent:cardDescBackground,
+        position: { x:-0.46, y:0.35, z:-0.52 },
+        scale: { x:0.030, y:0.25, z:0.1, },
+    });
+    TextShape.create(cardDescText, { text: "Description:", 
+        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
+    });
+    
     //displays enlarged card decal
         //create new card object
         const card = CardDisplayObject.Create({
@@ -584,8 +647,6 @@ export module DeckManager {
     //displays detailed stats (health, defence, etc.)
 
     //description of card
-
-
 
     /** displays a list of cards in the game, based on the current filters/page  */
     function GenerateCardObjects() {
@@ -715,32 +776,25 @@ export module DeckManager {
         transform.scale = DISPLAY_CHARACTER_SCALE[dataDef.type];
         //update selection view
         TextShape.getMutable(cardNameText).text = dataDef.name;
-        
+
         if(dataDef.type == 0){
-        TextShape.getMutable(cardInfoText).text = 
-            "Type:"+CARD_TYPE_STRINGS[dataDef.type]+
-            "\nCost:"+dataDef.attributeCost+
-            "\nDesc:"+dataDef.desc;
+            TextShape.getMutable(cardInfoBaseText).text = 
+            "\nFaction:"+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
+            "\nType:"+CARD_TYPE_STRINGS[dataDef.type]+
+            "\nCost:"+dataDef.attributeCost;
         }
         else if(dataDef.type == 1){
-        TextShape.getMutable(cardInfoText).text = 
-            "Type:"+CARD_TYPE_STRINGS[dataDef.type]+
+            TextShape.getMutable(cardInfoBaseText).text = 
             "\nFaction:"+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
+            "\nType:"+CARD_TYPE_STRINGS[dataDef.type]+
             "\nCost:"+dataDef.attributeCost+
             "\nHealth:"+dataDef.attributeCharacter?.unitHealth+
             "\nArmor:"+dataDef.attributeCharacter?.unitArmour+
-            "\nDamage:"+dataDef.attributeCharacter?.unitAttack+
-            "\nDesc:"+dataDef.desc;
-        }
-        else if(dataDef.type == 2){
-        TextShape.getMutable(cardInfoText).text = 
-            "Type:"+CARD_TYPE_STRINGS[dataDef.type]+
-            "\nFaction:"+dataDef.faction.toString+
-            "\nCost:"+dataDef.attributeCost
-            "\nDesc:"+dataDef.desc;
-            
-
-        }
+            "\nDamage:"+dataDef.attributeCharacter?.unitAttack;
+        } 
+           
+        TextShape.getMutable(cardDescText).text = "Description: "+dataDef.desc;
+              
     }
 
     /** releases all card objects in the current display grid */
