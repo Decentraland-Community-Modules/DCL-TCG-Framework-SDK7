@@ -97,6 +97,9 @@ export module InteractionManager {
                                     case TableTeam.LOBBY_BUTTONS.GAME_END_TURN:
                                         table.LocalNextTurn();
                                     break;
+                                    case TableTeam.LOBBY_BUTTONS.TEAM_TARGET:
+                                        table.InteractionTeamSelection(parseInt(component.target));
+                                    break;
                                     case TableTeam.LOBBY_BUTTONS.GAME_LEAVE:
                                         table.LocalForfeitGame();
                                     break;

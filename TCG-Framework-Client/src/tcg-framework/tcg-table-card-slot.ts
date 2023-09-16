@@ -224,7 +224,7 @@ export module TableCardSlot {
             Transform.create(this.statsArmour, { parent: this.statsParent, position: {x:0.6,y:-0.2,z:0}, scale: {x:0.2,y:0.2,z:0.2} });
             var textShape = TextShape.create(this.statsArmour);
             textShape.outlineColor = Color4.Black(); textShape.outlineWidth = 0.2;
-            textShape.textColor = Color4.Blue(); textShape.fontSize = 8;
+            textShape.textColor = Color4.Teal(); textShape.fontSize = 8;
             textShape.text = "###";
             textShape.textAlign = TextAlignMode.TAM_MIDDLE_CENTER;
         }
@@ -252,16 +252,16 @@ export module TableCardSlot {
             PointerEvents.createOrReplace(this.entityInteraction, {
                 pointerEvents: [
                     { //primary mouse -> select card slot
-                    eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT "+this.Key }
+                        eventType: PointerEventType.PET_DOWN,
+                        eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT "+this.Key }
                     },
                     { //primary key -> attempt select
-                      eventType: PointerEventType.PET_DOWN,
-                      eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "SELECT "+this.Key }
+                        eventType: PointerEventType.PET_DOWN,
+                        eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "SELECT "+this.Key }
                     },
                     { //secondary key -> attempt action
-                      eventType: PointerEventType.PET_DOWN,
-                      eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "ACTIVATE "+this.Key }
+                        eventType: PointerEventType.PET_DOWN,
+                        eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "ACTIVATE "+this.Key }
                     },
                 ]
             });

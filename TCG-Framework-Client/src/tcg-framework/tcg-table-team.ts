@@ -1,6 +1,6 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Billboard, ColliderLayer, Entity, Font, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableCardSlot } from "./tcg-table-card-slot";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
@@ -30,6 +30,7 @@ export module TableTeam {
         TEAM_LEAVE,
         TEAM_READY,
         TEAM_UNREADY,
+        TEAM_TARGET,
         GAME_END_TURN,
         GAME_LEAVE,
     }
@@ -44,6 +45,9 @@ export module TableTeam {
     const PARENT_OFFSET_OFF:Vector3 = { x:0, y:-10, z:0 };
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+
+    /** transform - team selector */
+    const SELECTOR_SCALE_ON:Vector3 = { x:3, y:3, z:0 };
 
     /** transform - card holder */
     const CARD_HOLDER_OFFSET:Vector3 = { x:0, y:1.5, z:4.75 };
@@ -274,21 +278,58 @@ export module TableTeam {
         public set ReadyState(value:boolean) { this.readyState = value; }
 
         /** team's current health (at zero the lose) */
-        public HealthCur:number = 0;
+        private healthCur:number = 0;
+        public get HealthCur():number { return this.healthCur; }
+        public set HealthCur(value:number) { 
+            this.healthCur = value;
+            TextShape.getMutable(this.entityDisplayHealth).text = "HEALTH: "+this.healthCur;
+        }
 
         /** resource for playing new cards to the field */
-        public EnergyCur:number = 0;
+        private energyCur:number = 0;
+        public get EnergyCur():number { return this.energyCur; }
+        public set EnergyCur(value:number) { 
+            this.energyCur = value;
+            TextShape.getMutable(this.entityDisplayEnergy).text = "ENERGY: "+this.energyCur+" ("+this.energyGain+")";
+        }
         /** amount of energy gained at the start of the next turn */
-        public EnergyGain:number = 0;
+        private energyGain:number = 0;
+        public get EnergyGain():number { return this.energyGain; }
+        public set EnergyGain(value:number) { 
+            this.energyGain = value;
+            TextShape.getMutable(this.entityDisplayEnergy).text = "ENERGY: "+this.energyCur+" ("+this.energyGain+")";
+        }
 
         /** parental position */
         private entityParent:Entity;
 
+        /** team selection object, for other teams targeting this */
+        private entityTeamTargetorInteraction:Entity;
+        private entityTeamTargetorView:Entity;
+        public SetTeamTargetState(state:boolean) {
+            if(state) Transform.getMutable(this.entityTeamTargetorView).scale = PARENT_SCALE_ON;
+            else Transform.getMutable(this.entityTeamTargetorView).scale = PARENT_SCALE_OFF;
+        }
+
+        //## PLAYER STATE DISPLAYS
+        /** display parent */
+        private entityDisplayParent:Entity
+        /** displays player's current health */
+        private entityDisplayHealth:Entity;
+        /** displays player's current health */
+        private entityDisplayEnergy:Entity;
+        public UpdateStatsDisplay() {
+            TextShape.getMutable(this.entityDisplayHealth).text = "HEALTH: "+this.healthCur;
+            TextShape.getMutable(this.entityDisplayEnergy).text = "ENERGY: "+this.energyCur+" ("+this.energyGain+")";
+        }
+
+        //## FIELD DISPLAY OBJECTS
         /** battlefield's border */
         private entityBorder:Entity;
         /** battlefield's central terrain */
         private entityTerrain:Entity;
 
+        //## LOBBY/STATE BUTTONS
         /** interaction object to join team */
         public entityJoinTeam:Entity;
         /** interaction object to leave team */
@@ -302,6 +343,7 @@ export module TableTeam {
         /** interaction object to leaving the game/forfeiting */
         public entityForfeit:Entity;
 
+        //## HAND CARDS
         /** card display parent (where player cards are stored) */
         private handCardParent:Entity;
         private handCardObject:Entity;
@@ -361,7 +403,74 @@ export module TableTeam {
             //MeshRenderer.setBox(handBuffer);
             MeshCollider.setBox(handBuffer,ColliderLayer.CL_PHYSICS);
 
-            //create border object
+            //create team targeter
+            //  interaction object
+            this.entityTeamTargetorInteraction = engine.addEntity();
+            Transform.create(this.entityTeamTargetorInteraction, {
+                parent: this.entityParent,
+                position: {x:0,y:2.5,z:2.3},
+                scale: {x:4,y:4,z:2},
+            });
+            PointerEvents.createOrReplace(this.entityTeamTargetorInteraction, {
+                pointerEvents: [
+                  { //primary key -> select card slot
+                    eventType: PointerEventType.PET_DOWN,
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT ENEMY TEAM" }
+                  },
+                ]
+            });
+            MeshCollider.setBox(this.entityTeamTargetorInteraction);
+            //MeshRenderer.setBox(this.entityTeamTargetInteraction);
+            //  view object
+            this.entityTeamTargetorView = engine.addEntity();
+            Transform.create(this.entityTeamTargetorView, {
+                parent: this.entityParent,
+                position: {x:0,y:2.5,z:2.3},
+                scale: PARENT_SCALE_OFF,
+                rotation: Quaternion.fromEulerDegrees(0,0,0)
+            });
+            MeshRenderer.setBox(this.entityTeamTargetorView);
+
+            //create team selection slot 
+            //  parent object
+            this.entityDisplayParent = engine.addEntity();
+            Transform.create(this.entityDisplayParent, {
+                parent: this.entityParent,
+                position: {x:0,y:5,z:6.5},
+                scale: {x:1,y:1,z:1},
+            });
+            Billboard.create(this.entityDisplayParent);
+            //  health
+            this.entityDisplayHealth = engine.addEntity();
+            Transform.create(this.entityDisplayHealth, {
+                parent: this.entityDisplayParent,
+                position: {x:0,y:0.3,z:0},
+                scale: {x:0.5,y:0.5,z:0.5},
+            });
+            TextShape.create(this.entityDisplayHealth, {
+                text:"HEALTH: ###",
+                fontSize: 12, 
+                outlineWidth:0.1,
+                outlineColor:Color4.Black(),
+                textColor:Color4.Red()
+            });
+            //  energy
+            this.entityDisplayEnergy = engine.addEntity();
+            Transform.create(this.entityDisplayEnergy, {
+                parent: this.entityDisplayParent,
+                position: {x:0,y:-0.3,z:0},
+                scale: {x:0.5,y:0.5,z:0.5},
+            });
+            TextShape.create(this.entityDisplayEnergy, {
+                text:"ENERGY: ###",
+                fontSize: 12, 
+                outlineWidth:0.1,
+                outlineColor:Color4.Black(),
+                textColor:Color4.Teal()
+            });
+
+            //create field display objects
+            //  border object
             this.entityBorder = engine.addEntity();
             Transform.create(this.entityBorder, { parent: this.entityParent });
             //  add model
@@ -370,8 +479,7 @@ export module TableTeam {
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
-
-            //create terrain object (with default terrain)
+            //  terrain object (with default terrain)
             this.entityTerrain = engine.addEntity();
             Transform.create(this.entityTerrain, { parent: this.entityParent });
             //  add model
@@ -466,7 +574,7 @@ export module TableTeam {
             this.entityEndTurn = engine.addEntity();
             Transform.create(this.entityEndTurn, {
                 parent: this.entityParent,
-                position: {x:0,y:4.25,z:0},
+                position: {x:0,y:5.75,z:0},
                 scale: BUTTON_SCALE_NORMAL,
             });
             GltfContainer.create(this.entityEndTurn, {
@@ -486,7 +594,7 @@ export module TableTeam {
             this.entityForfeit = engine.addEntity();
             Transform.create(this.entityForfeit, {
                 parent: this.entityParent,
-                position: {x:0,y:5.25,z:0},
+                position: {x:0,y:6.25,z:0},
                 scale: BUTTON_SCALE_NORMAL,
             });
             GltfContainer.create(this.entityForfeit, {
@@ -550,7 +658,20 @@ export module TableTeam {
             transformParent.scale = PARENT_SCALE_ON;
             transformParent.rotation = Quaternion.fromEulerDegrees(data.rotation.x, data.rotation.y, data.rotation.z);
             
-            //update button interactions
+            //disable team selector
+            Transform.getMutable(this.entityTeamTargetorInteraction).scale = PARENT_SCALE_OFF;
+
+            //disable stats display
+            Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_OFF;
+
+            //update team selection interaction
+            InteractionObject.InteractionObjectComponent.createOrReplace(this.entityTeamTargetorInteraction, {
+                ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
+                target: this.TeamID,
+                action: LOBBY_BUTTONS.TEAM_TARGET,
+            });
+
+            //update state/lobby button interactions
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityJoinTeam, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
                 target: this.Key,
@@ -606,9 +727,12 @@ export module TableTeam {
         /** resets the team, setting it to the starting state for a table */
         public Reset() {
             //reset values
-            this.HealthCur = 60;
-            this.EnergyCur = 3;
-            this.EnergyGain = 1;
+            this.healthCur = 60;
+            this.energyCur = 3;
+            this.energyGain = 1;
+            //update stats display
+            this.UpdateStatsDisplay();
+            this.SetTeamTargetState(false);
 
             //remove any hand cards
             while(this.handCards.size() > 0) {
@@ -620,6 +744,17 @@ export module TableTeam {
             this.RegisteredDeck?.ShuffleCards();
             //reset all card slots
             this.UpdateSlotDisplay();
+
+            //if character is registered to table
+            if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
+                //disable team selector & display
+                Transform.getMutable(this.entityTeamTargetorInteraction).scale = PARENT_SCALE_OFF;
+                Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_OFF;
+            } else {
+                //enable team selector & display
+                Transform.getMutable(this.entityTeamTargetorInteraction).scale = SELECTOR_SCALE_ON;
+                Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_ON;
+            }
         }
 
         /** updates buttons display based on the current state */
@@ -712,7 +847,7 @@ export module TableTeam {
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn started");
 
             //add energy to team's pool
-            this.EnergyCur += this.EnergyGain;
+            this.energyCur += this.energyGain;
             //add cards to team's hand
             this.DrawCard();
             //new team's start turn effects
