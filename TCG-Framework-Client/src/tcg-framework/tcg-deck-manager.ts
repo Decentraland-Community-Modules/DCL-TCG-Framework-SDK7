@@ -514,7 +514,7 @@ export module DeckManager {
     const cardInfoParent:Entity = engine.addEntity();
     Transform.create(cardInfoParent,{
         parent:filterParent,
-        position: { x:-2.05, y:1.7, z:-0.325 },
+        position: { x:-2.05, y:1.8, z:-0.325 },
         rotation: Quaternion.fromEulerDegrees(0,-35,0)
     });
 
@@ -522,46 +522,62 @@ export module DeckManager {
     const cardNameBackground:Entity = engine.addEntity();
     Transform.create(cardNameBackground,{
         parent:cardInfoParent,
-        position: { x:0, y:0.5, z:-0.09 },
-        scale: { x:1, y:0.17, z:0.01, },
+        position: { x:0, y:0.5, z:-0.087 },
+        scale: { x:0.29, y:0.25, z:0.1, },
+    }); 
+
+    //  add custom model  
+    GltfContainer.create(cardNameBackground, {
+        src: "models/tcg-framework/menu-displays/title-base-plate.glb",
+        visibleMeshesCollisionMask: undefined,
+        invisibleMeshesCollisionMask: undefined
     });
-    MeshRenderer.setBox(cardNameBackground);
 
     /** card name header text */
     const cardNameText:Entity = engine.addEntity();
     Transform.create(cardNameText,{
-        parent:cardNameBackground,
-        position: { x:0, y:0.0, z:-0.52 },
-        scale: { x:0.055, y:0.4, z:0.1, },
+        parent:cardInfoParent,
+        position: { x:0, y:0.5, z:-0.09 },
+        scale: { x:0.05, y:0.05, z:0.1, },
     });
     TextShape.create(cardNameText, { text: "CARD_DEF_NAME", 
         textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
-
+    
     /** card info background */
     const cardInfoBackground:Entity = engine.addEntity();
     Transform.create(cardInfoBackground,{
         parent:cardInfoParent,
-        position: { x:-0.2, y:0.10, z:-0.09 },
-        scale: { x:0.9, y:0.50, z:0.01, },
+        position: { x:-0.4, y:0.10, z:-0.09 },
+        scale: { x:0.19, y:0.19, z:0.01, },
     });
-    MeshRenderer.setBox(cardInfoBackground);
+       //  add custom model  
+       GltfContainer.create(cardInfoBackground, {
+        src: "models/tcg-framework/menu-displays/info-base-plate.glb",
+        visibleMeshesCollisionMask: undefined,
+        invisibleMeshesCollisionMask: undefined
+    });
     
     /** card desc background */
     const cardDescBackground:Entity = engine.addEntity();
     Transform.create(cardDescBackground,{
         parent:cardInfoParent,
-        position: { x:0, y:-0.25, z:-0.09 },
-        scale: { x:1.3, y:0.18, z:0.01, },
-    });
-    MeshRenderer.setBox(cardDescBackground);
+        position: { x:0, y:-0.28, z:-0.09 },
+        scale: { x:0.35, y:0.19, z:0.01, },
+    });      
+    //  add custom model  
+    GltfContainer.create(cardDescBackground, {
+     src: "models/tcg-framework/menu-displays/desc-base-plate.glb",
+     visibleMeshesCollisionMask: undefined,
+     invisibleMeshesCollisionMask: undefined
+ });
     
     /** card info base text */
     const cardInfoBaseText:Entity = engine.addEntity();
     Transform.create(cardInfoBaseText,{
         parent:cardInfoBackground,
-        position: { x:-0.45, y:0.53, z:-0.52 },
-        scale: { x:0.06, y:0.09, z:0.1, },
+        position: { x:-0.9, y:1.2, z:-0.52 },
+        scale: { x:0.15, y:0.15, z:0.1, },
     });
     TextShape.create(cardInfoBaseText, { text: "\nFaction: \nType: \nCost:", 
         textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
@@ -571,8 +587,8 @@ export module DeckManager {
     const cardDescText:Entity = engine.addEntity();
     Transform.create(cardDescText,{
         parent:cardDescBackground,
-        position: { x:-0.46, y:0.35, z:-0.52 },
-        scale: { x:0.030, y:0.25, z:0.1, },
+        position: { x:-1.6, y:0.30, z:-0.52 },
+        scale: { x:0.15, y:0.15, z:0.1, },
     });
     TextShape.create(cardDescText, { text: "Description:", 
         textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
@@ -580,18 +596,15 @@ export module DeckManager {
     
     //displays enlarged card decal
     //create new card object
-    const card = CardDisplayObject.Create({
+    const cardEnlarge = CardDisplayObject.Create({
         ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
+        counter: false,
         slotID: "dm-preview",
-        def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
+        def: CardDataRegistry.Instance.GetEntryByPos(1).DataDef, 
         parent: cardInfoParent,
         position: { x:0.45, y:0.11, z:-0.1 },
         scale: { x:0.15, y:0.15, z:0.15, },
     });
-
-    //displays detailed stats (health, defence, etc.)
-
-    //description of card
 
     /** displays a list of cards in the game, based on the current filters/page  */
     function GenerateCardObjects() {
@@ -703,7 +716,8 @@ export module DeckManager {
 
         const dataDef = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
         const cardStatData = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
-        //create character display model
+        //create character display model 
+        //TODO: USE KEYS TO SET CHARACTER
         const card = CardSubjectObject.Create({
             key: "tcg-dm",
             type: dataDef.type,
@@ -715,6 +729,8 @@ export module DeckManager {
             rotation: { x:0, y:0, z:0, }
         });
         card.SetAnimation(DISPLAY_CHARACTER_ANIMATION[dataDef.type]);
+        //update selection display card
+        cardEnlarge.SetCard(dataDef);
         //update transform
         const transform = Transform.getOrCreateMutable(entityDisplayPedistalPoint);
         transform.position = DISPLAY_CHARACTER_OFFSET[dataDef.type];
@@ -737,8 +753,8 @@ export module DeckManager {
             "\nArmor:"+dataDef.attributeCharacter?.unitArmour+
             "\nDamage:"+dataDef.attributeCharacter?.unitAttack;
         } 
-           
-        TextShape.getMutable(cardDescText).text = "Description: "+dataDef.desc;
+        
+        TextShape.getMutable(cardDescText).text = dataDef.desc;
               
     }
 
