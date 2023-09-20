@@ -196,7 +196,7 @@ export module DeckManager {
     const deckInfoParent:Entity = engine.addEntity();
     Transform.create(deckInfoParent,{
         parent:entityParent,
-        position: { x:2.05, y:1.7, z:-0.325 },
+        position: { x:2.05, y:1.78, z:-0.325 },
         rotation: Quaternion.fromEulerDegrees(0,35,0)
     });
     /** deck header background */
@@ -204,28 +204,33 @@ export module DeckManager {
     Transform.create(deckHeaderBackground,{
         parent:deckInfoParent,
         position: { x:0, y:0.45, z:-0.09 },
-        scale: { x:1, y:0.17, z:0.01, },
+        scale: { x:0.3, y:0.2, z:0.01, },
     });
-    MeshRenderer.setBox(deckHeaderBackground);
+    //  add custom model  
+    GltfContainer.create(deckHeaderBackground, {
+        src: "models/tcg-framework/menu-displays/title-base-plate.glb",
+        visibleMeshesCollisionMask: undefined,
+        invisibleMeshesCollisionMask: undefined
+    });
     /** deck header text */
     const deckHeaderText:Entity = engine.addEntity();
     Transform.create(deckHeaderText,{
         parent:deckHeaderBackground,
-        position: { x:0, y:0.235, z:-0.52 },
-        scale: { x:0.055, y:0.4, z:0.1, },
+        position: { x:0, y:0.20, z:-0.52 },
+        scale: { x:0.2, y:0.26, z:0.1, },
     });
     TextShape.create(deckHeaderText, { text: "A VALID DECK HAS 8 TO 12 CARDS", 
-        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+        textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
     /** deck state text */
     const deckStateText:Entity = engine.addEntity();
     Transform.create(deckStateText,{
         parent:deckHeaderBackground,
-        position: { x:0, y:-0.235, z:-0.52 },
-        scale: { x:0.055, y:0.4, z:0.1, },
+        position: { x:0, y:-0.18, z:-0.52 },
+        scale: { x:0.2, y:0.28, z:0.1, },
     });
     TextShape.create(deckStateText, { text: "DECK CARDS ###/###", 
-        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+        textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
     /** select deck buttons */
     var deckButtonSelectors:InteractionObject.InteractionObject[] = [];
@@ -248,22 +253,24 @@ export module DeckManager {
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target: DECK_INTERACTION_TYPE.SAVE,
         displayText: "SAVE",
+        modelInteraction:"models/tcg-framework/menu-displays/info-base-plate.glb",
         interactionText: "SAVE DECK",
         textScale: { x:0.35, y:1, z:1, },
         parent: deckInfoParent, 
-        position: { x:-0.28, y:-0.4, z:-0.1 },
-        scale: { x:0.5, y:0.2, z:0.05, }
+        position: { x:-0.38, y:-0.4, z:-0.1 },
+        scale: { x:0.18, y:0.07, z:0.05, }
     });
     /** load deck button */
     const deckButtonLoad = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target:DECK_INTERACTION_TYPE.LOAD,
         displayText:"LOAD",
+        modelInteraction:"models/tcg-framework/menu-displays/info-base-plate.glb",
         interactionText:"LOAD DECK",
         textScale: { x:0.35, y:1, z:1, },
         parent: deckInfoParent, 
-        position: { x:0.28, y:-0.4, z:-0.1 },
-        scale: { x:0.5, y:0.2, z:0.05, }
+        position: { x:0.23, y:-0.4, z:-0.1 },
+        scale: { x:0.18, y:0.07, z:0.05, }
     });
 
     //### DECK DETAILS
@@ -522,10 +529,9 @@ export module DeckManager {
     const cardNameBackground:Entity = engine.addEntity();
     Transform.create(cardNameBackground,{
         parent:cardInfoParent,
-        position: { x:0, y:0.5, z:-0.087 },
+        position: { x:0, y:0.5, z:-0.10 },
         scale: { x:0.29, y:0.25, z:0.1, },
     }); 
-
     //  add custom model  
     GltfContainer.create(cardNameBackground, {
         src: "models/tcg-framework/menu-displays/title-base-plate.glb",
@@ -537,19 +543,19 @@ export module DeckManager {
     const cardNameText:Entity = engine.addEntity();
     Transform.create(cardNameText,{
         parent:cardInfoParent,
-        position: { x:0, y:0.5, z:-0.09 },
-        scale: { x:0.05, y:0.05, z:0.1, },
+        position: { x:0, y:0.5, z:-0.12 },
+        scale: { x:0.08, y:0.08, z:0.1, },
     });
     TextShape.create(cardNameText, { text: "CARD_DEF_NAME", 
-        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+        textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
     
     /** card info background */
     const cardInfoBackground:Entity = engine.addEntity();
     Transform.create(cardInfoBackground,{
         parent:cardInfoParent,
-        position: { x:-0.4, y:0.10, z:-0.09 },
-        scale: { x:0.19, y:0.19, z:0.01, },
+        position: { x:-0.32, y:0.10, z:-0.10 },
+        scale: { x:0.25, y:0.19, z:0.01, },
     });
        //  add custom model  
        GltfContainer.create(cardInfoBackground, {
@@ -562,7 +568,7 @@ export module DeckManager {
     const cardDescBackground:Entity = engine.addEntity();
     Transform.create(cardDescBackground,{
         parent:cardInfoParent,
-        position: { x:0, y:-0.28, z:-0.09 },
+        position: { x:0, y:-0.28, z:-0.10 },
         scale: { x:0.35, y:0.19, z:0.01, },
     });      
     //  add custom model  
@@ -577,10 +583,10 @@ export module DeckManager {
     Transform.create(cardInfoBaseText,{
         parent:cardInfoBackground,
         position: { x:-0.9, y:1.2, z:-0.52 },
-        scale: { x:0.15, y:0.15, z:0.1, },
+        scale: { x:0.15, y:0.18, z:0.1, },
     });
     TextShape.create(cardInfoBaseText, { text: "\nFaction: \nType: \nCost:", 
-        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
+        textColor: Color4.White(), textAlign:TextAlignMode.TAM_TOP_LEFT,
     });
 
     /** card desc text */
@@ -588,10 +594,10 @@ export module DeckManager {
     Transform.create(cardDescText,{
         parent:cardDescBackground,
         position: { x:-1.6, y:0.30, z:-0.52 },
-        scale: { x:0.15, y:0.15, z:0.1, },
+        scale: { x:0.10, y:0.15, z:0.1, },
     });
     TextShape.create(cardDescText, { text: "Description:", 
-        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_TOP_LEFT,
+        textColor: Color4.White(), textAlign:TextAlignMode.TAM_TOP_LEFT,
     });
     
     //displays enlarged card decal
@@ -740,18 +746,18 @@ export module DeckManager {
 
         if(dataDef.type == 0){
             TextShape.getMutable(cardInfoBaseText).text = 
-            "\nFaction:"+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
-            "\nType:"+CARD_TYPE_STRINGS[dataDef.type]+
-            "\nCost:"+dataDef.attributeCost;
+            "\nFaction: "+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
+            "\nType: "+CARD_TYPE_STRINGS[dataDef.type]+
+            "\nCost: "+dataDef.attributeCost;
         }
         else if(dataDef.type == 1){
             TextShape.getMutable(cardInfoBaseText).text = 
-            "\nFaction:"+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
-            "\nType:"+CARD_TYPE_STRINGS[dataDef.type]+
-            "\nCost:"+dataDef.attributeCost+
-            "\nHealth:"+dataDef.attributeCharacter?.unitHealth+
-            "\nArmor:"+dataDef.attributeCharacter?.unitArmour+
-            "\nDamage:"+dataDef.attributeCharacter?.unitAttack;
+            "\nFaction: "+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
+            "\nType: "+CARD_TYPE_STRINGS[dataDef.type]+
+            "\nCost: "+dataDef.attributeCost+
+            "\nHealth: "+dataDef.attributeCharacter?.unitHealth+
+            "\nArmor: "+dataDef.attributeCharacter?.unitArmour+
+            "\nDamage: "+dataDef.attributeCharacter?.unitAttack;
         } 
         
         TextShape.getMutable(cardDescText).text = dataDef.desc;

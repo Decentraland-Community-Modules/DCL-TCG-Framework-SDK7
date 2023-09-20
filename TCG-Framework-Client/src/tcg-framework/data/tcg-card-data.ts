@@ -324,7 +324,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.CHARACTER_NEUTRAL_GOLEM,
         //display text 
         name: "Stone Golem",
-        desc: "a stone golem carved from stone",
+        desc: "A golem carved from ancient stone",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 1, posY: 0 },
         //display 3D
@@ -351,7 +351,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.CHARACTER_FIRE_GOLEM,
         //display text 
         name: "Fire Golem",
-        desc: "a lava golem carved from molten rock",
+        desc: "A golem forged from molten rock",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 1, posY: 1 },
         //display 3D
@@ -378,7 +378,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.CHARACTER_ICE_GOLEM,
         //display text 
         name: "Ice Golem",
-        desc: "a golem of ice chiped from permafrost",
+        desc: "A golem chiseled from permafrost",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 2, posY: 1 },
         //display 3D
@@ -405,7 +405,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.CHARACTER_LIGHTNING_GOLEM,
         //display text 
         name: "Lightning Golem",
-        desc: "a golem formed from pure energy",
+        desc: "A golem formed from pure energy",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 0, posY: 1 },
         //display 3D
@@ -432,7 +432,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.CHARACTER_VOID_GOLEM,
         //display text 
         name: "Void Golem",
-        desc: "a golem from realms beyond our comprehension",
+        desc: "A golem summoned realms beyond our comprehension",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 0, posY: 0 },
         //display 3D
@@ -462,7 +462,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.TERRAIN_FIRE,
         //display text 
         name: "Fire Terrain",
-        desc: "a terrain of burning feilds molten rivers and dark clouds and trees with black leaves",
+        desc: "A terrain of burning feilds, molten rivers and dark clouds",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 0 },
         //display 3D
@@ -478,7 +478,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.TERRAIN_ICE,
         //display text 
         name: "Ice Terrain",
-        desc: "a terrain of frozen rivers whipping winds and heavy snowfall surrounded by endless trees",
+        desc: "A terrain of frozen rivers, whipping winds and heavy snowfall",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 2, posY: 0 },
         //display 3D
@@ -494,7 +494,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.TERRAIN_ELECTRIC,
         //display text 
         name: "Electric Terrain",
-        desc: "a terrain based admidst thunderous clouds",
+        desc: "A terrain situated admidst thunderous clouds",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 3, posY: 0 },
         //display 3D
@@ -510,7 +510,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.TERRAIN_VOID,
         //display text 
         name: "Void Terrain",
-        desc: "a terrain based in a glossy dark zone with purple stars littering the sky",
+        desc: "An ominous terrain with green scattered around",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 0, posY: 1 },
         //display 3D
