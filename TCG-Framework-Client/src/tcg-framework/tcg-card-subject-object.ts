@@ -2,6 +2,7 @@ import { Animator, ColliderLayer, Entity, GltfContainer, Transform, engine } fro
 import Dictionary, { List } from "../utilities/collections";
 import { Quaternion } from "@dcl/sdk/math";
 import { CARD_TYPE } from "./data/tcg-card-data";
+import * as utils from '@dcl-sdk/utils';
 
 /*      TRADING CARD GAME - CARD SUBJECT OBJECT
     contains all the functionality for displaying a card's subject via display object (character, 
@@ -61,13 +62,15 @@ export module CardSubjectObject
 	/** object interface used to define all data required to create a new object */
 	export interface CardSubjectObjectCreationData {
         //indexing
-        key: string; //key to register this object at (overwrites if key already exists)
+        key:string; //key to register this object at (overwrites if key already exists)
 		//targeting
-        type: CARD_TYPE; //type of card subject being displayed
-        model: string; //model to be displayed
-        forceRepeat?: boolean; //when true, all animations will be forced to repeat
+        type:CARD_TYPE; //type of card subject being displayed
+        model:string; //model to be displayed
+        animStart?:ANIM_KEY_SPELL|ANIM_KEY_CHARACTER,
+        animSpeed?:number,
+        forceRepeat?:boolean; //when true, all animations will be forced to repeat
         //position
-        parent: undefined|Entity, //entity to parent object under 
+        parent:undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
 		scale: { x:number; y:number; z:number; }; //new scale for object
 		rotation: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
@@ -77,6 +80,8 @@ export module CardSubjectObject
     export class CardSubjectObject { 
         /** true when this object is rendered in the scene */
         isActive:boolean = true; 
+
+        animationIndex = 0;
 
         /** uid of object (used to tie back to cards/owner) */
         key:string = "";
@@ -111,31 +116,52 @@ export module CardSubjectObject
                 case CARD_TYPE.SPELL:
                     Animator.createOrReplace(this.entity, {
                         states:[
-                            {name: ANIM_KEYS_SPELL[0], clip: ANIM_KEYS_SPELL[0], playing: false, loop: data.forceRepeat??false},
+                            {name:ANIM_KEYS_SPELL[0], clip:ANIM_KEYS_SPELL[0], playing:false, speed:data.animSpeed??1, loop:data.forceRepeat??false},
                         ]
                     });
                 break;
                 case CARD_TYPE.CHARACTER:
                     Animator.createOrReplace(this.entity, {
                         states:[
-                            {name: ANIM_KEYS_CHARACTER[0], clip: ANIM_KEYS_CHARACTER[0], playing: false, loop: data.forceRepeat??true},
-                            {name: ANIM_KEYS_CHARACTER[1], clip: ANIM_KEYS_CHARACTER[1], playing: false, loop: data.forceRepeat??true},
-                            {name: ANIM_KEYS_CHARACTER[2], clip: ANIM_KEYS_CHARACTER[2], playing: false, loop: data.forceRepeat??false},
-                            {name: ANIM_KEYS_CHARACTER[3], clip: ANIM_KEYS_CHARACTER[3], playing: false, loop: data.forceRepeat??false},
-                            {name: ANIM_KEYS_CHARACTER[4], clip: ANIM_KEYS_CHARACTER[4], playing: false, loop: data.forceRepeat??false},
-                            {name: ANIM_KEYS_CHARACTER[5], clip: ANIM_KEYS_CHARACTER[5], playing: false, loop: data.forceRepeat??false},
+                            {name:ANIM_KEYS_CHARACTER[0], clip:ANIM_KEYS_CHARACTER[0], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {name:ANIM_KEYS_CHARACTER[1], clip:ANIM_KEYS_CHARACTER[1], playing:false, speed:data.animSpeed??1, shouldReset:false, loop:data.forceRepeat??true},
+                            {name:ANIM_KEYS_CHARACTER[2], clip:ANIM_KEYS_CHARACTER[2], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {name:ANIM_KEYS_CHARACTER[3], clip:ANIM_KEYS_CHARACTER[3], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {name:ANIM_KEYS_CHARACTER[4], clip:ANIM_KEYS_CHARACTER[4], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {name:ANIM_KEYS_CHARACTER[5], clip:ANIM_KEYS_CHARACTER[5], playing:false, speed:data.animSpeed??1, shouldReset:false, loop:data.forceRepeat??false},
                         ]
                     });
                 break;
                 case CARD_TYPE.TERRAIN:
                 break;
             }
-            //halt any animations
-            this.SetAnimation(ANIM_KEY_CHARACTER.NONE);
+            //set initial animations
+            this.SetAnimation(data.animStart??ANIM_KEY_CHARACTER.NONE);
+        }
+
+        /** plays a single animation, then restarts the previous animation */
+        public PlaySingleAnimation(animation:ANIM_KEY_SPELL|ANIM_KEY_CHARACTER, autoHide:boolean) {
+            //prepare upper send data
+            const key = this.key;
+            const preAnim = this.animationIndex;
+            //play next animation
+            this.SetAnimation(animation);
+            utils.timers.setTimeout(
+                function() {
+                    //console.log("playing animation:"+preAnim+" hide="+autoHide);
+                    SetAnimation(key, preAnim, autoHide);
+                },
+                1900
+            );
+        }
+
+        public SetScale(scale:number){
+            Transform.getMutable(this.entity).scale = {x:scale,y:scale,z:scale};
         }
 
         /** plays the given animation on the character */
-        public SetAnimation(animation:ANIM_KEY_SPELL|ANIM_KEY_CHARACTER) {
+        public SetAnimation(animation:ANIM_KEY_SPELL|ANIM_KEY_CHARACTER, autoHide:boolean=false) {
+            this.animationIndex = animation;
             switch(this.type) {
                 case CARD_TYPE.SPELL:
                     //turn off all animations
@@ -173,6 +199,15 @@ export module CardSubjectObject
         }
     }
 
+    //TODO: change this a bit to rely on new 'reset state' animation trigger
+    export function SetAnimation(key:string, anim:ANIM_KEY_SPELL|ANIM_KEY_CHARACTER, autoHide:boolean) {
+        const object = GetByKey(key);
+        if(object != undefined) {
+            if(autoHide) object.SetScale(0); 
+            else object.SetAnimation(anim);
+        }
+    }
+
     /** provides a new card character object (either pre-existing & un-used or entirely new)
      * 
      *  @param data initialization details for object 
@@ -186,7 +221,7 @@ export module CardSubjectObject
         
         //if an object under the requested key is already active, hand that back
         if(pooledObjectsRegistry.containsKey(data.key)) {
-            console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+data.key);
+            //console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+data.key);
             object = pooledObjectsRegistry.getItem(data.key);
         } 
         //  attempt to find an existing unused object

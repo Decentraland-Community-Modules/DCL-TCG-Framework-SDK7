@@ -38,44 +38,77 @@ export const CARD_TYPE_STRINGS:string[] = [
     "Terrain"
 ];
 
-/** defines what targets are valid/required for the effect */
-export enum CARD_KEYWORD_TARGET_TYPE {
-    //does not require a target
-    //  use this with effects that are global
-    //  ex: defining an effect that causes the player to pick up more cards
-    NONE,
-    //target must not be owned by the player 
-    //  ex: defining an effect that damages an enemy
-    ENEMY,
-    //target must be owned by the player 
+/** defines subtypes for target selection */
+export enum CARD_TARGETING_TYPE {
+    //target can be anything
+    ANY,
+    //target must be player's team object
+    //  ex: effect that damages player's health
+    TEAM_PLAYER,
+    //target must be a slot (can be either occupied or unoccupied)
+    //  ex: effect that adds modifier to slot
+    SLOT_ANY,
+    //target must be an unoccupied slot
+    //  ex: adding unit to field
+    SLOT_UNOCCUPIED,
+    //target must be an occupied slot
+    //  ex: targeting unit on field
+    SLOT_OCCUPIED,
+}
+
+/** defines primary types for target selection when a player is playing a card/activating an effect */
+export enum CARD_TARGETING_OWNER {
+    //target all of given subtype
+    //  ex: defining an effect that causes damage to all enemy units
+    ALL,
+    //target belongs to anyone (up to given count)
+    //  ex: defining an effect that purges effects from a target
+    ANY,
+    //target must be a friendly assets
     //  ex: defining an effect that heals an ally
     ALLY,
-    //target can be owned by any player
-    //  ex: defining an effect that removes effects a target
-    ANY,
+    //target must be an enemy assets 
+    //  ex: defining an effect that damages an enemy
+    ENEMY,
 }
 
-/** defines how many targets will be affected by an effect */
-export enum CARD_KEYWORD_TARGET_COUNT_TYPE {
-    //targets no units on the board
-    NONE,
-    //targets N number of targets
-    COUNT,
-    //targets all units on the board
-    ALL,
+/** data interface for defining a card's splice sheet draw details */
+export interface CardSheetDataObject {
+    id:TEXTURE_SHEET_CARDS; //reference to sheet
+    posX:number; //x position of character on sheet 
+    posY:number; //y position of character on sheet
 }
 
-/**  */
+/** defines an effect tied to a card */
 export interface CardEffectDataObject {
+    //effect type
     type:CARD_KEYWORD_ID; 
-    //
+    //power of effect (ex: how much damage/how many stacks to be applied to target)
     strength:number;
-    //
-    targetType:CARD_KEYWORD_TARGET_TYPE;
-    //
-    targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE;
-    //
-    targetCount:number
+    //how long effect will last (only checked for specific keywords that happen over time like burn/poison)
+    //  set '-1' to make effect forever
+    duration?:number;
+}
+
+/** character attribute portions */
+export interface CardCharacterDataObject {
+    //stats
+    unitHealth:number; 
+    unitAttack:number; 
+    unitArmour:number;
+    //effects applied to self when played (use this for entry buffs)
+    effects:CardEffectDataObject[];
+    //TODO: activation effects/abilities
+}
+
+/** character attribute portions */
+export interface CardSpellDataObject {
+    //targeting
+    targetOwner:CARD_TARGETING_OWNER;
+    targetType:CARD_TARGETING_TYPE;
+    targetCount:number;
+    //effects of spell when played
+    effects:CardEffectDataObject[];
 }
 
 /** data interface for defining a card */
@@ -91,25 +124,12 @@ export interface CardDataObject {
     sheetData:CardSheetDataObject; //defines how card's character will be drawn
     //display 3D
     objPath:string; //object location
-    //attributes
+    //generic attributes
     attributeCost:number;
+    //attributes for character (only add if card is character type)
     attributeCharacter?:CardCharacterDataObject;
-    //effects
-    keywords:CardEffectDataObject[]; //all associated keywords/effects of card
-}
-
-/** character attribute portions */
-export interface CardCharacterDataObject {
-    unitHealth:number; 
-    unitAttack:number; 
-    unitArmour:number;
-}
-
-/** data interface for defining a card's splice sheet draw details */
-export interface CardSheetDataObject {
-    id:TEXTURE_SHEET_CARDS; //reference to sheet
-    posX:number; //x position of character on sheet 
-    posY:number; //y position of character on sheet
+    //attributes for character (only add if card is spell type)
+    attributeSpell?:CardSpellDataObject;
 }
 
 //list of card ID's
@@ -157,48 +177,57 @@ export const CardData:CardDataObject[] = [
     //## NEUTRAL SPELLS
     {
         //indexing
-        type: CARD_TYPE.SPELL,
-        faction: CARD_FACTION_TYPE.NEUTRAL,
+        type:CARD_TYPE.SPELL,
+        faction:CARD_FACTION_TYPE.NEUTRAL,
         id:CARD_DATA_ID.SPELL_HEAL,
         //display text 
-        name: "Heal",
-        desc: "Heals the targeted unit",
+        name:"Heal",
+        desc:"Heals a single ally unit.",
         //display 2D
-        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 0 },
+        sheetData:{ id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-spells/spell-heal.glb",
-        //Attributes
+        objPath:"models/tcg-framework/card-spells/spell-heal.glb",
+        //attributes
         attributeCost:1,
-        //effects
-        keywords:[
-            {
-                type:CARD_KEYWORD_ID.HEAL, strength:4,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ALLY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            }
-        ]
+        //spell details
+        attributeSpell:{
+            //targeting
+            targetOwner:CARD_TARGETING_OWNER.ALLY,
+            targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
+            targetCount:1,
+            //effects
+            effects:[
+                { type:CARD_KEYWORD_ID.HEAL, strength:4 }
+            ]
+        }
     },
     //## FIRE SPELLS
     {
         //indexing
-        type: CARD_TYPE.SPELL,
-        faction: CARD_FACTION_TYPE.FIRE,
+        type:CARD_TYPE.SPELL,
+        faction:CARD_FACTION_TYPE.FIRE,
         id:CARD_DATA_ID.SPELL_FIREBOLT,
         //display text 
-        name: "Firebolt",
-        desc: "A bolt of searing fire",
+        name: "Skybolt",
+        desc: "Deals damage & ignites an enemy unit.",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 1, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-firebolt.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords:[
-            {
-                type:CARD_KEYWORD_ID.BURN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            }
-        ]
+        //spell details
+        attributeSpell:{
+            //targeting
+            targetOwner:CARD_TARGETING_OWNER.ENEMY,
+            targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
+            targetCount:1,
+            //effects
+            effects:[
+                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
+                { type:CARD_KEYWORD_ID.BURN, strength:2, duration:3 }
+            ]
+        }
     },
     //## ICE SPELLS
     {
@@ -207,21 +236,26 @@ export const CardData:CardDataObject[] = [
         faction: CARD_FACTION_TYPE.ICE,
         id:CARD_DATA_ID.SPELL_ICEBOLT,
         //display text 
-        name: "Icebolt",
-        desc: "A bolt of freezing ice",
+        name: "Ice Razor",
+        desc: "Deals damage & bleeds an enemy unit.",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 2, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-icebolt.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords:[
-            {
-                type:CARD_KEYWORD_ID.BLEED, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            }
-        ]
+        //spell details
+        attributeSpell:{
+            //targeting
+            targetOwner:CARD_TARGETING_OWNER.ENEMY,
+            targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
+            targetCount:1,
+            //effects
+            effects:[
+                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
+                { type:CARD_KEYWORD_ID.BLEED, strength:2, duration:3 }
+            ]
+        }
     },
     //## ELECTRIC SPELLS
     {
@@ -231,20 +265,25 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.SPELL_LIGHTNINGBOLT,
         //display text 
         name: "Lightningbolt",
-        desc: "A bolt of jolting lightning",
+        desc: "Deals damage & stuns an enemy unit.",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 3, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-lightningbolt.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords:[
-            {
-                type:CARD_KEYWORD_ID.DISABLE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            }
-        ]
+        //spell details
+        attributeSpell:{
+            //targeting
+            targetOwner:CARD_TARGETING_OWNER.ENEMY,
+            targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
+            targetCount:1,
+            //effects
+            effects:[
+                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
+                { type:CARD_KEYWORD_ID.DISABLE, strength:1, duration:0 }
+            ]
+        }
     },
     //## VOID SPELLS
     {
@@ -253,21 +292,26 @@ export const CardData:CardDataObject[] = [
         faction: CARD_FACTION_TYPE.VOID,
         id:CARD_DATA_ID.SPELL_VOIDBOLT,
         //display text 
-        name: "Voidbolt",
-        desc: "A bolt of dark void energy",
+        name: "Void Strike",
+        desc: "Deals damage an enemy unit, when enemy is killed its card is destroyed.",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-voidbolt.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords:[
-            {
-                type:CARD_KEYWORD_ID.DRAIN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            }
-        ]
+        //spell details
+        attributeSpell:{
+            //targeting
+            targetOwner:CARD_TARGETING_OWNER.ENEMY,
+            targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
+            targetCount:1,
+            //effects
+            effects:[
+                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
+                { type:CARD_KEYWORD_ID.ANNIHILATION, strength:1, duration:-1 }
+            ]
+        }
     },
 
    
@@ -287,14 +331,17 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-characters/golem-neutral.glb",
         //Attributes
         attributeCost:2,
-        attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.STRIKE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            }
-        ]  
+        //character details
+        attributeCharacter:{
+            //unit stats
+            unitHealth:5, 
+            unitAttack:3, 
+            unitArmour:1,
+            //innate effects
+            effects:[
+
+            ]
+        },
     },
     //## FIRE CHARACTERS
     {
@@ -311,18 +358,17 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-characters/golem-fire.glb",
         //Attributes
         attributeCost:2,
-        attributeCharacter:{unitHealth:5, unitAttack:3, unitArmour:1,},
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.STRIKE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-            {
-                type:CARD_KEYWORD_ID.BURN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-        ]  
+        //character details
+        attributeCharacter:{
+            //unit stats
+            unitHealth:5, 
+            unitAttack:3, 
+            unitArmour:1,
+            //innate effects
+            effects:[
+
+            ]
+        }, 
     },
     //## ICE CHARACTERS
     {
@@ -339,18 +385,17 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-characters/golem-ice.glb",
         //Attributes
         attributeCost:2,
-        attributeCharacter: {unitHealth:5, unitAttack:3, unitArmour:1,},
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.STRIKE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-            {
-                type:CARD_KEYWORD_ID.BLEED, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-        ]  
+        //character details
+        attributeCharacter:{
+            //unit stats
+            unitHealth:5, 
+            unitAttack:3, 
+            unitArmour:1,
+            //innate effects
+            effects:[
+
+            ]
+        },
     },
     //## ELECTRIC CHARACTERS
     {
@@ -367,18 +412,17 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-characters/golem-electric.glb",
         //Attributes
         attributeCost:2,
-        attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.STRIKE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-            {
-                type:CARD_KEYWORD_ID.DISABLE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-        ]  
+        //character details
+        attributeCharacter:{
+            //unit stats
+            unitHealth:5, 
+            unitAttack:3, 
+            unitArmour:1,
+            //innate effects
+            effects:[
+
+            ]
+        },
     },
     //## VOID CHARACTERS
     {
@@ -395,18 +439,17 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-characters/golem-void.glb",
         //Attributes
         attributeCost:2,
-        attributeCharacter:  {unitHealth:5, unitAttack:3, unitArmour:1,},
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.STRIKE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-            {
-                type:CARD_KEYWORD_ID.DRAIN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.COUNT, targetCount:1
-            },
-        ]  
+        //character details
+        attributeCharacter:{
+            //unit stats
+            unitHealth:5, 
+            unitAttack:3, 
+            unitArmour:1,
+            //innate effects
+            effects:[
+
+            ]
+        },
     },
 
 
@@ -426,13 +469,6 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-terrain/terrain-fire.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.BURN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.ALL, targetCount:0
-            },
-        ]  
     },
     //## ICE TERRAIN
     {
@@ -446,15 +482,9 @@ export const CardData:CardDataObject[] = [
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 2, posY: 0 },
         //display 3D
-        objPath: "models/tcg-framework/card-terrain/terrain-neutral.glb",
+        objPath: "models/tcg-framework/card-terrain/terrain-ice.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.BLEED, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.ALL, targetCount:0
-            },        ]  
     },
     //## ELECTRIC TERRAIN
     {
@@ -471,13 +501,6 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-terrain/terrain-lightning.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.DISABLE, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.ALL, targetCount:0
-            },
-        ]  
     },
     //## VOID TERRAIN
     {
@@ -494,12 +517,5 @@ export const CardData:CardDataObject[] = [
         objPath: "models/tcg-framework/card-terrain/terrain-void.glb",
         //Attributes
         attributeCost:1,
-        //effects
-        keywords: [
-            {
-                type:CARD_KEYWORD_ID.DRAIN, strength:1,
-                targetType:CARD_KEYWORD_TARGET_TYPE.ENEMY, targetCountType:CARD_KEYWORD_TARGET_COUNT_TYPE.ALL, targetCount:0
-            },
-        ]  
     },
 ];

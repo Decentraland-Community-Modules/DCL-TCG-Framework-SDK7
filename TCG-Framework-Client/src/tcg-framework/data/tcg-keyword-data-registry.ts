@@ -28,7 +28,7 @@ export class CardKeywordEntry {
 /** manages the state of all accessories in the game */
 export class CardKeywordRegistry {
     /** when true debugging logs will be generated (ensure is false when deploying to remove overhead) */
-    private static IsDebugging: boolean = true;
+    private static IsDebugging: boolean = false;
 
     //access pocketing
     private static instance: undefined | CardKeywordRegistry;
@@ -57,7 +57,7 @@ export class CardKeywordRegistry {
 
         //populate registry collections
         //  process every def
-        for (var i: number = 0; i < CardKeywordEntry.length; i++) {
+        for (var i: number = 0; i < CardKeywordData.length; i++) {
             //prepare entry
             const entry = new CardKeywordEntry(i, CardKeywordData[i].ID.toString());
             if (CardKeywordRegistry.IsDebugging) console.log("Card Keyword Registry: creating entry=" + i + ", ID=" + CardKeywordData[i].ID);

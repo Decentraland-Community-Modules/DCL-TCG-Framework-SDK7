@@ -197,7 +197,7 @@ export module InteractionManager {
                 if(isDebugging) console.log(debugTag+"table card slot selected, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
                 const table = Table.GetByKey(component.tableID.toString());
                 if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
-                table.InteractionSlot(component.teamID, component.slotID);
+                table.InteractionSlotSelection(component.teamID, component.slotID);
             }
             //interaction: secondary key -> attempt action
             if (inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN, entity)) {
