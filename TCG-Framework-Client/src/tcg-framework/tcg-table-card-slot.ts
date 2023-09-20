@@ -3,6 +3,7 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardData, CardDataObject } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
+import { CardSubjectObject } from "./tcg-card-subject-object";
 
 /*      TRADING CARD GAME - TABLE CARD SLOT
     represents a single card slot on a team's side of a table
@@ -114,14 +115,20 @@ export module TableCardSlot {
         private slottedCard:undefined|PlayCard.PlayCardDataObject = undefined;
         public get SlottedCard():undefined|PlayCard.PlayCardDataObject { return this.slottedCard; }
 
+        /** returns true if slot has a card slotted */
+        public IsCardSlotOccupied():boolean {
+            if(this.SlottedCard != undefined) return true;
+            else return false;
+        }
+
         /** parental position */
-        private entityParent:Entity;
+        public entityParent:Entity;
         /** interaction area for the card */
         private entityInteraction:Entity;
         /** selection preview (shows if slot is selected) */
         private entitySelection:Entity;
         /** active character display object (actual character in this slot) */
-        private entityCharacter:Entity;
+        public entityCharacter:undefined|CardSubjectObject.CardSubjectObject;
 
         //character stats display portions
         /** character display pivot point */
@@ -142,15 +149,6 @@ export module TableCardSlot {
             //create interaction object
             this.entityParent = engine.addEntity();
             Transform.create(this.entityParent);
-
-            //create display object
-            this.entityCharacter = engine.addEntity();
-            Transform.create(this.entityCharacter, {
-                parent: this.entityParent,
-                position: DISAPLAY_OFFSET_ON,
-                scale: DISAPLAY_SCALE,
-                rotation: Quaternion.fromEulerDegrees(DISAPLAY_ROTATION.x, DISAPLAY_ROTATION.y, DISAPLAY_ROTATION.z)
-            });
 
             //create selection object
             this.entitySelection = engine.addEntity();
@@ -285,14 +283,18 @@ export module TableCardSlot {
             const transformParent = Transform.getMutable(this.entityParent);
             transformParent.scale = PARENT_SCALE_ON;
             //display card character
-            const transformCharacter = Transform.getMutable(this.entityCharacter);
-            transformCharacter.position = DISAPLAY_OFFSET_ON;
-            transformCharacter.scale = DISAPLAY_SCALE;
-            //update card character model
-            GltfContainer.createOrReplace(this.entityCharacter, {
-                src: data.DefData.objPath,
-                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-                invisibleMeshesCollisionMask: undefined
+            this.entityCharacter = CardSubjectObject.Create({
+                key:"char-"+this.Key,
+                //targeting
+                type: this.slottedCard.DefData.type,
+                model: this.slottedCard.DefData.objPath,
+                animStart: CardSubjectObject.ANIM_KEY_CHARACTER.IDLE,
+                animSpeed: 0.8,
+                //position
+                parent: this.entityParent, 
+                position: DISAPLAY_OFFSET_ON,
+                scale: DISAPLAY_SCALE,
+                rotation: Quaternion.fromEulerDegrees(DISAPLAY_ROTATION.x, DISAPLAY_ROTATION.y, DISAPLAY_ROTATION.z)
             });
             //show character stats
             Transform.getMutable(this.statsParent).scale = STATS_SCALE;
@@ -305,7 +307,7 @@ export module TableCardSlot {
 
             TextShape.getMutable(this.statsName).text = this.slottedCard.DefData.name;
             TextShape.getMutable(this.statsAction).text = "ACTIVE: "+this.slottedCard.ActionRemaining;
-            TextShape.getMutable(this.statsHealth).text = "HP: "+this.slottedCard.Health.toString();
+            TextShape.getMutable(this.statsHealth).text = "HP: "+this.slottedCard.HealthCur.toString();
             TextShape.getMutable(this.statsAttack).text = "ATK: "+this.slottedCard.Attack.toString();
             TextShape.getMutable(this.statsArmour).text = "DEF: "+this.slottedCard.Armour.toString();
         }
@@ -314,9 +316,10 @@ export module TableCardSlot {
         public ClearCard() {
             this.slottedCard = undefined;
             //hide card character
-            const transformCharacter = Transform.getMutable(this.entityCharacter);
-            transformCharacter.position = DISAPLAY_OFFSET_OFF;
-            transformCharacter.scale = Vector3.Zero();
+            if(this.entityCharacter != undefined) {
+                CardSubjectObject.Disable(this.entityCharacter);
+                this.entityCharacter = undefined;
+            }
             //hide character stats
             Transform.getMutable(this.statsParent).scale = PARENT_SCALE_OFF;
         }

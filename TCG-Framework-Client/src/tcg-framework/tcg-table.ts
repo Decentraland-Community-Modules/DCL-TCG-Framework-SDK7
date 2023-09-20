@@ -1,15 +1,16 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
-import { Animator, Billboard, ColliderLayer, Entity, GltfContainer, InputAction, Material, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Billboard, ColliderLayer, Entity, GltfContainer, InputAction, Material, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableTeam } from "./tcg-table-team";
 import { CardSubjectObject } from "./tcg-card-subject-object";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { PlayCardDeck } from "./tcg-play-card-deck";
-import { CARD_TYPE, CardData } from "./data/tcg-card-data";
+import { CARD_TARGETING_OWNER, CARD_TARGETING_TYPE, CARD_TYPE, CardData } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
 import { TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { Networking } from "./config/tcg-networking";
 import { CardDisplayObject } from "./tcg-card-object";
+import * as utils from '@dcl-sdk/utils';
 
 
 /*      TRADING CARD GAME - CARD TABLE
@@ -70,7 +71,7 @@ export module Table {
     const LOBBY_OFFSET:Vector3 = { x:0, y:8, z:0 };
 
     /** indexing key */
-    export function GetKeyFromData(data:TableTeamCreationData):string { return data.tableID.toString(); };
+    export function GetKeyFromData(data:TableCreationData):string { return data.tableID.toString(); };
     /** table state callback */
     export function CallbackGetTableState(key:string):TABLE_GAME_STATE {
         const table = Table.GetByKey(key);
@@ -100,8 +101,6 @@ export module Table {
 
     /** type of selected slot */
     enum SELECTION_SLOT_TYPE {
-        //no slot selected
-        UNSELECTED = -2,
         //team selected
         TEAM = -1,
         //slot selected
@@ -112,8 +111,14 @@ export module Table {
         SLOT_4 = 4,
     }
 
+    /** defines a target that has been selected on the table */
+    interface TableSelectionTarget {
+        team:number;
+        id:SELECTION_SLOT_TYPE;
+    }
+
 	/** object interface used to define all data required to create a team */
-	export interface TableTeamCreationData {
+	export interface TableCreationData {
         //indexing
         tableID: number;
         //type
@@ -152,16 +157,28 @@ export module Table {
         private curRound:number = -1;
         public get CurRound():number { return this.curRound; };
 
+        /** returns true if the given team is friendly to the current team (mainly here for 2v2/teams expansion) */
+        public IsTeamFriendly(team:number):boolean {
+            if(team == this.curTurn) return true;
+            else return false;
+        }
+
+        //## CARD SELECTION/TARGETING
         /** currently selected card object's key */
         private selectedCardKey:undefined|string;
-
-        /** currently selected target per team */
-        private selectionTargets:SELECTION_SLOT_TYPE[] = [];
+        /** targeting filter, allowed owners */
+        private targetingOwner:undefined|CARD_TARGETING_OWNER;
+        /** targeting filter, allowed type*/
+        private targetingType:undefined|CARD_TARGETING_TYPE;
+        /** targeting filter, number of targets */
+        private targetingCount:number = 0;
+        /** currently selected targets */
+        private selectionTargets:TableSelectionTarget[] = [];
 
         /** parental position */
         private entityParent:Entity;
 
-        //lobby objects
+        //## LOBBY OBJECTS
         /** lobby parent/pivot */
         private entityLobbyParent:Entity;
         /** display object, showing current state of the table */
@@ -174,11 +191,24 @@ export module Table {
         //state display objects
         private entityStateDisplays:TableTeam.TeamDisplayObject[];
 
+        //object used for displaying spells (trying this out for now, might need a new system if we need to show more than 1 spell)
+        private spellViewObj:CardSubjectObject.CardSubjectObject = CardSubjectObject.Create({
+            key:"spv-"+this.TableID,
+            //targeting
+            type: CARD_TYPE.SPELL,
+            model: CardData[0].objPath,
+            //position
+            parent: undefined, 
+            position: { x:0, y:0, z:0 },
+            scale: { x:0, y:0, z:0 },
+            rotation: { x:0, y:0, z:0 }
+        });
+        
         //pve npc enemy entity
-        private characterNPC: CardSubjectObject.CardSubjectObject;
+        private characterNPC:CardSubjectObject.CardSubjectObject;
 
         /** all team objects */
-        public teamObjects: TableTeam.TableTeamObject[] = [];
+        public teamObjects:TableTeam.TableTeamObject[] = [];
 
         /** returns the table's player state string */
         public GetPlayerString():string {
@@ -281,7 +311,7 @@ export module Table {
         }
 
         /** prepares the card slot for use by a table team */
-        public Initialize(data:TableTeamCreationData) {
+        public Initialize(data:TableCreationData) {
             this.isActive = true;
             //indexing
             this.tableID = data.tableID;
@@ -322,6 +352,19 @@ export module Table {
                     this.teamObjects[i].RegisteredDeck = PlayerLocal.DeckPVE;
                 }
             }
+
+            //create spell display object
+            this.spellViewObj = CardSubjectObject.Create({
+                key:"spv-"+this.TableID,
+                //targeting
+                type: CARD_TYPE.SPELL,
+                model: CardData[0].objPath,
+                //position
+                parent: undefined, 
+                position: { x:0, y:0, z:0 },
+                scale: { x:0, y:0, z:0 },
+                rotation: { x:0, y:0, z:0 }
+            });
             
             //set default lobby state
             this.SetLobbyState(TABLE_GAME_STATE.IDLE);
@@ -414,6 +457,7 @@ export module Table {
             }
 
             //set team display object states
+            //  player belongs to team 1
             if(PlayerLocal.DisplayName() == this.teamObjects[0].RegisteredPlayer) {
                 //hand displays
                 this.teamObjects[0].SetHandState(true);
@@ -428,6 +472,7 @@ export module Table {
                 this.entityStateDisplays[1].SetPosition({x:5, y:2.5, z:2.75});
                 this.entityStateDisplays[1].SetRotation({x:0,y:340,z:0});
             }
+            //  player belongs to team 2
             else if(PlayerLocal.DisplayName() == this.teamObjects[1].RegisteredPlayer) {
                 //hand displays
                 this.teamObjects[1].SetHandState(true);
@@ -441,6 +486,7 @@ export module Table {
                 this.entityStateDisplays[1].SetRotation({x:0,y:160,z:0});
 
             }
+            //  player belongs to no team
             else {
                 //hand displays
                 this.teamObjects[1].SetHandState(false);
@@ -564,8 +610,7 @@ export module Table {
             //set entry table state
             this.curTurn = this.teamObjects.length-1;
             this.curRound = 0;
-            this.selectedCardKey = undefined;
-            this.selectionTargets = [];
+            //set lobby state
             this.SetLobbyState(TABLE_GAME_STATE.ACTIVE);
 
             //process each team
@@ -674,56 +719,111 @@ export module Table {
                 SetAIState(true, this);
             }
 
+            //remove all selections
+            this.DeselectAllTargets();
+
             //update team buttons
             this.teamObjects[0].UpdateButtonStates();
             this.teamObjects[1].UpdateButtonStates();
             if(isDebugging) console.log(debugTag+"<REMOTE> table="+this.TableID+" started new turn="+this.curTurn+", round="+this.curRound+"!");
         }
+        
+        //## INTERACTIONS - TEAMS
+        /** called when a team is selected */
+        public InteractionTeamSelection(team:number, aiPVE:boolean=false) {
+            if(isDebugging) console.log(debugTag+"local player interacted with team="+team);
+            
+            //halt if game is not in-session 
+            if(this.curState != TABLE_GAME_STATE.ACTIVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> game is not in session");
+                return;
+            }
 
-        //## HAND CARD INTERACTIONS
+            //targeting filter checks
+            //  type
+            if(this.targetingType != CARD_TARGETING_TYPE.ANY && this.targetingType != CARD_TARGETING_TYPE.TEAM_PLAYER)  {
+                if(isDebugging) console.log(debugTag+"<FAILED> wrong filter mode, type="+this.targetingType);
+                return;
+            }
+            //  owner
+            switch(this.targetingOwner) {
+                //target must be ally
+                case CARD_TARGETING_OWNER.ALLY:
+                    //ensure targeted team belongs to current team
+                    if(this.CurTurn != team)  {
+                        if(isDebugging) console.log(debugTag+"<FAILED> wrong filter mode, owner="+this.targetingOwner);
+                        return;
+                    }
+                break;
+                //target must be enemy
+                case CARD_TARGETING_OWNER.ENEMY:
+                    //ensure targeted team belongs to other team
+                    if(this.CurTurn == team)  {
+                        if(isDebugging) console.log(debugTag+"<FAILED> wrong filter mode, owner="+this.targetingOwner);
+                        return;
+                    }
+                break;
+            }
+
+            //if team is already selected, deselect targets
+            if(this.selectionTargets.length >= 2 && this.selectionTargets[1].id == SELECTION_SLOT_TYPE.TEAM) {
+                this.DeselectAllTargets();
+                if(isDebugging) console.log(debugTag+"team was already selected, deselected team="+team+"!");
+            }
+            //else select team
+            else {
+                this.selectionTargets.push({team:team,id:SELECTION_SLOT_TYPE.TEAM})
+                this.teamObjects[team].SetTeamTargetState(true);
+                if(isDebugging) console.log(debugTag+"team was already selected, deselected team="+team+"!");
+            }
+        }
+
+        //## INTERACTIONS - HAND CARDS
         /** called when a selection attempt is made by the player */
         public InteractionCardSelection(team:number, cardID:string, aiPVE:boolean=false) {
             if(isDebugging) console.log(debugTag+"local player interacted with card="+cardID);
             
-            //ensure team has a player (might be viewing the end of a game)
-            if(this.teamObjects[team].RegisteredPlayer == undefined) return;
-
-            //ensure caller is part of the team or the local AI
-            if(!aiPVE && this.teamObjects[team].RegisteredPlayer != PlayerLocal.DisplayName()) {
-                if(isDebugging) console.log(debugTag+"local player="+PlayerLocal.DisplayName+" did not belong to required team="+team
-                    +", owner="+this.teamObjects[team].RegisteredPlayer);
+            //halt if game is not in-session 
+            if(this.curState != TABLE_GAME_STATE.ACTIVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> game is not in session");
+                return;
+            }
+            //halt if local player is not the current team owner and not an ai
+            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
 
+            //if no card is selected
+            if(this.selectedCardKey == undefined) {
+                this.SelectCard(cardID);
+            }
             //if a card is already selected
-            if(this.selectedCardKey != undefined) {
+            else {
                 //if selected card is the same as given card
                 if(this.selectedCardKey === cardID) {
-                    //attempt to play the card
                     this.DeselectCard();
-                    return;
                 } 
                 //if selected card is not the same as given card
                 else {
                     this.DeselectCard();
+                    this.SelectCard(cardID);
                 }
-
             }
-            //select given card
-            this.SelectCard(cardID);
         }
         
         /** called when an activation attempt is made by the player */
         public InteractionCardActivation(team:number, cardID:string, aiPVE:boolean=false) {
             if(isDebugging) console.log(debugTag+"local player activated card="+cardID);
             
-            //ensure table is currently active
-            if(this.CurState != TABLE_GAME_STATE.ACTIVE) return;
-
-            //ensure caller is part of the team or the local AI
-            if(!aiPVE && this.teamObjects[team].RegisteredPlayer != PlayerLocal.DisplayName()) {
-                if(isDebugging) console.log(debugTag+"local player="+PlayerLocal.DisplayName+" did not belong to required team="+team
-                    +", owner="+this.teamObjects[team].RegisteredPlayer);
+            //halt if game is not in-session 
+            if(this.curState != TABLE_GAME_STATE.ACTIVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> game is not in session");
+                return;
+            }
+            //halt if local player is not the current team owner and not an ai
+            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
 
@@ -740,13 +840,43 @@ export module Table {
         /** selects a card from the player's hand */
         public SelectCard(key:string) {
             if(isDebugging) console.log(debugTag+"selecting card="+key+"...");
-            
+
+            //ensure card exists
+            const card = PlayCard.GetByKey(key);
+            if(card == undefined) {
+                if(isDebugging) console.log(debugTag+"<FAILED> could not find card data (key="+key+")");
+                return;
+            }
+
             //set key
             this.selectedCardKey = key;
-            //update object display
+            //update hand display
             this.teamObjects[this.curTurn].UpdateCardObjectDisplay(key);
+            
+            //set filtering based on card type
+            switch(card.DefData.type) {
+                //spells -> load specific settings
+                case CARD_TYPE.SPELL:
+                    this.targetingCount = card.DefData.attributeSpell?.targetCount??1;
+                    this.targetingOwner = card.DefData.attributeSpell?.targetOwner;
+                    this.targetingType = card.DefData.attributeSpell?.targetType;
+                    //auto process selections for 'all' or 'only team' 
+                break;
+                //characters -> only allow friendly unoccupied slot
+                case CARD_TYPE.CHARACTER:
+                    this.targetingCount = 1;
+                    this.targetingOwner = CARD_TARGETING_OWNER.ALLY;
+                    this.targetingType = CARD_TARGETING_TYPE.SLOT_UNOCCUPIED;
+                break;
+                //terrain -> does not have any targets
+                case CARD_TYPE.TERRAIN:
+                    this.targetingCount = 0;
+                    this.targetingOwner = undefined;
+                    this.targetingType = undefined;
+                break;
+            }
 
-            if(isDebugging) console.log(debugTag+"selected card="+this.selectedCardKey+"!");
+            if(isDebugging) console.log(debugTag+"selected card="+this.selectedCardKey+", target={owner="+this.targetingOwner+",type="+this.targetingType+",count="+this.targetingCount+"}!");
         }
 
         /** deselects the currently selected card */
@@ -756,20 +886,193 @@ export module Table {
             //ensure selected card exists
             if(this.selectedCardKey == undefined) return;
 
-            //set key
+            //clear all previous targets
+            this.DeselectAllTargets();
+
+            //remove selected card
             this.selectedCardKey = undefined;
+            //remove targeting filters
+            this.targetingCount = 0;
+            this.targetingOwner = undefined;
+            this.targetingType = undefined;
+
             //update object display
             this.teamObjects[this.curTurn].UpdateCardObjectDisplay("");
 
             if(isDebugging) console.log(debugTag+"deselected card="+this.selectedCardKey+"!");
         }
+        
+        //## INTERACTIONS - FIELD SLOTS
+        /** called when a field slot is interacted with by the player */
+        public InteractionSlotSelection(team:number, slotID:number, aiPVE:boolean=false) {
+            if(isDebugging) console.log(debugTag+"local player interacted with slot belonging to team="+team+", slot="+slotID);
+            
+            //halt if game is not in-session 
+            if(this.curState != TABLE_GAME_STATE.ACTIVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> game is not in session");
+                return;
+            }
+            //halt if local player is not the current team owner and not an ai
+            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+                if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
+                return;
+            }
 
-        //## PLAY HAND CARD
+            //if targeting is not active, selecting unit
+            if(this.targetingType == undefined && this.targetingOwner == undefined) {
+                //halt if slot does not belong to current player
+                if(this.curTurn != team) {
+                    if(isDebugging) console.log(debugTag+"<FAILED> player attempted to select foriegn unit");
+                    return;
+                }
+                //halt if slot is unoccupied
+                if(!this.teamObjects[team].cardSlotObjects[slotID].IsCardSlotOccupied()) {
+                    if(isDebugging) console.log(debugTag+"<FAILED> targeted slot is not occupied by unit (cant fresh select empty tile)");
+                    return;
+                }
+                //halt if unit in slot has no action
+                if(this.teamObjects[team].cardSlotObjects[slotID].SlottedCard?.ActionRemaining == false) {
+                    if(isDebugging) console.log(debugTag+"<FAILED> targeted slot's unit has no action");
+                    return;
+                }
+
+                //set targeting to ally when selecting my unit (unit that will be attacking)
+                this.targetingCount = 2;
+                this.targetingOwner = CARD_TARGETING_OWNER.ALLY;
+                this.targetingType = CARD_TARGETING_TYPE.SLOT_OCCUPIED;
+                //select first slot
+                this.SelectSlot(team, slotID);
+                //set targeting to enemy for selecting unit (unit that will be attacked)
+                this.targetingType = CARD_TARGETING_TYPE.ANY;
+                this.targetingOwner = CARD_TARGETING_OWNER.ENEMY;
+            }
+            //if targeting active, ensure slot conforms to requirements
+            else {
+                //check if given slot is already selected
+                for(let i:number=0; i<this.selectionTargets.length; i++) {
+                    //if slot matches, deselect and return
+                    if(this.selectionTargets[i].team == team && this.selectionTargets[i].id == slotID) {
+                        this.DeselectAllTargets();
+                        return;
+                    }
+                }
+                //select target slot
+                this.SelectSlot(team, slotID);
+            }
+        }
+
+        /** selects a slot on the card field */
+        public SelectSlot(team:number, slotID:number) {
+            if(isDebugging) console.log(debugTag+"selecting slot{team="+team+", slot="+slotID+"}...");
+
+            //halt if the current target count is at max targets
+            if(this.selectionTargets.length >= this.targetingCount) {
+                if(isDebugging) console.log(debugTag+"<FAILED> too many slots already selected {count="+this.targetingCount+",limit="+this.selectionTargets.length+"}");
+                return;
+            }
+
+            //targeting filter checks
+            //  type
+            switch(this.targetingType) {
+                //targeting team -> halt
+                case CARD_TARGETING_TYPE.TEAM_PLAYER:
+                    if(isDebugging) console.log(debugTag+"<FAILED> targeting is set to team, not allowed to select slot");
+                    return;
+                //targeting occupied slot -> ensure slot is occupied
+                case CARD_TARGETING_TYPE.SLOT_OCCUPIED:
+                    if(!this.teamObjects[team].IsCardSlotOccupied(slotID)) {
+                        if(isDebugging) console.log(debugTag+"<FAILED> slot is not occupied");
+                        return;
+                    }
+                break;
+                //targeting unoccupied slot -> ensure slot is unoccupied
+                case CARD_TARGETING_TYPE.SLOT_UNOCCUPIED:
+                    if(this.teamObjects[team].IsCardSlotOccupied(slotID)) {
+                        if(isDebugging) console.log(debugTag+"<FAILED> slot is occupied");
+                        return;
+                    }
+                break;
+            }
+            //  owner
+            switch(this.targetingOwner) {
+                //targeting ally -> ensure target is ally 
+                case CARD_TARGETING_OWNER.ALLY:
+                    if(this.CurTurn != team) {
+                        if(isDebugging) console.log(debugTag+"<FAILED> target is not an ally");
+                        return;
+                    }
+                break;
+                //targeting enemy -> ensure target is enemy 
+                case CARD_TARGETING_OWNER.ENEMY:
+                    if(this.CurTurn == team) {
+                        if(isDebugging) console.log(debugTag+"<FAILED> target is not an enemy");
+                        return;
+                    }
+                break;
+            }
+
+            //add slot to data & set display
+            this.selectionTargets.push({team:team, id:slotID});
+            this.teamObjects[team].cardSlotObjects[slotID].SetSelectionState(true);
+
+            if(isDebugging) console.log(debugTag+"selected slot, targetCount="+this.selectionTargets.length+"!");
+        }
+
+        //## DESELECTION
+        /** deselects the target at the given index */
+        public DeselectTarget(index:number) {
+            //if swap is required to place targeted index at end of targets array
+            if(this.selectionTargets.length > 1 && index != this.selectionTargets.length-1) {
+                //preform swap
+                const swap = this.selectionTargets[this.selectionTargets.length-1];
+                this.selectionTargets[this.selectionTargets.length-1] = this.selectionTargets[index];
+                this.selectionTargets[index] = swap;
+            }
+
+            //get next target
+            const target = this.selectionTargets.pop();
+            if(target == undefined) return;
+
+            //update target's view based on type
+            switch(target.id) {
+                //team
+                case SELECTION_SLOT_TYPE.TEAM:
+                    this.teamObjects[target.team].SetTeamTargetState(false);
+                break;
+                //slots
+                default:
+                    this.teamObjects[target.team].cardSlotObjects[target.id].SetSelectionState(false);
+                break;
+            }
+        }
+        /** deselects the currently selected targets */
+        public DeselectAllTargets() {
+            if(isDebugging) console.log(debugTag+"deselecting targets, length="+this.selectionTargets.length+"...");
+
+            //remove selected card
+            this.selectedCardKey = undefined;
+            //remove targeting filters
+            this.targetingCount = 0;
+            this.targetingOwner = undefined;
+            this.targetingType = undefined;
+
+            //deactivate all targets
+            while(this.selectionTargets.length > 0) {
+                //deactivate last target
+                this.DeselectTarget(this.selectionTargets.length-1); 
+            }
+
+            if(isDebugging) console.log(debugTag+"deselected targets, length="+this.selectionTargets.length+"!");
+        }
+
+        //## PLAY CARD FROM HAND (SPELLS AND UNITS TO FIELD)
         //TODO: server authority -> server call will outsource local call to server
-        /** local call from interaction made to all connected players, begins the next turn */
+        /** local call from interaction made to all connected players, begins the next turn
+         *  NOTE: currently it is assumed selections are correct, additional checks can be added later
+         *      ex: when placing a character we only check the number of slots, not verifying quality
+        */
         public LocalPlayCard() {
-            if(isDebugging) console.log(debugTag+"<LOCAL> table="+this.TableID+" playing card="+this.selectedCardKey+
-                ", slots teamSlot0="+this.selectionTargets[0]+" teamSlot1="+this.selectionTargets[1]);
+            if(isDebugging) console.log(debugTag+"<LOCAL> table="+this.TableID+" playing card="+this.selectedCardKey+"...");
             //preform localized team checks
             const team = this.teamObjects[this.curTurn];
             //  ensure local player is owner of the current team, excluding AI
@@ -803,13 +1106,8 @@ export module Table {
                 break;
                 case CARD_TYPE.CHARACTER:
                     //ensure a slot is selected for the current team
-                    if(this.selectionTargets[this.CurTurn] == SELECTION_SLOT_TYPE.TEAM || this.selectionTargets[this.CurTurn] == SELECTION_SLOT_TYPE.UNSELECTED) {
+                    if(this.selectionTargets.length == 0) {
                         if(isDebugging) console.log(debugTag+"<FAILED> no slot is selected for current team");
-                        return;
-                    }
-                    //ensure slot does not already have a character
-                    if(team.IsCardSlotOccupied(this.selectionTargets[this.curTurn])) {
-                        if(isDebugging) console.log(debugTag+"<FAILED> targeted slot="+this.selectionTargets[this.curTurn]+" is currently occupied");
                         return;
                     }
                 break;
@@ -818,18 +1116,23 @@ export module Table {
                 break;
 			}
 
-            //send networking call
-            Table.EmitPlayCard(this.TableID, this.selectedCardKey, [this.selectionTargets[0],this.selectionTargets[1]]);
+            //prepare send data
+            const data:TableSelectionTarget[] = [];
+            //skip send for certain targeting types
+            for(let i:number=0; i<this.selectionTargets.length; i++) {
+                data.push(this.selectionTargets[i]);
+            }
 
-            //deselect card cards and slots
+            //send networking call
+            Table.EmitPlayCard(this.TableID, this.selectedCardKey, data);
+
+            //deselect card cards and targets
             this.DeselectCard();
-            this.DeselectTargets(0);
-            this.DeselectTargets(1);
+            this.DeselectAllTargets();
         }
-        /** remote call from a connected player, begins the next turn */
-        public RemotePlayCard(cardKey:string, slots:number[]) {
-            if(isDebugging) console.log(debugTag+"<REMOTE> playing card table="+this.TableID+" playing card="+cardKey+
-                ", slots teamSlot0="+slots[0]+" teamSlot1="+slots[1]+"...");
+        /** remote call from a connected player, plays card to the table */
+        public RemotePlayCard(cardKey:string, targets:TableSelectionTarget[]) {
+            if(isDebugging) console.log(debugTag+"<REMOTE> playing card on table="+this.TableID+" playing card="+cardKey+", targets="+targets.length+"...");
             //attempt to get card
             const card = PlayCard.GetByKey(cardKey);
             const team = this.teamObjects[this.curTurn];
@@ -842,11 +1145,14 @@ export module Table {
             //process by card type
             switch(card.DefData.type) {
                 case CARD_TYPE.SPELL:
-                    //move card from hand to field
+                    //move card from hand to discard
                     team.MoveCardBetweenCollections(card, 
                         PlayCardDeck.DECK_CARD_STATES.HAND,
-                        PlayCardDeck.DECK_CARD_STATES.FIELD
+                        PlayCardDeck.DECK_CARD_STATES.DISCARD
                     );
+                    this.RemoteActionSpell(card.Key, this.selectionTargets)
+                    if(isDebugging) console.log(debugTag+"<REMOTE> played card on table="+this.TableID+" card="+card.DefData.type+
+                        ", new spell has been played!");
                 break;
                 case CARD_TYPE.CHARACTER:
                     //move card from hand to field
@@ -854,10 +1160,10 @@ export module Table {
                         PlayCardDeck.DECK_CARD_STATES.HAND,
                         PlayCardDeck.DECK_CARD_STATES.FIELD
                     );
-                    //remove card object
-                    team.RemoveHandObject(card);
                     //display character on slot
-                    team.SetSlotObject(card, slots[this.CurTurn]);
+                    team.SetSlotCharacterObject(targets[0].id, card);
+                    if(isDebugging) console.log(debugTag+"<REMOTE> played card on table="+this.TableID+" card="+card.DefData.type+
+                        ", new character has been placed on slot="+this.selectionTargets[0].id+"!");
                 break;
                 case CARD_TYPE.TERRAIN:
                     //move card from hand to field
@@ -865,197 +1171,211 @@ export module Table {
                         PlayCardDeck.DECK_CARD_STATES.HAND,
                         PlayCardDeck.DECK_CARD_STATES.TERRAIN
                     );
-                    //remove card object
-                    team.RemoveHandObject(card);
                     //set new terrain card
                     team.SetTerrainCard(card);
+                    if(isDebugging) console.log(debugTag+"<REMOTE> played card on table="+this.TableID+" card="+card.DefData.type+
+                        ", new terrain has been set!");
                 break;
             }
 
             //remove energy from player
             team.EnergyCur -= card.Cost;
 
+            //remove card object
+            team.RemoveHandObject(card);
+            this.teamObjects[this.curTurn].UpdateCardObjectDisplay();
+            //deselect slots
+            this.DeselectAllTargets();
             //redraw stats
             this.RedrawTeamDisplays();
-            if(isDebugging) console.log(debugTag+"<REMOTE> played card table="+this.TableID+" playing card="+this.selectedCardKey+
-            ", slots teamSlot0="+this.selectionTargets[0]+" teamSlot1="+this.selectionTargets[1]+"!");
-        }
-        
-        //## TEAM INTERACTIONS
-        /** called when a team is selected */
-        public InteractionTeamSelection(team:number) {
-            if(isDebugging) console.log(debugTag+"local player interacted with team="+team);
-
-            //ensure local player owns opposite team
-            if(team == 0 && PlayerLocal.DisplayName() != this.teamObjects[1].RegisteredPlayer) return;
-            if(team == 1 && PlayerLocal.DisplayName() != this.teamObjects[0].RegisteredPlayer) return;
-
-            //if team is already selected, deselect targets
-            if(this.selectionTargets[team] == SELECTION_SLOT_TYPE.TEAM) {
-                this.DeselectTargets(team);
-            }
-            //else select team
-            else {
-                this.SelectTeam(team);
-            }
-        }
-        /** selects given team */
-        public SelectTeam(team:number) {
-            //deselect previous targets
-            this.DeselectTargets(team);
-            //set team as selection
-            this.selectionTargets[team] = SELECTION_SLOT_TYPE.TEAM;
-            this.teamObjects[team].SetTeamTargetState(true);
-            if(isDebugging) console.log(debugTag+"local player selected team="+team);
-        }
-        
-        //## FIELD SLOTS INTERACTIONS
-        /** called when a field slot is interacted with by the player */
-        public InteractionSlot(team:number, slotID:number) {
-            if(isDebugging) console.log(debugTag+"local player interacted with slot="+slotID);
-
-            //if target slot is already selected, deselect
-            if(this.selectionTargets[team] == slotID) {
-                this.DeselectTargets(team);
-            }
-            //if not, select target slot
-            else {
-                this.SelectSlot(team, slotID);
-            }
         }
 
-        /** selects a slot on the card field */
-        public SelectSlot(team:number, slotID:number) {
-            if(isDebugging) console.log(debugTag+"selecting slot{team="+team+", slot="+slotID+"}...");
-            //deselect previous targets
-            this.DeselectTargets(team);
-            //set slot
-            this.selectionTargets[team] = slotID;
-            //update object display
-            this.teamObjects[team].UpdateSlotDisplay(this.selectionTargets[team]);
-
-            if(isDebugging) console.log(debugTag+"selected slot{teamSlot0="+this.selectionTargets[0]+", teamSlot1="+this.selectionTargets[1]+"}!");
-        }
-
-        /** deselects the currently selected targets */
-        public DeselectTargets(team:number) {
-            if(isDebugging) console.log(debugTag+"deselecting slot{target0="+this.selectionTargets[0]+", target1="+this.selectionTargets[1]+"}...");
-
-            //deselect all targets for given team
-            switch(this.selectionTargets[team]) {
-                //deselected (no action required)
-                case SELECTION_SLOT_TYPE.UNSELECTED:
-
-                break;
-                //team
-                case SELECTION_SLOT_TYPE.TEAM:
-                    this.teamObjects[team].SetTeamTargetState(false);
-                break;
-                //slots
-                default:
-                    this.teamObjects[team].UpdateSlotDisplay();
-                break;
-            }
-            //unslot data
-            this.selectionTargets[team] = SELECTION_SLOT_TYPE.UNSELECTED;
-
-            if(isDebugging) console.log(debugTag+"deselected slot{target0="+this.selectionTargets[0]+", target1="+this.selectionTargets[1]+"}!");
-        }
-
-        //## 
-
-        //## UNIT ATTACKS
-        /**  */
+        //## UNIT ON FIELD ATTACKS
+        /** local call from interaction made to all connected players, attempts an attack from one unit to another */
         public LocalUnitAttack() {
+            //halt if the incorrect number of units are selected
+            if(this.selectionTargets.length != 2) {
+                if(isDebugging) console.log(debugTag+"<FAILED> incorrect number of units selected (needs=2, has="+this.selectionTargets.length+")");
+                return;
+            }
+
             //ensure targets are slots
-            for(let i:number=0; i<this.selectionTargets.length; i++) {
-                if(this.selectionTargets[i] == SELECTION_SLOT_TYPE.TEAM 
-                || this.selectionTargets[i] == SELECTION_SLOT_TYPE.UNSELECTED) {
+            /*for(let i:number=0; i<this.selectionTargets.length; i++) {
+                if(this.selectionTargets[i].id == SELECTION_SLOT_TYPE.TEAM) {
                     if(isDebugging) console.log(debugTag+"<REMOTE> unit attack failed for team="+i+", target="+this.selectionTargets[i]+" is not a slot");
+                    return;
+                }
+            }*/
+
+            //get attacker
+            var attackerSlot = this.teamObjects[this.selectionTargets[0].team].cardSlotObjects[this.selectionTargets[0].id];
+            //attacker filters
+            if(attackerSlot.SlottedCard == undefined) {
+                if(isDebugging) console.log(debugTag+"<FAILED> attacker slots does not contain card characters");
+                return;
+            }
+            //ensure attacking unit has an action remaining
+            if(!attackerSlot.SlottedCard.ActionRemaining) {
+                if(isDebugging) console.log(debugTag+"<FAILED> attacker characters does not have an available action");
+                return;
+            }
+
+            //process attack on team
+            if(this.selectionTargets[1].id == SELECTION_SLOT_TYPE.TEAM) {
+            }
+            //process attack on unit
+            else {
+                var defenderSlot = this.teamObjects[this.selectionTargets[1].team].cardSlotObjects[this.selectionTargets[1].id];
+
+                //ensure call is coming from player of the same team or an ai team 
+                if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && 
+                    this.teamObjects[this.curTurn].TeamType != TABLE_TEAM_TYPE.AI) {
+                    if(isDebugging) console.log(debugTag+"<FAILED> unit failed to attack on table="+PlayerLocal.CurTableID+
+                        " b.c current player is on wrong team="+PlayerLocal.CurTeamID);
+                    return;
+                }
+                //ensure both targeted slots contain characters characters
+                if(defenderSlot.SlottedCard == undefined) {
+                    if(isDebugging) console.log(debugTag+"<FAILED> defender slot does not contain card characters");
                     return;
                 }
             }
 
-            //get slots
-            var attackerSlot = undefined;
-            var defenderSlot = undefined;
-            if(this.curTurn == 0) {
-                attackerSlot = this.teamObjects[0].cardSlotObjects[this.selectionTargets[0]];
-                defenderSlot = this.teamObjects[1].cardSlotObjects[this.selectionTargets[1]];
-            } else {
-                attackerSlot = this.teamObjects[1].cardSlotObjects[this.selectionTargets[1]];
-                defenderSlot = this.teamObjects[0].cardSlotObjects[this.selectionTargets[0]];
-            }
-
-            //ensure call is coming from player of the same team or an ai team 
-            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && 
-                this.teamObjects[this.curTurn].TeamType != TABLE_TEAM_TYPE.AI) {
-                if(isDebugging) console.log(debugTag+"<REMOTE> unit failed to attack on table="+PlayerLocal.CurTableID+
-                    " b.c current player is on wrong team="+PlayerLocal.CurTeamID);
-                return;
-            }
-            //ensure both targeted slots contain characters characters
-            if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) {
-                if(isDebugging) console.log(debugTag+"<REMOTE> both slots do not contain card characters");
-                return;
-            }
-            //ensure attacking unit has an action remaining
-            if(attackerSlot.SlottedCard == undefined || !attackerSlot.SlottedCard.ActionRemaining) {
-                if(isDebugging) console.log(debugTag+"<REMOTE> card characters does not have an available action");
-                return;
-            }
-
             //send networking call
-            Table.EmitUnitAttack(this.TableID, [this.selectionTargets[0],this.selectionTargets[1]]);
+            Table.EmitUnitAttack(this.TableID, this.selectionTargets[0], this.selectionTargets[1]);
         }
-        /**  */
-        public RemoteUnitAttack(slots:number[]) {
-            //get slots
-            var attackerTeam = undefined;
-            var attackerSlot = undefined;
-            var defenderTeam = undefined;
-            var defenderSlot = undefined;
-            //populate slots
-            if(this.curTurn == 0) {
-                attackerTeam = this.teamObjects[0];
-                attackerSlot = this.teamObjects[0].cardSlotObjects[slots[0]];
-                defenderTeam = this.teamObjects[1];
-                defenderSlot = this.teamObjects[1].cardSlotObjects[slots[1]];
-            } else {
-                attackerTeam = this.teamObjects[1];
-                attackerSlot = this.teamObjects[1].cardSlotObjects[slots[1]];
-                defenderTeam = this.teamObjects[0];
-                defenderSlot = this.teamObjects[0].cardSlotObjects[slots[0]];
+        /** remote call from a connected player, executes an attack from one unit to another */
+        public RemoteUnitAttack(attacker:TableSelectionTarget, defender:TableSelectionTarget) {
+            //get attacker
+            const attackerSlot = this.teamObjects[attacker.team].cardSlotObjects[attacker.id];
+            if(attackerSlot.SlottedCard == undefined) return;
+            //play attack animation
+            attackerSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.ATTACK, false);
+            
+            //process attack on team
+            if(defender.id == SELECTION_SLOT_TYPE.TEAM) {
+                const key = this.TableID;
+                const defenderTeam = this.teamObjects[defender.team];
+                //delay processing until unit strikes
+                utils.timers.setTimeout(
+                    function() {
+                        if(attackerSlot.SlottedCard == undefined) return;
+                        //deal damage to enemy team
+                        defenderTeam.HealthCur -= attackerSlot.SlottedCard.Attack;
+                        defenderTeam.UpdateStatsDisplay();
+
+                        //if enemy team was defeated
+                        if(defenderTeam.HealthCur <= 0) {
+                            //end game in defeat
+                            EndGame(key, defender.team);
+                        }
+                    },
+                    1000
+                );
             }
-            //ensure slots contain cards
-            if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) return;
+            //process attack on unit
+            else {
+                //get defender slot
+                var defenderSlot = this.teamObjects[defender.team].cardSlotObjects[defender.id];
+                if(defenderSlot.SlottedCard == undefined) return;
 
-            //play attack animation, now
+                //process attack details, after delay
 
-            //process attack details, after delay
-            //process card character attacks
-            defenderSlot.SlottedCard.ProcessInteractionFromCard(attackerSlot.SlottedCard);
+                //process card character attacks
+                defenderSlot.SlottedCard.ProcessInteractionFromCard(attackerSlot.SlottedCard);
 
-            //remove action from attacker
-            attackerSlot.SlottedCard.ActionRemaining = false;
+                //remove action from attacker
+                attackerSlot.SlottedCard.ActionRemaining = false;
 
-            //update card slot's display
-            attackerSlot.UpdateStatDisplay();
-            defenderSlot.UpdateStatDisplay();
+                //update card slot's display
+                attackerSlot.UpdateStatDisplay();
+                defenderSlot.UpdateStatDisplay();
 
-            //if character was killed
-            if(defenderSlot.SlottedCard.Health <= 0) {
-                //move card to discard pile
-                defenderTeam.MoveCardBetweenCollections(defenderSlot.SlottedCard, PlayCardDeck.DECK_CARD_STATES.FIELD, PlayCardDeck.DECK_CARD_STATES.DISCARD);
-                //clear card from slot 
-                defenderSlot.ClearCard();
-                //redraw stats
-                this.RedrawTeamDisplays();
+                //if character was killed
+                if(defenderSlot.SlottedCard.HealthCur <= 0) {
+                    //play death animation
+                    defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
+                    //move card to discard pile
+                    this.teamObjects[defender.team].MoveCardBetweenCollections(
+                        defenderSlot.SlottedCard, 
+                        PlayCardDeck.DECK_CARD_STATES.FIELD, 
+                        PlayCardDeck.DECK_CARD_STATES.DISCARD
+                    );
+                    //clear card from slot 
+                    defenderSlot.ClearCard();
+                    //redraw stats
+                    this.RedrawTeamDisplays();
+                } else {
+                    //play death animation
+                    defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
+                }
             }
 
             //deselect slots
-            this.DeselectTargets(0);
-            this.DeselectTargets(1);
+            this.DeselectAllTargets();
+        }
+
+        /** remote call from a connected player, executes a spell from one card to a unit */
+        public RemoteActionSpell(cardKey:string, targets:TableSelectionTarget[]) {
+            if(isDebugging) console.log(debugTag+"<REMOTE> playing spell card="+cardKey+" targetCount="+targets.length+"...");
+            //get card
+            const card = PlayCard.GetByKey(cardKey);
+            //  ensure selected card exists
+            if(card == undefined)  {
+                if(isDebugging) console.log(debugTag+"<FAILED> could not find card data (key="+cardKey+")");
+                return;
+            }
+
+            //get targeted slots
+            const targetSlot = this.teamObjects[targets[0].team].cardSlotObjects[targets[0].id];
+            //ensure slots contain cards
+            if(targetSlot.SlottedCard == undefined)  {
+                if(isDebugging) console.log(debugTag+"<FAILED> provided slot has no character");
+                return;
+            }
+
+            //play spell object at location 
+            this.spellViewObj = CardSubjectObject.Create({
+                key:"spv-"+this.TableID,
+                //targeting
+                type: CARD_TYPE.SPELL,
+                model: card.DefData.objPath,
+                //position
+                parent: targetSlot.entityParent, 
+                position: { x:0, y:0.4, z:0 },
+                scale: { x:0.8, y:0.8, z:0.8 },
+                rotation: { x:0, y:0, z:0 }
+            });
+            //this.spellViewObj.SetAnimation(CardSubjectObject.ANIM_KEY_SPELL.NONE);
+            this.spellViewObj.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_SPELL.PLAY, true);
+
+            //process damage
+            targetSlot.SlottedCard.ProcessInteractionFromCard(card);
+
+            //TODO: set up a real callbacks system when a unit has been killed, stop this stupid shit
+            //if character was killed
+            if(targetSlot.SlottedCard?.HealthCur <= 0) {
+                //move card to discard pile
+                this.teamObjects[targets[0].team].MoveCardBetweenCollections(targetSlot.SlottedCard, PlayCardDeck.DECK_CARD_STATES.FIELD, PlayCardDeck.DECK_CARD_STATES.DISCARD);
+                //clear card from slot 
+                targetSlot.ClearCard();
+                //redraw stats
+                this.RedrawTeamDisplays();
+            } else {
+                //play flinch animation after time
+                utils.timers.setTimeout(
+                    function() {
+                        targetSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
+                        //update card slot's display
+                        targetSlot.UpdateStatDisplay();
+                    },
+                    1000
+                );
+            }
+
+            //update card slot's display
+            targetSlot.UpdateStatDisplay();
+            if(isDebugging) console.log(debugTag+"<REMOTE> played spell card="+cardKey+" targetCount="+targets.length+"!");
         }
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
@@ -1085,8 +1405,15 @@ export module Table {
         }
     }
     
+    export function EndGame(key:string, defeated:number) {
+        const table = GetByKey(key);
+        if(table != undefined) {
+            table.LocalEndGame(defeated);
+        }
+    }
+
     /** provides a new object (either pre-existing & un-used or entirely new) */
-    export function Create(data:TableTeamCreationData):TableObject {
+    export function Create(data:TableCreationData):TableObject {
         const key:string = GetKeyFromData(data);
         var object:undefined|TableObject = undefined;
         if(isDebugging) console.log(debugTag+"attempting to create new object, key="+key+"...");
@@ -1262,30 +1589,29 @@ export module Table {
     });
     //## PLAY CARD
     //  send
-    export function EmitPlayCard(table:string, key:string, slot:number[]) {
-        if(isDebugging) console.log(debugTag+"<EMIT> starting next turn for table="+table+" playing card="+key+
-        ", slots teamSlot0="+slot[0]+" teamSlot1="+slot[1]);
-        Networking.MESSAGE_BUS.emit('txPlayCard', {table, key, slot});
+    export function EmitPlayCard(table:string, key:string, targets:TableSelectionTarget[]) {
+        if(isDebugging) console.log(debugTag+"<EMIT> starting next turn for table="+table+" playing card="+key+", targets="+targets.length);
+        Networking.MESSAGE_BUS.emit('txPlayCard', {table, key, targets:targets});
     }
     //  recieve
-    Networking.MESSAGE_BUS.on('txPlayCard', (data: {table:string, key:string, slot:number[]}) => {
+    Networking.MESSAGE_BUS.on('txPlayCard', (data: {table:string, key:string, targets:TableSelectionTarget[]}) => {
         //get table
         const table = GetByKey(data.table);
         if(table == undefined) return;
-        table.RemotePlayCard(data.key, data.slot);
+        table.RemotePlayCard(data.key, data.targets);
     });
     //## UNIT ATTACK
     //  send
-    export function EmitUnitAttack(table:string, slot:number[]) {
-        if(isDebugging) console.log(debugTag+"<EMIT> unit on table="+table+" attacking based on slots teamSlot0="+slot[0]+" teamSlot1="+slot[1]);
-        Networking.MESSAGE_BUS.emit('txUnitAttack', {table, slot});
+    export function EmitUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) {
+        if(isDebugging) console.log(debugTag+"<EMIT> unit on table="+table+" attacking based on {attacker="+attacker.id+", defender="+defender.id+"}");
+        Networking.MESSAGE_BUS.emit('txUnitAttack', {table, attacker, defender});
     }
     //  recieve
-    Networking.MESSAGE_BUS.on('txUnitAttack', (data: {table:string, slot:number[]}) => {
+    Networking.MESSAGE_BUS.on('txUnitAttack', (data: {table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget}) => {
         //get table
         const table = GetByKey(data.table);
         if(table == undefined) return;
-        table.RemoteUnitAttack(data.slot);
+        table.RemoteUnitAttack(data.attacker, data.defender);
     });
 
     //### AI CARD PLAYER (TODO: move into seperate namespace)

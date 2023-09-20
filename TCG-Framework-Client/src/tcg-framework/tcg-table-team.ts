@@ -363,26 +363,21 @@ export module TableTeam {
         public TerrainCard:undefined|string = undefined;
         public SetTerrainCard(card:undefined|PlayCard.PlayCardDataObject) {
             var terrainModel:string = "";
-            if(card) { terrainModel = card.DefData.objPath; }
+            if(card != undefined) { terrainModel = card.DefData.objPath; }
             else { terrainModel = MODEL_DEFAULT_TERRAIN; }
             
-            //set
+            //set custom model
             GltfContainer.createOrReplace(this.entityTerrain, {
                 src: terrainModel,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
+            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" setting terrain to src="+card?.DefData.objPath);
         }
 
         /** all card slot objects (used for displaying card characters) */
         public cardSlotObjects:TableCardSlot.TableCardSlotObject[] = [];
-        public IsCardSlotOccupied(index:number):boolean {
-            if(this.cardSlotObjects[index].SlottedCard != undefined) return true;
-            else return false;
-        }
-        public IsCardSlotAction(index:number):boolean {
-            return this.cardSlotObjects[index].IsActive;
-        }
+        public IsCardSlotOccupied(index:number):boolean { return this.cardSlotObjects[index].IsCardSlotOccupied() }
 
         /** prepares field team for use */
         constructor() {
@@ -743,7 +738,10 @@ export module TableTeam {
             //shuffle decks
             this.RegisteredDeck?.ShuffleCards();
             //reset all card slots
-            this.UpdateSlotDisplay();
+            for(let i:number=0; i<this.cardSlotObjects.length; i++) {
+                this.cardSlotObjects[i].SetSelectionState(false);
+                this.cardSlotObjects[i].ClearCard();
+            }
 
             //if character is registered to table
             if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
@@ -904,15 +902,6 @@ export module TableTeam {
             }
         }
 
-        /** updates the display of card slot */
-        public UpdateSlotDisplay(selected:number=-1) {
-            //
-            for(let i:number=0; i<this.cardSlotObjects.length; i++) {
-                if(i == selected) this.cardSlotObjects[i].SetSelectionState(true);
-                else this.cardSlotObjects[i].SetSelectionState(false);
-            }
-        }
-
         /** draws a card from the player's deck and places it in their hand, generating the required  */
         public DrawCard() {
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" is drawing card...");
@@ -1001,7 +990,7 @@ export module TableTeam {
         }
 
         /** sets slot display object */
-        public SetSlotObject(card:PlayCard.PlayCardDataObject, slot:number) {
+        public SetSlotCharacterObject(slot:number, card:PlayCard.PlayCardDataObject) {
             if(isDebugging) console.log(debugTag+"setting card="+card.Key+" in slot="+slot);
             //apply given card to slot
             this.cardSlotObjects[slot].ApplyCard(card);

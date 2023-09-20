@@ -56,11 +56,16 @@ export module PlayerLocal {
 
     //provide default decks
     for(let j:number=0; j<5; j++){
-        //default deck - ice
-        for(let i:number=0; i<3; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_ICEBOLT); }
-        for(let i:number=0; i<5; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.CHARACTER_ICE_GOLEM); }
-        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
-        //default deck - terrain
+        //spells
+        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_HEAL); }
+        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_FIREBOLT); }
+        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_ICEBOLT); }
+        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT); }
+        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_VOIDBOLT); }
+        //characters
+        for(let i:number=0; i<3; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.CHARACTER_ICE_GOLEM); }
+        //PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
+        //terrain
         /*PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_FIRE);
         PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
         PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ELECTRIC);

@@ -18,7 +18,7 @@ import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 export module PlayCard
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = false;
+    const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Play Data: ";
 
@@ -125,7 +125,8 @@ export module PlayCard
         //## CHARACTER STATS
         public ActionRemaining:boolean = false;
         /** health */
-        public Health:number = 0;
+        public HealthCur:number = 0;
+        public HealthMax:number = 0;
         /** attack */
         public Attack:number = 0;
         /** armour */
@@ -176,7 +177,7 @@ export module PlayCard
                 //local card takes damage to health
                 const damage = card.Attack - this.Armour;
                 if(damage > 0) {
-                    this.Health -= damage;
+                    this.HealthCur -= damage;
                     //play flinch animation
                     //play impact sound
                 } else {
@@ -203,28 +204,51 @@ export module PlayCard
             switch(effect.ID) {
                 //deals damage to character's health
                 case CARD_KEYWORD_ID.STRIKE:
-
+                    const damage = effect.Strength - this.Armour;
+                    if(damage > 0) this.HealthCur -= damage;
                 break;
+                //over-time cur hp decrease, add perk to turn end
                 case CARD_KEYWORD_ID.BLEED:
-                    break;
+                break;
+                //over-time max hp decrease, add perk to turn end
                 case CARD_KEYWORD_ID.BURN:
-                    break;
+                break;
+                //one-time armor decrease, remove armor
                 case CARD_KEYWORD_ID.REND:
-                    break;
+                    this.Armour -= effect.Strength;
+                    //leash armour above 0
+                    if(this.Armour < 0) this.Armour = this.Armour;
+                break;
+                //over-time armor decrease, add perk to turn start
                 case CARD_KEYWORD_ID.MELT:
-                    break;
+                break;
+                //one-time cur hp increase, add cur hp
                 case CARD_KEYWORD_ID.HEAL:
-                    break;
+                    this.HealthCur += effect.Strength;
+                    //leash cur health below max
+                    if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
+                break;
+                //over-time cur hp increase, add perk to turn start
                 case CARD_KEYWORD_ID.MEND:
-                    break;
+                break;
+                //one-time max hp increase, add cur & max hP
                 case CARD_KEYWORD_ID.EXPAND:
-                    break;
+                    this.HealthCur += effect.Strength;
+                    this.HealthMax += effect.Strength;
+                    //leash cur health below max
+                    if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
+                break;
+                //over-time max hp increase, add perk to turn start 
                 case CARD_KEYWORD_ID.GROWTH:
-                    break;
+                break;
+                //one-time armour increase, add armour
                 case CARD_KEYWORD_ID.FORTIFY:
-                    break;
+                    this.Armour += effect.Strength;
+                break;
+                //one-time damage increase, add damage
                 case CARD_KEYWORD_ID.SHARPEN:
-                    break;
+                    this.Attack += effect.Strength;
+                break;
                 case CARD_KEYWORD_ID.EMPOWERED:
                     break;
                 case CARD_KEYWORD_ID.GUARD:
@@ -241,8 +265,10 @@ export module PlayCard
                     break;
                 case CARD_KEYWORD_ID.ANNIHILATION:
                     break;
+                //stun unit by removing action
                 case CARD_KEYWORD_ID.EXHAUST:
-                    break;
+                    this.ActionRemaining = false;
+                break;
             }
 
             if(isDebugging) console.log(debugTag+"applyed effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
@@ -286,13 +312,30 @@ export module PlayCard
             this.defIndex = index
             this.Cost = def.attributeCost;
             //keywords/effects
-            while(this.ActiveEffects.size() > 0) {
-                const effect = this.ActiveEffects.getItem(0)
-                this.ActiveEffects.removeItem(effect);
+            this.ActiveEffects = new List<ActiveKeywordEffect>();
+            this.EffectsOffensive = new List<ActiveKeywordEffect>();
+            this.EffectsDefensive = new List<ActiveKeywordEffect>();
+            this.EffectsTurnStart = new List<ActiveKeywordEffect>();
+            this.EffectsTurnEnd = new List<ActiveKeywordEffect>();
+            //process spell
+            if(def.attributeSpell) {
+                //TODO: adding all effects to offensive list atm, split this later
+                //process all effects
+                for(let i=0; i<def.attributeSpell.effects.length; i++) {
+                    const effect:ActiveKeywordEffect = {
+                        ID:def.attributeSpell.effects[i].type,
+                        Strength:def.attributeSpell.effects[i].strength,
+                        Duration:def.attributeSpell.effects[i].duration??0
+                    };
+                    //add to correct listing
+                    this.ActiveEffects.addItem(effect);
+                    this.EffectsOffensive.addItem(effect);
+                }
             }
-            //character stats
-            if(def.attributeCharacter) {
-                this.Health = def.attributeCharacter.unitHealth;
+            //process character
+            else if(def.attributeCharacter) {
+                this.HealthCur = def.attributeCharacter.unitHealth;
+                this.HealthMax = def.attributeCharacter.unitHealth;
                 this.Attack = def.attributeCharacter.unitAttack;
                 this.Armour = def.attributeCharacter.unitArmour;
             }
