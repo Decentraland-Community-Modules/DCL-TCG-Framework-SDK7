@@ -91,6 +91,7 @@ export module InteractionObject
         //text
         displayText?:string;
         interactionText?:string;
+        textColour?:Color4;
 		textPosition?: { x:number; y:number; z:number; }; //new position for object
 		textScale?: { x:number; y:number; z:number; }; //new scale for object
         //transform
@@ -211,7 +212,7 @@ export module InteractionObject
                     invisibleMeshesCollisionMask: undefined
                 });
             }
-            else if(this.entitySecondary){
+            else if(this.entitySecondary) {
                 //remove custom model
                 GltfContainer.deleteFrom(this.entitySecondary);
             }
@@ -221,7 +222,8 @@ export module InteractionObject
             transformText.position = data.textPosition??TEXT_POSITION;
             transformText.scale = data.textScale??TEXT_SCALE;
             TextShape.getMutable(this.entityText).text = data.displayText??"";
-            
+            TextShape.getMutable(this.entityText).textColor = data.textColour??Color4.Black();
+
             //pointer event system
             PointerEvents.createOrReplace(this.entityInteraction, {
                 pointerEvents: [

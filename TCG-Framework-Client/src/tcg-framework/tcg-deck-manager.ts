@@ -23,7 +23,7 @@ import { PlayerLocal } from "./config/tcg-player-local";
 */
 export module DeckManager {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = false;
+    const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Deck Manager: ";
 
@@ -206,7 +206,6 @@ export module DeckManager {
         position: { x:0, y:0.45, z:-0.09 },
         scale: { x:0.3, y:0.2, z:0.01, },
     });
-    //  add custom model  
     GltfContainer.create(deckHeaderBackground, {
         src: "models/tcg-framework/menu-displays/title-base-plate.glb",
         visibleMeshesCollisionMask: undefined,
@@ -240,10 +239,11 @@ export module DeckManager {
             target: DECK_INTERACTION_TYPE.SELECT,
             action: i,
             interactionText: "SELECT DECK "+i,
-            textScale: { x:0.125, y:1, z:1 },
+            textScale: { x:0.08, y:0.8, z:1 },
+            textPosition: { x:0, y:0, z:-1 },
             parent: deckInfoParent, 
             position: { x:0, y:0.29-(i*0.125), z:-0.1 },
-            scale: { x:0.8, y:0.10, z:0.05 }
+            scale: { x:1.0, y:0.10, z:0.01 }
         }));
         Material.setPbrMaterial(deckButtonSelectors[i].entityInteraction, { albedoColor: Color4.White(), });
         TextShape.getMutable(deckButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i]?.CardsAll.size()+")";
@@ -255,7 +255,9 @@ export module DeckManager {
         displayText: "SAVE",
         modelInteraction:"models/tcg-framework/menu-displays/info-base-plate.glb",
         interactionText: "SAVE DECK",
+        textColour:Color4.White(),
         textScale: { x:0.35, y:1, z:1, },
+        textPosition: { x:0.45, y:0, z:-0.1 },
         parent: deckInfoParent, 
         position: { x:-0.38, y:-0.4, z:-0.1 },
         scale: { x:0.18, y:0.07, z:0.05, }
@@ -267,7 +269,9 @@ export module DeckManager {
         displayText:"LOAD",
         modelInteraction:"models/tcg-framework/menu-displays/info-base-plate.glb",
         interactionText:"LOAD DECK",
+        textColour:Color4.White(),
         textScale: { x:0.35, y:1, z:1, },
+        textPosition: { x:0.45, y:0, z:-0.1 },
         parent: deckInfoParent, 
         position: { x:0.23, y:-0.4, z:-0.1 },
         scale: { x:0.18, y:0.07, z:0.05, }
@@ -303,7 +307,7 @@ export module DeckManager {
         //save local deck to target deck
         deckTargetContainer.Clone(deckLocalContainer);
         TextShape.getMutable(deckButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityText).text = "DECK "+PlayerLocal.GetPlayerDeckIndex()+" - ("+deckTargetContainer.CardsAll.size()+")";
-        TextShape.getMutable(deckHeaderText).textColor = Color4.Black();
+        TextShape.getMutable(deckHeaderText).textColor = Color4.White();
 
         //update count text
         RedrawCardView();
@@ -482,6 +486,7 @@ export module DeckManager {
     Material.setPbrMaterial(buttonPageInc.entityInteraction, {
         albedoColor: Color4.Green(),
     });
+
     /** page down */
     const buttonPageDec = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
@@ -495,7 +500,7 @@ export module DeckManager {
     Material.setPbrMaterial(buttonPageDec.entityInteraction, {
         albedoColor: Color4.Green(),
     });
-    
+
     /** page number background */
     const pageNumberBackground:Entity = engine.addEntity();
     Transform.create(pageNumberBackground,{
@@ -504,7 +509,7 @@ export module DeckManager {
         scale: { x:0.25, y:0.1, z:0.04, }
     });
     MeshRenderer.setBox(pageNumberBackground);
-    
+
     /** page text */
     const pageText:Entity = engine.addEntity();
     Transform.create(pageText,{
@@ -516,7 +521,7 @@ export module DeckManager {
         textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
     
-    //### LEFT DIPLAY PORT 
+    //### LEFT DIPLAY VIEW 
     /**creates a parent to attatch components to the left display */
     const cardInfoParent:Entity = engine.addEntity();
     Transform.create(cardInfoParent,{
@@ -525,31 +530,31 @@ export module DeckManager {
         rotation: Quaternion.fromEulerDegrees(0,-35,0)
     });
 
+    //header
     /** card name background */
     const cardNameBackground:Entity = engine.addEntity();
     Transform.create(cardNameBackground,{
         parent:cardInfoParent,
         position: { x:0, y:0.5, z:-0.10 },
-        scale: { x:0.29, y:0.25, z:0.1, },
-    }); 
-    //  add custom model  
+        scale: { x:0.315, y:0.25, z:0.1, },
+    });
     GltfContainer.create(cardNameBackground, {
         src: "models/tcg-framework/menu-displays/title-base-plate.glb",
         visibleMeshesCollisionMask: undefined,
         invisibleMeshesCollisionMask: undefined
     });
-
     /** card name header text */
     const cardNameText:Entity = engine.addEntity();
     Transform.create(cardNameText,{
         parent:cardInfoParent,
         position: { x:0, y:0.5, z:-0.12 },
-        scale: { x:0.08, y:0.08, z:0.1, },
+        scale: { x:0.085, y:0.085, z:0.1, },
     });
     TextShape.create(cardNameText, { text: "CARD_DEF_NAME", 
         textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
-    
+
+    //details
     /** card info background */
     const cardInfoBackground:Entity = engine.addEntity();
     Transform.create(cardInfoBackground,{
@@ -557,47 +562,50 @@ export module DeckManager {
         position: { x:-0.32, y:0.10, z:-0.10 },
         scale: { x:0.25, y:0.19, z:0.01, },
     });
-       //  add custom model  
-       GltfContainer.create(cardInfoBackground, {
+    GltfContainer.create(cardInfoBackground, {
         src: "models/tcg-framework/menu-displays/info-base-plate.glb",
         visibleMeshesCollisionMask: undefined,
         invisibleMeshesCollisionMask: undefined
     });
-    
+    /** card info base text */
+    const cardInfoBaseText:Entity = engine.addEntity();
+    Transform.create(cardInfoBaseText,{
+        parent:cardInfoParent,
+        position: { x:-0.32, y:0.10, z:-0.11 },
+        scale: { x:0.05, y:0.05, z:0.1, },
+    });
+    TextShape.create(cardInfoBaseText, { text: "\nFaction: \nType: \nCost:", 
+        textColor: Color4.White(), 
+        textAlign:TextAlignMode.TAM_TOP_LEFT,
+        textWrapping:true,
+        width: 9, height:10
+    });
+
+    //desc
     /** card desc background */
     const cardDescBackground:Entity = engine.addEntity();
     Transform.create(cardDescBackground,{
         parent:cardInfoParent,
-        position: { x:0, y:-0.28, z:-0.10 },
-        scale: { x:0.35, y:0.19, z:0.01, },
-    });      
-    //  add custom model  
+        position: { x:0, y:-0.30, z:-0.10 },
+        scale: { x:0.35, y:0.30, z:0.01, },
+    });        
     GltfContainer.create(cardDescBackground, {
-     src: "models/tcg-framework/menu-displays/desc-base-plate.glb",
-     visibleMeshesCollisionMask: undefined,
-     invisibleMeshesCollisionMask: undefined
- });
-    
-    /** card info base text */
-    const cardInfoBaseText:Entity = engine.addEntity();
-    Transform.create(cardInfoBaseText,{
-        parent:cardInfoBackground,
-        position: { x:-0.9, y:1.2, z:-0.52 },
-        scale: { x:0.15, y:0.18, z:0.1, },
+        src: "models/tcg-framework/menu-displays/desc-base-plate.glb",
+        visibleMeshesCollisionMask: undefined,
+        invisibleMeshesCollisionMask: undefined
     });
-    TextShape.create(cardInfoBaseText, { text: "\nFaction: \nType: \nCost:", 
-        textColor: Color4.White(), textAlign:TextAlignMode.TAM_TOP_LEFT,
-    });
-
     /** card desc text */
     const cardDescText:Entity = engine.addEntity();
     Transform.create(cardDescText,{
-        parent:cardDescBackground,
-        position: { x:-1.6, y:0.30, z:-0.52 },
-        scale: { x:0.10, y:0.15, z:0.1, },
+        parent:cardInfoParent,
+        position: { x:0, y:-0.30, z:-0.11 },
+        scale: { x:0.05, y:0.05, z:0.1, },
     });
     TextShape.create(cardDescText, { text: "Description:", 
-        textColor: Color4.White(), textAlign:TextAlignMode.TAM_TOP_LEFT,
+        textColor: Color4.White(), 
+        textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+        textWrapping:true,
+        width: 23, height:5
     });
     
     //displays enlarged card decal
@@ -608,8 +616,8 @@ export module DeckManager {
         slotID: "dm-preview",
         def: CardDataRegistry.Instance.GetEntryByPos(1).DataDef, 
         parent: cardInfoParent,
-        position: { x:0.45, y:0.11, z:-0.1 },
-        scale: { x:0.15, y:0.15, z:0.15, },
+        position: { x:0.41, y:0.10, z:-0.1 },
+        scale: { x:0.125, y:0.125, z:0.125, },
     });
 
     /** displays a list of cards in the game, based on the current filters/page  */
