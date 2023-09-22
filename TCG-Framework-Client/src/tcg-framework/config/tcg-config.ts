@@ -39,6 +39,14 @@ export enum SCENE_CONNECTIVITY_TYPE {
     PEER_TO_PEER_SANDBOX,
 }
 
+/** determines all possible card owners */
+export enum CARD_OBJECT_OWNER_TYPE {
+    GAME_TABLE_HAND = 0, //used by an active game table
+    GAME_TABLE_DECK = 1, //
+    DECK_MANAGER = 2, //used by deck manager
+    SHOWCASE = 3, //set on display in scene
+}
+
 /** all possible game states for a card table */
 export enum TABLE_GAME_STATE {
     IDLE, //no game has started

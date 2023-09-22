@@ -6,7 +6,7 @@ import { InteractionObject } from "./tcg-interaction-object";
 import { Table } from "./tcg-table";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { TableTeam } from "./tcg-table-team";
-import { TABLE_GAME_STATE } from "./config/tcg-config";
+import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE } from "./config/tcg-config";
 
 /*      TRADING CARD GAME - INTERACTION MANAGER
     used to process all interactions with tcg tables/card slots
@@ -130,7 +130,7 @@ export module InteractionManager {
                 //process interaction based on ownership type
                 switch(component.ownerType) {
                     //card table team's hand 
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND:
+                    case CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND:
                         //get table & confirm existance
                         const table = Table.GetByKey(component.tableID);
                         if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
@@ -138,7 +138,7 @@ export module InteractionManager {
                         table.InteractionCardSelection(parseInt(component.teamID), component.slotID);
                     break;
                     //deck manager
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER:
+                    case CARD_OBJECT_OWNER_TYPE.DECK_MANAGER:
                         //process request type
                         switch(component.request) {
                             case CardDisplayObject.CARD_OBJECT_INTERACTION_TYPE.INTERACT:
@@ -153,7 +153,7 @@ export module InteractionManager {
                         }
                     break;
                     //loose display card
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.SHOWCASE:
+                    case CARD_OBJECT_OWNER_TYPE.SHOWCASE:
                     break;
                 }
             }
@@ -167,7 +167,7 @@ export module InteractionManager {
                 //process interaction based on ownership type
                 switch(component.ownerType) {
                     //card table team's hand 
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND:
+                    case CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND:
                         //get table & confirm existance
                         const table = Table.GetByKey(component.tableID);
                         if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
@@ -175,10 +175,10 @@ export module InteractionManager {
                         table.InteractionCardActivation(parseInt(component.teamID), component.slotID);
                     break;
                     //deck manager
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER:
+                    case CARD_OBJECT_OWNER_TYPE.DECK_MANAGER:
                     break;
                     //loose display card
-                    case CardDisplayObject.CARD_OBJECT_OWNER_TYPE.SHOWCASE:
+                    case CARD_OBJECT_OWNER_TYPE.SHOWCASE:
                     break;
                 }
             }
