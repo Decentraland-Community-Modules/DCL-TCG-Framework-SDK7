@@ -10,6 +10,7 @@ import { InteractionObject } from "./tcg-interaction-object";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { Dictionary, List } from "../utilities/collections";
+import { CARD_OBJECT_OWNER_TYPE } from "./config/tcg-config";
 /*      TRADING CARD GAME FRAMEWORK - DECK MANAGER
     all utilities for viewing cards and managing card decks; this includes viewing all cards (with 
     filtering options), adding/removing cards to/from a deck, and saving/loading decks. 
@@ -426,7 +427,10 @@ export module DeckManager {
 
     /** parental object for all view pieces **/
     const viewParent:Entity = engine.addEntity();
-    Transform.create(viewParent);
+    Transform.create(viewParent, {
+        position:PARENT_POSITION_OFF,
+        scale: PARENT_SCALE_OFF
+    });
 
     //## CARD DISPLAY GRID FILTERING
     /** parental object for all display gird filtering elements */
@@ -842,7 +846,7 @@ export module DeckManager {
     });
     /** selected card display object */
     const cardInfoObject = CardDisplayObject.Create({
-        ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
+        ownerType: CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
         hasInteractions: false,
         hasCounter: false,
         slotID: "dm-preview",
@@ -864,7 +868,7 @@ export module DeckManager {
             for(let x = 0; x < DISPLAY_GRID_COUNT_X; x++) {
                 //create new card object
                 const card = CardDisplayObject.Create({
-                    ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
+                    ownerType: CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
                     slotID: (x + (y*DISPLAY_GRID_COUNT_X)).toString(),
                     def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
                     parent: viewParent,

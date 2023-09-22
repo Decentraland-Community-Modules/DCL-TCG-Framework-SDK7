@@ -7,6 +7,9 @@ import { CardData, CardDataObject } from "./data/tcg-card-data";
 import { CardFactionDataObject } from "./data/tcg-faction-data";
 import { CardFactionTextureDataObject } from "./data/tcg-faction-texture-data";
 import { CardTextureDataObject } from "./data/tcg-card-texture-data";
+import { CARD_OBJECT_OWNER_TYPE } from "./config/tcg-config";
+import { CardKeywordDisplayObject } from "./tcg-card-keyword-object";
+import { CardKeywordData } from "./data/tcg-keyword-data";
 
 /*      TRADING CARD GAME - CARD OBJECT
     contains all the functionality for the framework's card objects. these are simply display
@@ -30,14 +33,6 @@ export module CardDisplayObject
     const MODEL_CARD_FRAME_CORE:string = 'models/tcg-framework/card-core/tcg-card-prototype-core.glb';
     const MODEL_CARD_FRAME_CHARACTER:string = 'models/tcg-framework/card-core/tcg-card-prototype-character.glb';
     const MODEL_CARD_FRAME_COUNTER:string = 'models/tcg-framework/card-core/tcg-card-prototype-counter.glb';
-
-    /** determines all possible card owners */
-    export enum CARD_OBJECT_OWNER_TYPE {
-        GAME_TABLE_HAND = 0, //used by an active game table
-        GAME_TABLE_DECK = 1, //
-        DECK_MANAGER = 2, //used by deck manager
-        SHOWCASE = 3, //set on display in scene
-    }
     
     /** determines all possible card interaction types */
     export enum CARD_OBJECT_INTERACTION_TYPE {
@@ -205,7 +200,7 @@ export module CardDisplayObject
         private entityTextArmour:Entity;
 
         /** card effect/keyword pieces */
-
+        private keywordObjects:CardKeywordDisplayObject.CardKeywordDisplayObject[] = [];
         /**  */
         
 
@@ -479,16 +474,50 @@ export module CardDisplayObject
             TextShape.getMutable(this.entityTextCost).text = def.attributeCost.toString();
             //  if character stat component exists in def
             if(def.attributeCharacter) {
+                //core
                 Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
                 TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
                 TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
                 TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
+                //keyword
             }
-            else {
+            else if(def.attributeSpell) {
+                //core
                 Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
                 TextShape.getMutable(this.entityTextAttack).text = "";
                 TextShape.getMutable(this.entityTextHealth).text = "";
                 TextShape.getMutable(this.entityTextArmour).text = "";
+                //keyword display objects
+                //  ensure correct number of objects
+                while(this.keywordObjects.length > def.attributeSpell.effects.length) {
+                    const keyword = this.keywordObjects.pop();
+                    if(keyword) {
+                        CardKeywordDisplayObject.Disable(keyword);
+                    }
+                }
+                //  process all required keywords
+                for(let i:number=0; i<def.attributeSpell.effects.length; i++) {
+                    //if new keyword object needs to be claimed, create new keyword object
+                    if(i > this.keywordObjects.length-1) {
+                        this.keywordObjects.push(CardKeywordDisplayObject.Create({
+                            ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
+                            def:def.attributeSpell.effects[i],
+                            tableID:this.TableID,
+                            teamID:this.TeamID,
+                            slotID:this.SlotID,
+                            indexerID:i.toString(),
+                            hasInteractions:true,
+                            parent: this.entityCoreFrameObject,
+                            position: { x:-1.0, y:0.95-(0.35*(i)), z:-0.05 },
+                            scale: { x:0.8, y:0.8, z:0.8 }
+                        }));
+                    } 
+                    //if keyword object already exists, repopulate keyword object
+                    else {
+                        //this.keywordObjects[i].SetKeyword(CardKeywordData[0]);
+                    }
+                    console.log(i+" key="+this.keywordObjects.length)
+                }
             }
 
             //if card has interactions, add pointer event system
@@ -577,7 +606,7 @@ export module CardDisplayObject
             object = pooledObjectsRegistry.getItem(key);
         } 
         //  attempt to find an existing unused object
-        if(pooledObjectsInactive.size() > 0) {
+        else if(pooledObjectsInactive.size() > 0) {
             //grab entity from (grabbing from back is a slight opt)
             object = pooledObjectsInactive.getItem(pooledObjectsInactive.size()-1);
             //  remove from inactive listing
@@ -676,7 +705,7 @@ export function TEST_CARD_OBJECT_CREATE(count:number) {
     //create requested number of objects
     for(var i=0; i<count; i++) {
         testEntities.push(CardDisplayObject.Create({
-            ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.SHOWCASE,
+            ownerType: CARD_OBJECT_OWNER_TYPE.SHOWCASE,
             slotID: "0",
             def: CardData[i], 
             position: { x:(testEntities.length*0.65)-(count*0.65/2)+8, y:1.5, z:8 },

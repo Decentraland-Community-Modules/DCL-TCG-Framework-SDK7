@@ -3,6 +3,9 @@
  * details (name, effect, etc.) of card keywords
  */
 
+import { Color4 } from "@dcl/sdk/math";
+import { TEXTURE_SHEET_CARD_KEYWORD } from "./tcg-keyword-texture-data";
+
 /** defines when application type of  */
 export enum CARD_KEYWORD_TRIGGER_TYPE {
     //applied once, as soon as card is played
@@ -78,14 +81,24 @@ export interface CardKeywordEffectDataObject {
     type:CARD_KEYWORD_EFFECT_TYPE;
 }
 
+
+/** data interface for defining a card keyword's splice sheet draw details */
+export interface CardKeywordSheetDataObject {
+    id:TEXTURE_SHEET_CARD_KEYWORD; //reference to sheet
+    posX:number; //x position of character on sheet 
+    posY:number; //y position of character on sheet
+}
+
 /** data interface for defining a trigger type */
 export interface CardKeywordDataObject
 {
     ID:CARD_KEYWORD_ID;
     //displays
-    displayIcon: string;
     displayName: string;
     displayDesc: string;
+    //display 2D
+    iconColour: Color4,
+    sheetData:CardKeywordSheetDataObject;
     //gameplay
     playType:CardKeywordTriggerDataObject;
     playEffects: CardKeywordEffectDataObject [];
@@ -124,9 +137,11 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     {
         ID: CARD_KEYWORD_ID.STRIKE,
         //displays
-        displayIcon:"",
         displayName: "Strike",
         displayDesc: "Causes damage to the enemy target",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -136,10 +151,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //causes direct damage over time
     {
         ID:CARD_KEYWORD_ID.BLEED,
-        //displays
-        displayIcon:"",
+        //displays  
         displayName: "Bleed",
         displayDesc: "inflicts constant direct damage to targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Green(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -149,10 +166,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //causes overall damage over time
     {
         ID:CARD_KEYWORD_ID.BURN,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Burn",
         displayDesc: "inflicts constant overall damage to targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -162,10 +181,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //damage enemy target(s) armour
     {
         ID:CARD_KEYWORD_ID.REND,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Rend",
         displayDesc: "Causes damage to the enemy target(s) armour",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -175,10 +196,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //damage enemy target(s) armour over time
     {
         ID:CARD_KEYWORD_ID.MELT,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Melt",
         displayDesc: "Causes damage to the enemy target(s) armour",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -193,9 +216,11 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     {
         ID:CARD_KEYWORD_ID.HEAL,
         //displays
-        displayIcon:"",
         displayName: "Heal",
         displayDesc: "Heals any allied card targeted over time",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -205,10 +230,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //heal over time
     {
         ID:CARD_KEYWORD_ID.MEND,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Mend",
         displayDesc: "Heals any allied card targeted",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -218,10 +245,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //increases max health
     {
         ID:CARD_KEYWORD_ID.EXPAND,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Expand",
         displayDesc: "increases the max HP of targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -231,10 +260,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //regenerates health past max
     {
         ID:CARD_KEYWORD_ID.GROWTH,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Growth",
         displayDesc: "regenerates HP of targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -244,10 +275,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //applies armour past max
     {
         ID:CARD_KEYWORD_ID.FORTIFY,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Fortify",
         displayDesc: "regenerates armour of targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -260,10 +293,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //increases max attack
     {
         ID:CARD_KEYWORD_ID.SHARPEN,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Sharpen",
         displayDesc: "increases the max dmg of targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -273,10 +308,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //increases max attack for a number of turns
     {
         ID:CARD_KEYWORD_ID.EMPOWERED,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Empowered",
         displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -289,10 +326,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //forces attacks onto specific units
     {
         ID:CARD_KEYWORD_ID.GUARD,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Guard",
         displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:2,},
         playEffects: [
@@ -302,10 +341,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //forces next negative debuff upon unit
     {
         ID:CARD_KEYWORD_ID.SHEILDED,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Sheilded",
         displayDesc: "forces next debuff upon targeted unit(s)",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:2,},
         playEffects: [
@@ -315,10 +356,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //makes targeted unit invisible
     {
         ID:CARD_KEYWORD_ID.STEALTH,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Stealth",
         displayDesc: "puts targeted unit(s) into an undetectable state until next action",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [
@@ -328,10 +371,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //disallows action of unit
     {
         ID:CARD_KEYWORD_ID.DISABLE,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Disable",
         displayDesc: "puts targeted unit(s) into a disabled state until cleared",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [
@@ -341,10 +386,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //allows action of unit
     {
         ID:CARD_KEYWORD_ID.REFRESH,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Refresh",
         displayDesc: "allows targeted unit(s) into a re-enabled state once played",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -354,10 +401,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //drains health from trageted unit and applies it to your own
     {
         ID:CARD_KEYWORD_ID.DRAIN,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Drain",
         displayDesc: "syphons health from enemy unit(s) and applies it to your own",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -367,10 +416,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //kills and removes enemy card from game
     {
         ID:CARD_KEYWORD_ID.ANNIHILATION,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Annihilation",
         displayDesc: "when this card kills another card remove that card from the game",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [
@@ -380,10 +431,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     //kills and removes enemy card from game
     {
         ID:CARD_KEYWORD_ID.EXHAUST,
-        //displays
-        displayIcon:"",
+        //displays 
         displayName: "Exhaust",
         displayDesc: "after this card is played remove the card from the game",
+        //display 2D
+        iconColour: Color4.Yellow(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [

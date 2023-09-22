@@ -1,5 +1,5 @@
 import Dictionary, { List } from "../utilities/collections";
-import { CardData, CardDataObject } from "./data/tcg-card-data";
+import { CardData } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
 
 /*      TRADING CARD GAME - PLAY CARD DECK

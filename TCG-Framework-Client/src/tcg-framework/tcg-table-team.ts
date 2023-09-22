@@ -6,7 +6,7 @@ import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
 import { PlayCard } from "./tcg-play-card";
 import { InteractionObject } from "./tcg-interaction-object";
-import { TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
+import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { PlayerLocal } from "./config/tcg-player-local";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
@@ -958,7 +958,7 @@ export module TableTeam {
             //create new card display object
             const cardObject = CardDisplayObject.Create({
                 //display type
-                ownerType: CardDisplayObject.CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND,
+                ownerType: CARD_OBJECT_OWNER_TYPE.GAME_TABLE_HAND,
                 //indexing
                 tableID: this.TableID,
                 teamID: this.TeamID,
