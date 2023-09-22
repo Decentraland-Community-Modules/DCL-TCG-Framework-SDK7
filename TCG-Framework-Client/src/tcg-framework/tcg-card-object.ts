@@ -473,15 +473,45 @@ export module CardDisplayObject
             //  cost
             TextShape.getMutable(this.entityTextCost).text = def.attributeCost.toString();
             //  if character stat component exists in def
-            if(def.attributeCharacter) {
+            if(def.attributeCharacter != undefined) {
                 //core
                 Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
                 TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
                 TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
                 TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
-                //keyword
+                //keyword display objects
+                //  ensure correct number of objects
+                while(this.keywordObjects.length > def.attributeCharacter.effects.length) {
+                    const keyword = this.keywordObjects.pop();
+                    if(keyword) {
+                        CardKeywordDisplayObject.Disable(keyword);
+                    }
+                }
+                //  process all required keywords
+                for(let i:number=0; i<def.attributeCharacter.effects.length; i++) {
+                    //if new keyword object needs to be claimed, create new keyword object
+                    if(i > this.keywordObjects.length-1) {
+                        this.keywordObjects.push(CardKeywordDisplayObject.Create({
+                            ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
+                            def:def.attributeCharacter.effects[i],
+                            tableID:this.TableID,
+                            teamID:this.TeamID,
+                            slotID:this.SlotID,
+                            indexerID:i.toString(),
+                            hasInteractions:true,
+                            parent: this.entityCoreFrameObject,
+                            position: { x:-1.0, y:0.95-(0.35*(i)), z:-0.05 },
+                            scale: { x:0.8, y:0.8, z:0.8 }
+                        }));
+                    } 
+                    //if keyword object already exists, repopulate keyword object
+                    else {
+                        //this.keywordObjects[i].SetKeyword(CardKeywordData[0]);
+                    }
+                    console.log(i+" key="+this.keywordObjects.length)
+                }
             }
-            else if(def.attributeSpell) {
+            else if(def.attributeSpell != undefined) {
                 //core
                 Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
                 TextShape.getMutable(this.entityTextAttack).text = "";
