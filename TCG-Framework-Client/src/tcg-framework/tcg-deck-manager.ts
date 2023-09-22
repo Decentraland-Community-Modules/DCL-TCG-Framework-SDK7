@@ -701,28 +701,28 @@ export module DeckManager {
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target: DECK_INTERACTION_TYPE.SAVE,
         displayText: "SAVE",
-        modelInteraction:"models/tcg-framework/menu-displays/info-base-plate.glb",
+        modelInteraction:"models/tcg-framework/menu-displays/save-load-plate.glb",
         interactionText: "SAVE DECK",
         textColour:Color4.White(),
-        textScale: { x:0.35, y:1, z:1, },
-        textPosition: { x:0.05, y:0, z:-0.1 },
+        textScale: { x:0.35, y:0.35, z:1, },
+        textPosition: { x:0.0, y:0.0, z:-0.1 },
         parent: deckInfoParent, 
-        position: { x:-0.34, y:-0.4, z:-0.1 },
-        scale: { x:0.18, y:0.07, z:0.05, }
+        position: { x:-0.32, y:-0.4, z:-0.1 },
+        scale: { x:0.3, y:0.25, z:0.05, }
     });
     /** load deck button */
     const deckInfoButtonLoad = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target:DECK_INTERACTION_TYPE.LOAD,
         displayText:"LOAD",
-        modelInteraction:"models/tcg-framework/menu-displays/info-base-plate.glb",
+        modelInteraction:"models/tcg-framework/menu-displays/save-load-plate.glb",
         interactionText:"LOAD DECK",
         textColour:Color4.White(),
-        textScale: { x:0.35, y:1, z:1, },
-        textPosition: { x:0.05, y:0, z:-0.1 },
+        textScale: { x:0.35, y:0.35, z:1, },
+        textPosition: { x:0.01, y:0, z:-0.1 },
         parent: deckInfoParent, 
         position: { x:0.33, y:-0.4, z:-0.1 },
-        scale: { x:0.18, y:0.07, z:0.05, }
+        scale: { x:0.3, y:0.25, z:0.05, }
     });
     
     /** selects a new deck, loading it in for modification */
