@@ -380,6 +380,7 @@ export module DeckManager {
                     DeckInteractionSelect(0);
                     DeckInteractionLoad();
                     //show display
+                    Transform.getMutable(viewParent).position = PARENT_POSITION_ON;
                     Transform.getMutable(viewParent).scale = Vector3.One(); 
                 },
                 1000
@@ -399,6 +400,7 @@ export module DeckManager {
             ReleaseCardObjects();
             //hide displays
             Transform.getMutable(viewParent).parent = undefined; 
+            Transform.getMutable(viewParent).position = PARENT_POSITION_OFF;
             Transform.getMutable(viewParent).scale = Vector3.Zero();
         }
     }

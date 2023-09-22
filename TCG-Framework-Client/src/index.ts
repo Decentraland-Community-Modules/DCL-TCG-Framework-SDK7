@@ -1,15 +1,9 @@
-import { Entity, GltfContainer, Transform, engine } from "@dcl/sdk/ecs";
-import { CARD_OBJECT_OWNER_TYPE, TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
+import { TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
 import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { CardDataRegistry } from "./tcg-framework/data/tcg-card-registry";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
-import { InteractionObject } from "./tcg-framework/tcg-interaction-object";
-import { CardKeywordDisplayObject } from "./tcg-framework/tcg-card-keyword-object";
-import { CardKeywordData } from "./tcg-framework/data/tcg-keyword-data";
-import { CardDisplayObject } from "./tcg-framework/tcg-card-object";
-import { CardData } from "./tcg-framework/data/tcg-card-data";
 
 /**
  * main function that initializes scene and prepares it for play
