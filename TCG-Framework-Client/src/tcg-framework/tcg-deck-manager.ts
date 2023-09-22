@@ -567,24 +567,26 @@ export module DeckManager {
     const buttonCardPageNext = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
         target:"0", 
-        displayText:">",
-        interactionText:"Page Up",
+        displayText:"",
+        modelInteraction:"models/tcg-framework/menu-displays/page-up-plate.glb",
+        interactionText:"Page Next",
         parent: cardPageParent, 
         position: { x:0.2, y:0, z:0 },
-        scale: { x:0.1, y:0.1, z:0.04, }
+        scale: { x:0.04, y:0.04, z:0.04, }
     });
     Material.setPbrMaterial(buttonCardPageNext.entityInteraction, {
         albedoColor: Color4.Green(),
-    });
+    });     
     /** previous page button */
     const buttonCardPagePrev = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
         target:"1", 
-        displayText:"<",
-        interactionText:"Page down",
+        displayText:"",
+        modelInteraction:"models/tcg-framework/menu-displays/page-down-plate.glb",
+        interactionText:"Page Back",
         parent: cardPageParent, 
         position: { x:-0.2, y:0, z:0 },
-        scale: { x:0.1, y:0.1, z:0.04, }
+        scale: { x:0.04, y:0.04, z:0.04, }
     });
     Material.setPbrMaterial(buttonCardPagePrev.entityInteraction, {
         albedoColor: Color4.Green(),
@@ -594,18 +596,22 @@ export module DeckManager {
     Transform.create(cardPageCurBackground,{
         parent:cardPageParent,
         position: { x:0, y:0, z:0 },
-        scale: { x:0.25, y:0.1, z:0.04, }
+        scale: { x:0.04, y:0.04, z:0.04, }
+    });    
+    GltfContainer.create(cardPageCurBackground, {
+        src: "models/tcg-framework/menu-displays/page-num-plate.glb",
+        visibleMeshesCollisionMask: undefined,
+        invisibleMeshesCollisionMask: undefined
     });
-    MeshRenderer.setBox(cardPageCurBackground);
     /** current page text */
     const cardPageCurText:Entity = engine.addEntity();
     Transform.create(cardPageCurText,{
         parent:cardPageCurBackground,
-        position: { x:0, y:0.0, z:-0.52 },
-        scale: { x:0.4, y:0.8, z:0.1, },
+        position: { x:0, y:0, z:-0.05 },
+        scale: { x:1.7, y:1.5, z:0.1, },
     });
-    TextShape.create(cardPageCurText, { text: "",
-        textColor: Color4.Black(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+    TextShape.create(cardPageCurText, { text: "page",
+        textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
 
     /** displays next page of cards */
@@ -697,9 +703,9 @@ export module DeckManager {
         interactionText: "SAVE DECK",
         textColour:Color4.White(),
         textScale: { x:0.35, y:1, z:1, },
-        textPosition: { x:0.45, y:0, z:-0.1 },
+        textPosition: { x:0.05, y:0, z:-0.1 },
         parent: deckInfoParent, 
-        position: { x:-0.38, y:-0.4, z:-0.1 },
+        position: { x:-0.34, y:-0.4, z:-0.1 },
         scale: { x:0.18, y:0.07, z:0.05, }
     });
     /** load deck button */
@@ -711,9 +717,9 @@ export module DeckManager {
         interactionText:"LOAD DECK",
         textColour:Color4.White(),
         textScale: { x:0.35, y:1, z:1, },
-        textPosition: { x:0.45, y:0, z:-0.1 },
+        textPosition: { x:0.05, y:0, z:-0.1 },
         parent: deckInfoParent, 
-        position: { x:0.23, y:-0.4, z:-0.1 },
+        position: { x:0.33, y:-0.4, z:-0.1 },
         scale: { x:0.18, y:0.07, z:0.05, }
     });
     
@@ -818,6 +824,18 @@ export module DeckManager {
         textAlign:TextAlignMode.TAM_TOP_LEFT,
         textWrapping:true,
         width: 9, height:10
+    });
+    /** selected card details background */
+    const cardKeywordDetailsBackground:Entity = engine.addEntity();
+    Transform.create(cardKeywordDetailsBackground,{
+        parent:cardInfoParent,
+        position: { x:0.1, y:0.10, z:-0.10 },
+        scale: { x:0.25, y:0.19, z:0.01, },
+    });
+    GltfContainer.create(cardKeywordDetailsBackground, {
+        src: "models/tcg-framework/menu-displays/keyword-base-pldwate.glb",
+        visibleMeshesCollisionMask: undefined,
+        invisibleMeshesCollisionMask: undefined
     });
     /** selected card desc background */
     const cardInfoDescBackground:Entity = engine.addEntity();
