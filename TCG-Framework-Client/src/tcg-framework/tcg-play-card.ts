@@ -18,7 +18,7 @@ import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 export module PlayCard
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Play Data: ";
 

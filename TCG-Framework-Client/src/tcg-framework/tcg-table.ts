@@ -1150,7 +1150,7 @@ export module Table {
                         PlayCardDeck.DECK_CARD_STATES.HAND,
                         PlayCardDeck.DECK_CARD_STATES.DISCARD
                     );
-                    this.RemoteActionSpell(card.Key, this.selectionTargets)
+                    this.RemoteActionSpell(card.Key, targets)
                     if(isDebugging) console.log(debugTag+"<REMOTE> played card on table="+this.TableID+" card="+card.DefData.type+
                         ", new spell has been played!");
                 break;
@@ -1163,7 +1163,7 @@ export module Table {
                     //display character on slot
                     team.SetSlotCharacterObject(targets[0].id, card);
                     if(isDebugging) console.log(debugTag+"<REMOTE> played card on table="+this.TableID+" card="+card.DefData.type+
-                        ", new character has been placed on slot="+this.selectionTargets[0].id+"!");
+                        ", new character has been placed on slot="+targets[0].id+"!");
                 break;
                 case CARD_TYPE.TERRAIN:
                     //move card from hand to field
@@ -1591,7 +1591,7 @@ export module Table {
     //  send
     export function EmitPlayCard(table:string, key:string, targets:TableSelectionTarget[]) {
         if(isDebugging) console.log(debugTag+"<EMIT> starting next turn for table="+table+" playing card="+key+", targets="+targets.length);
-        Networking.MESSAGE_BUS.emit('txPlayCard', {table, key, targets:targets});
+        Networking.MESSAGE_BUS.emit('txPlayCard', {table, key, targets});
     }
     //  recieve
     Networking.MESSAGE_BUS.on('txPlayCard', (data: {table:string, key:string, targets:TableSelectionTarget[]}) => {

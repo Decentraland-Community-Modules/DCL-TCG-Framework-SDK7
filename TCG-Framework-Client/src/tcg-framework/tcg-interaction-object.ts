@@ -249,7 +249,7 @@ export module InteractionObject
         public Disable() {
             this.isActive = false;
             //hide card parent
-            const transformParent = Transform.getMutable(this.entityInteraction);
+            const transformParent = Transform.getMutable(this.entity);
             transformParent.position = PARENT_POSITION_OFF;
             transformParent.scale = PARENT_SCALE_OFF;
         }
@@ -257,7 +257,7 @@ export module InteractionObject
         /** removes objects from game scene and engine */
         public Destroy() {
             //destroy game object
-            engine.removeEntity(this.entityInteraction);
+            engine.removeEntity(this.entity);
         }
     }
     

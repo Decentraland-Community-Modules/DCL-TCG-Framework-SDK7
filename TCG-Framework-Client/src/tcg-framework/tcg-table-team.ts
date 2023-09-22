@@ -965,7 +965,7 @@ export module TableTeam {
                 slotID: card.Key,
                 //target
                 def: card.DefData,
-                counter: false,
+                hasCounter: false,
                 //position
                 parent: this.handCardParent,
                 scale: CARD_SCALE,

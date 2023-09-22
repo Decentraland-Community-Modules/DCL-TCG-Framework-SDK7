@@ -71,7 +71,7 @@ export module CardDisplayObject
     const CARD_BACKGROUND_POSITION = {x:0, y:0, z:-0.01};
     const CARD_BACKGROUND_SCALE = {x:2, y:3, z:1};
     /** character object size */
-    const CARD_CHARACTER_POSITION = {x:0, y:0, z:-0.011};
+    const CARD_CHARACTER_POSITION = {x:0, y:0, z:-0.013};
     /** cost text transform */
     const cardTextCostPos = {x:1.08, y:1.45, z:-0.08};
     const cardTextCostScale = {x:0.25, y:0.25, z:0.25};
@@ -133,9 +133,10 @@ export module CardDisplayObject
         tableID?: string,
         teamID?: string,
         slotID: string,
-        //target
+        //details
         def: CardDataObject,
-        counter?: boolean,
+        hasInteractions?:boolean
+        hasCounter?: boolean,
         //position
         parent?: Entity, //entity to parent object under 
 		position?: { x:number; y:number; z:number; }; //new position for object
@@ -419,13 +420,13 @@ export module CardDisplayObject
             });
 
             //set counter state
-            this.SetCounterState(data.counter??true);
+            this.SetCounterState(data.hasCounter??true);
             //apply card definition
-            this.SetCard(data.def);
+            this.SetCard(data.def, data.hasInteractions);
         }
 
         /** */
-        public SetCard(def:CardDataObject) {
+        public SetCard(def:CardDataObject, hasInteractions:boolean=true) {
             this.defIndex = def.id;
             //enable object
             Transform.getOrCreateMutable(this.entityParent).scale = PARENT_SCALE_ON;
@@ -489,23 +490,28 @@ export module CardDisplayObject
                 TextShape.getMutable(this.entityTextHealth).text = "";
                 TextShape.getMutable(this.entityTextArmour).text = "";
             }
-            //  pointer event system
-            PointerEvents.createOrReplace(this.entityCoreFrameObject, {
-                pointerEvents: [
-                    { //primary mouse -> attempt select
-                        eventType: PointerEventType.PET_DOWN,
-                        eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT "+def.name }
-                    },
-                    { //primary key -> attempt select
-                        eventType: PointerEventType.PET_DOWN,
-                        eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "SELECT "+def.name }
-                    },
-                    { //secondary key -> attempt action
-                        eventType: PointerEventType.PET_DOWN,
-                        eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "ACTIVATE "+def.name }
-                    },
-                ]
-            });
+
+            //if card has interactions, add pointer event system
+            if(hasInteractions) {
+                PointerEvents.createOrReplace(this.entityCoreFrameObject, {
+                    pointerEvents: [
+                        { //primary mouse -> attempt select
+                            eventType: PointerEventType.PET_DOWN,
+                            eventInfo: { button: InputAction.IA_POINTER, hoverText: "SELECT "+def.name }
+                        },
+                        { //primary key -> attempt select
+                            eventType: PointerEventType.PET_DOWN,
+                            eventInfo: { button: InputAction.IA_PRIMARY, hoverText: "SELECT "+def.name }
+                        },
+                        { //secondary key -> attempt action
+                            eventType: PointerEventType.PET_DOWN,
+                            eventInfo: { button: InputAction.IA_SECONDARY, hoverText: "ACTIVATE "+def.name }
+                        },
+                    ]
+                });
+            } else {
+                PointerEvents.deleteFrom(this.entityCoreFrameObject);
+            }
         }
 
         /** */

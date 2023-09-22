@@ -12,6 +12,7 @@ import { InteractionObject } from "./tcg-framework/tcg-interaction-object";
  */
 export function main() 
 {
+	//test object, put models here
 	/*const test:Entity = engine.addEntity();
 	Transform.create(test, { 
 		position:{x:0,y:1,z:1},
@@ -26,8 +27,21 @@ export function main()
 	//load player
 	PlayerLocal.LoadPlayerData();
 
-	//create deck manager
-	DeckManager.SetPosition({ x:24, y:0, z:6 });
+	//create deck managers
+	//	left
+	DeckManager.Create({ 
+		key:"dm-0",
+        parent: undefined,
+		position: { x:3, y:0, z:6 },
+		rotation: { x:0, y:270, z:0 } 
+	});
+	//	right
+	DeckManager.Create({ 
+		key:"dm-1",
+        parent: undefined,
+		position: { x:45, y:0, z:6 },
+		rotation: { x:0, y:90, z:0 } 
+	});
 
 	//create card tables
 	//	peer to peer
