@@ -140,7 +140,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Strike",
         displayDesc: "Causes damage to the enemy target",
         //display 2D
-        iconColour: Color4.Yellow(),
+        iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
@@ -155,7 +155,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Bleed",
         displayDesc: "inflicts constant direct damage to targeted unit(s)",
         //display 2D
-        iconColour: Color4.Green(),
+        iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
@@ -186,7 +186,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Causes damage to the enemy target(s) armour",
         //display 2D
         iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -200,8 +200,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Melt",
         displayDesc: "Causes damage to the enemy target(s) armour",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Red(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -219,8 +219,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Heal",
         displayDesc: "Heals any allied card targeted over time",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Green(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -234,8 +234,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Mend",
         displayDesc: "Heals any allied card targeted",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Green(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 6, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -249,8 +249,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Expand",
         displayDesc: "increases the max HP of targeted unit(s)",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.White(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -264,8 +264,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Growth",
         displayDesc: "regenerates HP of targeted unit(s)",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Green(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -279,8 +279,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Fortify",
         displayDesc: "regenerates armour of targeted unit(s)",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Blue(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -298,7 +298,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "increases the max dmg of targeted unit(s)",
         //display 2D
         iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -313,7 +313,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
         //display 2D
         iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.REOCCURING, value:2,},
         playEffects: [
@@ -330,8 +330,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Guard",
         displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Blue(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:2,},
         playEffects: [
@@ -345,8 +345,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Sheilded",
         displayDesc: "forces next debuff upon targeted unit(s)",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Teal(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:2,},
         playEffects: [
@@ -360,8 +360,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Stealth",
         displayDesc: "puts targeted unit(s) into an undetectable state until next action",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Gray(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 6, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [
@@ -375,8 +375,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Disable",
         displayDesc: "puts targeted unit(s) into a disabled state until cleared",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Purple(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 6 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [
@@ -390,8 +390,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Refresh",
         displayDesc: "allows targeted unit(s) into a re-enabled state once played",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.White(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 5 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -405,8 +405,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Drain",
         displayDesc: "syphons health from enemy unit(s) and applies it to your own",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Red(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 5 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.INSTANT, value:0,},
         playEffects: [
@@ -420,8 +420,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayName: "Annihilation",
         displayDesc: "when this card kills another card remove that card from the game",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        iconColour: Color4.Red(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 5 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [
@@ -436,7 +436,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "after this card is played remove the card from the game",
         //display 2D
         iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 5 },
         //gameplay
         playType: {type:CARD_KEYWORD_TRIGGER_TYPE.CONSTANT, value:0,},
         playEffects: [

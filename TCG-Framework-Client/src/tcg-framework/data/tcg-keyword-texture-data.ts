@@ -24,7 +24,7 @@ export const CardKeywordTextureData: CardKeywordTextureDataObject[] = [
     //### DEMO BACKGROUND SPLICE
     {
         id: TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO,
-        path:"images/tcg-framework/keyword-sheet-icons.png",
+        path:"images/tcg-framework/keyword-sheet-icons-r1.png",
         sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 64, elementSizeY: 64, }
     },
 ];
