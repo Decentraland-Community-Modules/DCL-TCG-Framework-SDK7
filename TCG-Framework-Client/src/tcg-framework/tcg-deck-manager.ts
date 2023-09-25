@@ -3,7 +3,7 @@ import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
@@ -62,8 +62,8 @@ export module DeckManager {
 
     /** animations that will be used when a card's model is being displayed */
     const DISPLAY_CHARACTER_ANIMATION = [ 
-        CardSubjectObject.ANIM_KEY_CHARACTER.IDLE,
         CardSubjectObject.ANIM_KEY_SPELL.PLAY,
+        CardSubjectObject.ANIM_KEY_CHARACTER.IDLE,
         0   //no animations for terrain (we do not currently display terrain models) 
     ];
     /** animation keys for deck manager object */
@@ -240,7 +240,7 @@ export module DeckManager {
                 scale: { x:1, y:1, z:1, },
                 rotation: { x:0, y:0, z:0, }
             });
-            this.SetAnimation(DISPLAY_CHARACTER_ANIMATION[dataDef.type]);
+            this.previewObject.SetAnimation(DISPLAY_CHARACTER_ANIMATION[dataDef.type]);
         }
 
         /** sets the given animation */
@@ -362,12 +362,16 @@ export module DeckManager {
         //  object data is pooled, but we should look into how we can explicitly set data classes for removal
     }
 
+    /** when true the player is within the bounds of a DM trigger zone */
+    var playerInZone:boolean = false;
+
     /** triggered when player enters the area */
     export function OnTriggerEntry(key:string) {
         if(isDebugging) console.log(debugTag+"trigger entered deck manager zone: "+key);
         //attempt to get display object
         curDisplayObject = GetByKey(key);
         if(curDisplayObject != undefined) {
+            playerInZone = true;
             //set animation
             curDisplayObject.SetAnimation(1);
             Transform.getMutable(viewParent).parent = curDisplayObject.entity;
@@ -375,10 +379,15 @@ export module DeckManager {
             //update display
             utils.timers.setTimeout(
                 function() {
+                    //ensure player is still inside zone
+                    if(!playerInZone) return;
+
                     GenerateCardObjects();
                     //select and load the first deck
                     DeckInteractionSelect(0);
                     DeckInteractionLoad();
+                    //select first card from display
+                    InteractionCard("0");
                     //show display
                     Transform.getMutable(viewParent).position = PARENT_POSITION_ON;
                     Transform.getMutable(viewParent).scale = Vector3.One(); 
@@ -393,9 +402,12 @@ export module DeckManager {
         if(isDebugging) console.log(debugTag+"trigger exited deck manager zone: "+curDisplayObject?.Key);
         //if display object is set
         if(curDisplayObject != undefined) {
+            playerInZone = false;
             //set animation
             curDisplayObject.SetAnimation(2);
 
+            //release model preview object
+            if(curDisplayObject.previewObject != undefined) CardSubjectObject.Disable(curDisplayObject.previewObject);
             //release all cards
             ReleaseCardObjects();
             //hide displays
@@ -962,8 +974,8 @@ export module DeckManager {
         }
     }
 
-    /** called when player interacts with counter buttons */
-    export function CardInteractionCounterButton(slotID:string, change:number) {
+    /** called when a card's counter (up/down) is interacted with */
+    export function InteractionCounterButton(slotID:string, change:number) {
         //get card object
         const cardObject = entityGridCards[Number.parseInt(slotID)];
         if(isDebugging) console.log(debugTag+"modifying card ID="+cardObject.DefIndex+", change="+change+"...");
@@ -978,40 +990,41 @@ export module DeckManager {
     }
 
     /** called when a card is interacted with */
-    export function CardInteractionSelect(slotID:string) {
+    export function InteractionCard(slotID:string) {
         if(isDebugging) console.log(debugTag+"player interacted with card, key="+slotID);
         if(curDisplayObject == undefined) return;
 
+        //get card def
         const dataDef = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
-        const cardStatData = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
 
         //create character display model 
         curDisplayObject.SetSelection(dataDef);
         
-        //update selection display card
+        //update selected card display
+        //  card preview
         cardInfoObject.SetCard(dataDef, false);
-        
-        //update selection view
+        //  header text
         TextShape.getMutable(cardInfoHeaderText).text = dataDef.name;
-
-        if(dataDef.type == 0){
-            TextShape.getMutable(cardInfoDetailsText).text = 
+        //  info text
+        const infoText = TextShape.getMutable(cardInfoDetailsText); 
+        infoText.text = 
             "\nFaction: "+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
             "\nType: "+CARD_TYPE_STRINGS[dataDef.type]+
             "\nCost: "+dataDef.attributeCost;
+        switch(dataDef.type) {
+            case CARD_TYPE.SPELL:
+            break;
+            case CARD_TYPE.CHARACTER:
+                infoText.text =
+                    "\nHealth: "+dataDef.attributeCharacter?.unitHealth+
+                    "\nArmor: "+dataDef.attributeCharacter?.unitArmour+
+                    "\nDamage: "+dataDef.attributeCharacter?.unitAttack;
+            break;
+            case CARD_TYPE.TERRAIN:
+            break;
         }
-        else if(dataDef.type == 1){
-            TextShape.getMutable(cardInfoDetailsText).text = 
-            "\nFaction: "+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
-            "\nType: "+CARD_TYPE_STRINGS[dataDef.type]+
-            "\nCost: "+dataDef.attributeCost+
-            "\nHealth: "+dataDef.attributeCharacter?.unitHealth+
-            "\nArmor: "+dataDef.attributeCharacter?.unitArmour+
-            "\nDamage: "+dataDef.attributeCharacter?.unitAttack;
-        } 
-        
+        //  desc text
         TextShape.getMutable(cardInfoDescText).text = dataDef.desc;
-              
     }
 
     /** releases all card objects in the current display grid */

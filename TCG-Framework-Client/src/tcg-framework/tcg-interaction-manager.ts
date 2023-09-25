@@ -142,13 +142,13 @@ export module InteractionManager {
                         //process request type
                         switch(component.request) {
                             case CardDisplayObject.CARD_OBJECT_INTERACTION_TYPE.INTERACT:
-                                DeckManager.CardInteractionSelect(component.slotID);
+                                DeckManager.InteractionCard(component.slotID);
                             break;
                             case CardDisplayObject.CARD_OBJECT_INTERACTION_TYPE.COUNTER_UP:
-                                DeckManager.CardInteractionCounterButton(component.slotID, 1);
+                                DeckManager.InteractionCounterButton(component.slotID, 1);
                             break;
                             case CardDisplayObject.CARD_OBJECT_INTERACTION_TYPE.COUNTER_DOWN:
-                                DeckManager.CardInteractionCounterButton(component.slotID, -1);
+                                DeckManager.InteractionCounterButton(component.slotID, -1);
                             break;
                         }
                     break;

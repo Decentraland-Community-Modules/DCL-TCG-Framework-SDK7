@@ -3,7 +3,7 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
-import { CardData, CardDataObject } from "./data/tcg-card-data";
+import { CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
 import { CardFactionDataObject } from "./data/tcg-faction-data";
 import { CardFactionTextureDataObject } from "./data/tcg-faction-texture-data";
 import { CardTextureDataObject } from "./data/tcg-card-texture-data";
@@ -469,9 +469,11 @@ export module CardDisplayObject
                 emissiveIntensity: 0.02,
                 transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
             });
-            //update text
-            //  cost
+
+            //update cost text
             TextShape.getMutable(this.entityTextCost).text = def.attributeCost.toString();
+            //prime keyword data object listing
+            var cardEffects:CardEffectDataObject[] = [];
             //  if character stat component exists in def
             if(def.attributeCharacter != undefined) {
                 //core
@@ -479,37 +481,8 @@ export module CardDisplayObject
                 TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
                 TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
                 TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
-                //keyword display objects
-                //  ensure correct number of objects
-                while(this.keywordObjects.length > def.attributeCharacter.effects.length) {
-                    const keyword = this.keywordObjects.pop();
-                    if(keyword) {
-                        CardKeywordDisplayObject.Disable(keyword);
-                    }
-                }
-                //  process all required keywords
-                for(let i:number=0; i<def.attributeCharacter.effects.length; i++) {
-                    //if new keyword object needs to be claimed, create new keyword object
-                    if(i > this.keywordObjects.length-1) {
-                        this.keywordObjects.push(CardKeywordDisplayObject.Create({
-                            ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
-                            def:def.attributeCharacter.effects[i],
-                            tableID:this.TableID,
-                            teamID:this.TeamID,
-                            slotID:this.SlotID,
-                            indexerID:i.toString(),
-                            hasInteractions:true,
-                            parent: this.entityCoreFrameObject,
-                            position: { x:-1.0, y:0.95-(0.35*(i)), z:-0.05 },
-                            scale: { x:0.8, y:0.8, z:0.8 }
-                        }));
-                    } 
-                    //if keyword object already exists, repopulate keyword object
-                    else {
-                        //this.keywordObjects[i].SetKeyword(CardKeywordData[0]);
-                    }
-                    console.log(i+" key="+this.keywordObjects.length)
-                }
+                //set keyword listing
+                cardEffects = def.attributeCharacter.effects;
             }
             else if(def.attributeSpell != undefined) {
                 //core
@@ -517,36 +490,38 @@ export module CardDisplayObject
                 TextShape.getMutable(this.entityTextAttack).text = "";
                 TextShape.getMutable(this.entityTextHealth).text = "";
                 TextShape.getMutable(this.entityTextArmour).text = "";
-                //keyword display objects
-                //  ensure correct number of objects
-                while(this.keywordObjects.length > def.attributeSpell.effects.length) {
-                    const keyword = this.keywordObjects.pop();
-                    if(keyword) {
-                        CardKeywordDisplayObject.Disable(keyword);
-                    }
+                //set keyword listing
+                cardEffects = def.attributeSpell.effects;
+            }
+
+            //keyword display objects
+            //  ensure correct number of objects
+            while(this.keywordObjects.length > cardEffects.length) {
+                const keyword = this.keywordObjects.pop();
+                if(keyword) {
+                    CardKeywordDisplayObject.Disable(keyword);
                 }
-                //  process all required keywords
-                for(let i:number=0; i<def.attributeSpell.effects.length; i++) {
-                    //if new keyword object needs to be claimed, create new keyword object
-                    if(i > this.keywordObjects.length-1) {
-                        this.keywordObjects.push(CardKeywordDisplayObject.Create({
-                            ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
-                            def:def.attributeSpell.effects[i],
-                            tableID:this.TableID,
-                            teamID:this.TeamID,
-                            slotID:this.SlotID,
-                            indexerID:i.toString(),
-                            hasInteractions:true,
-                            parent: this.entityCoreFrameObject,
-                            position: { x:-1.0, y:0.95-(0.35*(i)), z:-0.05 },
-                            scale: { x:0.8, y:0.8, z:0.8 }
-                        }));
-                    } 
-                    //if keyword object already exists, repopulate keyword object
-                    else {
-                        //this.keywordObjects[i].SetKeyword(CardKeywordData[0]);
-                    }
-                    console.log(i+" key="+this.keywordObjects.length)
+            }
+            //  process all required keywords
+            for(let i:number=0; i<cardEffects.length; i++) {
+                //if new keyword object needs to be claimed, create new keyword object
+                if(i > this.keywordObjects.length-1) {
+                    this.keywordObjects.push(CardKeywordDisplayObject.Create({
+                        ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
+                        def:cardEffects[i],
+                        tableID:this.TableID,
+                        teamID:this.TeamID,
+                        slotID:this.SlotID,
+                        indexerID:i.toString(),
+                        hasInteractions:true,
+                        parent: this.entityCoreFrameObject,
+                        position: { x:-1.0, y:0.95-(0.35*(i)), z:-0.05 },
+                        scale: { x:0.8, y:0.8, z:0.8 }
+                    }));
+                } 
+                //if keyword object already exists, repopulate keyword object
+                else {
+                    this.keywordObjects[i].SetKeyword(cardEffects[0]);
                 }
             }
 

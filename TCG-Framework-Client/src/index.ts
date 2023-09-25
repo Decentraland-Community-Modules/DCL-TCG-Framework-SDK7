@@ -10,18 +10,6 @@ import { Table } from "./tcg-framework/tcg-table";
  */
 export function main() 
 {
-	//test object, put models here
-	/*const test:Entity = engine.addEntity();
-	Transform.create(test, { 
-		position:{x:0,y:1,z:1},
-		scale:{x:0.2,y:0.2,z:0.2},
-	});
-	GltfContainer.createOrReplace(test, {
-		src: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
-		visibleMeshesCollisionMask: undefined,
-		invisibleMeshesCollisionMask: undefined
-	});*/
-
 	//load player
 	PlayerLocal.LoadPlayerData();
 
@@ -30,14 +18,14 @@ export function main()
 	DeckManager.Create({ 
 		key:"dm-0",
         parent: undefined,
-		position: { x:3, y:0, z:6 },
+		position: { x:2, y:0, z:6 },
 		rotation: { x:0, y:270, z:0 } 
 	});
 	//	right
 	DeckManager.Create({ 
 		key:"dm-1",
         parent: undefined,
-		position: { x:45, y:0, z:6 },
+		position: { x:46, y:0, z:6 },
 		rotation: { x:0, y:90, z:0 } 
 	});
 
