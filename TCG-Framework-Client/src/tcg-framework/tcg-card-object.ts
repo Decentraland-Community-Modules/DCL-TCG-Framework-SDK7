@@ -3,7 +3,7 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
-import { CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
 import { CardFactionDataObject } from "./data/tcg-faction-data";
 import { CardFactionTextureDataObject } from "./data/tcg-faction-texture-data";
 import { CardTextureDataObject } from "./data/tcg-card-texture-data";
@@ -170,9 +170,6 @@ export module CardDisplayObject
         private defIndex:number = 0;
         public get DefIndex():number { return this.defIndex; };
 
-        /**  rarity of the card */
-        rarity:number = 0;
-
         /** parental entity */
         private entityParent:Entity;
         public SetPosition(pos:Vector3) { Transform.getMutable(this.entityParent).position = pos; }
@@ -201,7 +198,6 @@ export module CardDisplayObject
 
         /** card effect/keyword pieces */
         private keywordObjects:CardKeywordDisplayObject.CardKeywordDisplayObject[] = [];
-        /**  */
         
 
         /** builds out the card, ensuring all required components exist and positioned correctly */
@@ -474,33 +470,41 @@ export module CardDisplayObject
             TextShape.getMutable(this.entityTextCost).text = def.attributeCost.toString();
             //prime keyword data object listing
             var cardEffects:CardEffectDataObject[] = [];
-            //  if character stat component exists in def
-            if(def.attributeCharacter != undefined) {
-                //core
-                Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
-                TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
-                TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
-                TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
-                //set keyword listing
-                cardEffects = def.attributeCharacter.effects;
-            }
-            else if(def.attributeSpell != undefined) {
-                //core
-                Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
-                TextShape.getMutable(this.entityTextAttack).text = "";
-                TextShape.getMutable(this.entityTextHealth).text = "";
-                TextShape.getMutable(this.entityTextArmour).text = "";
-                //set keyword listing
-                cardEffects = def.attributeSpell.effects;
+            switch(def.type) {
+                case CARD_TYPE.SPELL:
+                    if(def.attributeCharacter == undefined) break;
+                    //core
+                    Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
+                    TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
+                    TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
+                    TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
+                    //set keyword listing
+                    cardEffects = def.attributeCharacter.effects;
+                break;
+                case CARD_TYPE.CHARACTER:
+                    if(def.attributeSpell == undefined) break;
+                    //core
+                    Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
+                    TextShape.getMutable(this.entityTextAttack).text = "";
+                    TextShape.getMutable(this.entityTextHealth).text = "";
+                    TextShape.getMutable(this.entityTextArmour).text = "";
+                    //set keyword listing
+                    cardEffects = def.attributeSpell.effects;
+                break;
+                case CARD_TYPE.TERRAIN:
+                    //core
+                    Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
+                    TextShape.getMutable(this.entityTextAttack).text = "";
+                    TextShape.getMutable(this.entityTextHealth).text = "";
+                    TextShape.getMutable(this.entityTextArmour).text = "";
+                break;
             }
 
             //keyword display objects
             //  ensure correct number of objects
             while(this.keywordObjects.length > cardEffects.length) {
                 const keyword = this.keywordObjects.pop();
-                if(keyword) {
-                    CardKeywordDisplayObject.Disable(keyword);
-                }
+                if(keyword) CardKeywordDisplayObject.Disable(keyword);
             }
             //  process all required keywords
             for(let i:number=0; i<cardEffects.length; i++) {
