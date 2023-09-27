@@ -704,13 +704,14 @@ export module TableTeam {
 
             //clear previous terrain card
             this.TerrainCard = undefined;
+            //reset terrain card
+            this.SetTerrainCard(undefined);
+            
             //clear previous card slot objects
             while(this.cardSlotObjects.length > 0) {
                 const teamObject = this.cardSlotObjects.pop();
                 if(teamObject) teamObject.Disable();
             }
-            //reset terrain card
-            this.SetTerrainCard(undefined);
 
             //create card slot objects
             for(let i:number=0; i<CARD_SLOT_POSITIONS.length; i++) {
@@ -762,11 +763,6 @@ export module TableTeam {
 
             //clear previous terrain card
             this.TerrainCard = undefined;
-            //clear previous card slot objects
-            while(this.cardSlotObjects.length > 0) {
-                const teamObject = this.cardSlotObjects.pop();
-                if(teamObject) teamObject.Disable();
-            }
             //reset terrain card
             this.SetTerrainCard(undefined);
         }

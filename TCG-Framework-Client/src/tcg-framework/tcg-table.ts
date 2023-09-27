@@ -1663,7 +1663,7 @@ export module Table {
     /** current processing state of ai (playing card/attacking) */
     var aiProcessingState:AI_PROCESSING_STATES = 0;
     /** time delay between actions made by AI (ex: playing card) */
-    const timeDelay:number[] = [0.5, 3, 0.5];
+    const timeDelay:number[] = [0.5, 4, 3];
     /** current time counter */
     var timeCounter:number = 0;
     /** currently targeted table */
