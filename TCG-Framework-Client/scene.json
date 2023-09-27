@@ -2,8 +2,8 @@
 	"ecs7": true,
 	"runtimeVersion": "7",
 	"display": {
-		"title": "",
-		"description": "",
+		"title": "NFT Trading Card Game Framework Demo Scene",
+		"description": "This scene was built to act as a demo of all the functionality included in the NFT TCG Framework.",
 		"navmapThumbnail": "images/scene-thumbnail.png",
 		"favicon": "favicon_asset"
 	},

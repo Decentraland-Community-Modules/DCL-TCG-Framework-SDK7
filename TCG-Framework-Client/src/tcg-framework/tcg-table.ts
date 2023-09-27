@@ -9,7 +9,6 @@ import { CARD_TARGETING_OWNER, CARD_TARGETING_TYPE, CARD_TYPE, CardData } from "
 import { PlayCard } from "./tcg-play-card";
 import { TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { Networking } from "./config/tcg-networking";
-import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils';
 
 
@@ -920,6 +919,7 @@ export module Table {
 
             //if targeting is not active, selecting unit
             if(this.targetingType == undefined && this.targetingOwner == undefined) {
+                if(isDebugging) console.log(debugTag+"targeting type is not defined, attempting selection");
                 //halt if slot does not belong to current player
                 if(this.curTurn != team) {
                     if(isDebugging) console.log(debugTag+"<FAILED> player attempted to select foriegn unit");
@@ -948,11 +948,12 @@ export module Table {
             }
             //if targeting active, ensure slot conforms to requirements
             else {
+                if(isDebugging) console.log(debugTag+"targeting type is defined {type="+this.targetingType+",owner="+this.targetingOwner+"}, attempting interaction");
                 //check if given slot is already selected
                 for(let i:number=0; i<this.selectionTargets.length; i++) {
                     //if slot matches, deselect and return
                     if(this.selectionTargets[i].team == team && this.selectionTargets[i].id == slotID) {
-                        this.DeselectAllTargets();
+                        this.DeselectTarget(i);
                         return;
                     }
                 }
@@ -1102,7 +1103,11 @@ export module Table {
             //preform localized targeting checks
             switch(card.DefData.type) {
                 case CARD_TYPE.SPELL:
-
+                    //ensure a slot is selected for the current team
+                    if(this.selectionTargets.length == 0) {
+                        if(isDebugging) console.log(debugTag+"<FAILED> no targets selected");
+                        return;
+                    }
                 break;
                 case CARD_TYPE.CHARACTER:
                     //ensure a slot is selected for the current team
@@ -1246,29 +1251,48 @@ export module Table {
         }
         /** remote call from a connected player, executes an attack from one unit to another */
         public RemoteUnitAttack(attacker:TableSelectionTarget, defender:TableSelectionTarget) {
-            //get attacker
-            const attackerSlot = this.teamObjects[attacker.team].cardSlotObjects[attacker.id];
+            const key = this.TableID;
+            //get attacker team
+            const attackerTeam = this.teamObjects[attacker.team];
+            //get attacker slot
+            const attackerSlot = attackerTeam.cardSlotObjects[attacker.id];
+            //ensure attacker has card slotted
             if(attackerSlot.SlottedCard == undefined) return;
+            //get defender team
+            const defenderTeam = this.teamObjects[defender.team];
+
             //play attack animation
             attackerSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.ATTACK, false);
             
             //process attack on team
             if(defender.id == SELECTION_SLOT_TYPE.TEAM) {
-                const key = this.TableID;
-                const defenderTeam = this.teamObjects[defender.team];
                 //delay processing until unit strikes
+                if(attackerSlot.SlottedCard == undefined) {
+                    return;
+                }
+
+                //remove action from attacker
+                attackerSlot.SlottedCard.ActionRemaining = false;
+
+                //delay defender animation and ui updates until the attack hits
                 utils.timers.setTimeout(
                     function() {
-                        if(attackerSlot.SlottedCard == undefined) return;
+                        //ensure defender and attacker slots are both occupied
+                        if(attackerSlot.SlottedCard == undefined) {
+                            return;
+                        }
                         //deal damage to enemy team
                         defenderTeam.HealthCur -= attackerSlot.SlottedCard.Attack;
-                        defenderTeam.UpdateStatsDisplay();
-
                         //if enemy team was defeated
                         if(defenderTeam.HealthCur <= 0) {
                             //end game in defeat
-                            EndGame(key, defender.team);
+                            CalldownEndGame(key, defender.team);
+                            //redraw stats
+                            CalldownRedrawTeamDisplays(key);
                         }
+                        //update card slot's display
+                        defenderTeam.UpdateStatsDisplay();
+                        attackerSlot.UpdateStatDisplay();
                     },
                     1000
                 );
@@ -1276,10 +1300,12 @@ export module Table {
             //process attack on unit
             else {
                 //get defender slot
-                var defenderSlot = this.teamObjects[defender.team].cardSlotObjects[defender.id];
-                if(defenderSlot.SlottedCard == undefined) return;
+                const defenderSlot = defenderTeam.cardSlotObjects[defender.id];
 
-                //process attack details, after delay
+                //ensure defender and attacker slots are both occupied
+                if(defenderSlot.SlottedCard == undefined) {
+                    return;
+                }
 
                 //process card character attacks
                 defenderSlot.SlottedCard.ProcessInteractionFromCard(attackerSlot.SlottedCard);
@@ -1287,28 +1313,37 @@ export module Table {
                 //remove action from attacker
                 attackerSlot.SlottedCard.ActionRemaining = false;
 
-                //update card slot's display
-                attackerSlot.UpdateStatDisplay();
-                defenderSlot.UpdateStatDisplay();
-
-                //if character was killed
-                if(defenderSlot.SlottedCard.HealthCur <= 0) {
-                    //play death animation
-                    defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
-                    //move card to discard pile
-                    this.teamObjects[defender.team].MoveCardBetweenCollections(
-                        defenderSlot.SlottedCard, 
-                        PlayCardDeck.DECK_CARD_STATES.FIELD, 
-                        PlayCardDeck.DECK_CARD_STATES.DISCARD
-                    );
-                    //clear card from slot 
-                    defenderSlot.ClearCard();
-                    //redraw stats
-                    this.RedrawTeamDisplays();
-                } else {
-                    //play death animation
-                    defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
-                }
+                //delay defender animation and ui updates until the attack hits
+                utils.timers.setTimeout(
+                    function() {
+                        //ensure defender and attacker slots are both occupied
+                        if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) {
+                            return;
+                        }
+                        //if character was killed
+                        if(defenderSlot.SlottedCard.HealthCur <= 0) {
+                            //play death animation
+                            defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
+                            //move card to discard pile
+                            defenderTeam.MoveCardBetweenCollections(
+                                defenderSlot.SlottedCard, 
+                                PlayCardDeck.DECK_CARD_STATES.FIELD, 
+                                PlayCardDeck.DECK_CARD_STATES.DISCARD
+                            );
+                            //clear card from slot 
+                            defenderSlot.ClearCard();
+                            //redraw stats
+                            CalldownRedrawTeamDisplays(key);
+                        } else {
+                            //play death animation
+                            defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
+                        }
+                        //update card slot's display
+                        attackerSlot.UpdateStatDisplay();
+                        defenderSlot.UpdateStatDisplay();
+                    },
+                    1000
+                );
             }
 
             //deselect slots
@@ -1404,8 +1439,14 @@ export module Table {
             engine.removeEntity(this.entityParent);
         }
     }
-    
-    export function EndGame(key:string, defeated:number) {
+
+    export function CalldownRedrawTeamDisplays(key:string) {
+        const table = GetByKey(key);
+        if(table != undefined) {
+            table.RedrawTeamDisplays();
+        }
+    }
+    export function CalldownEndGame(key:string, defeated:number) {
         const table = GetByKey(key);
         if(table != undefined) {
             table.LocalEndGame(defeated);
@@ -1615,12 +1656,14 @@ export module Table {
     });
 
     //### AI CARD PLAYER (TODO: move into seperate namespace)
+    enum AI_PROCESSING_STATES { PLAY_CARD, USE_UNIT, END_TURN }
+    const isDebuggingAI = true;
     /** current display state of ai */
     var aiDisplayState:boolean = false;
     /** current processing state of ai (playing card/attacking) */
-    var aiProcessingState:number = 0;
+    var aiProcessingState:AI_PROCESSING_STATES = 0;
     /** time delay between actions made by AI (ex: playing card) */
-    const timeDelay:number = 1.5;
+    const timeDelay:number[] = [0.5, 3, 0.5];
     /** current time counter */
     var timeCounter:number = 0;
     /** currently targeted table */
@@ -1632,7 +1675,7 @@ export module Table {
         aiDisplayState = state;
         aiTable = table;
         if(aiDisplayState) {
-            aiProcessingState = 0;
+            aiProcessingState = AI_PROCESSING_STATES.PLAY_CARD;
             engine.addSystem(processingTurnAI);
         } else {
             engine.removeSystem(processingTurnAI);
@@ -1645,76 +1688,105 @@ export module Table {
         timeCounter -= dt;
         //check if new action should be taken
         if(timeCounter > 0) return;
-        timeCounter += timeDelay;
+        timeCounter += timeDelay[aiProcessingState];
         //ensure table exists
         if(aiTable == undefined) {
-            if(isDebugging) console.log(debugTag+"<ERROR> aiPlayer is processing but aiTable is undefined");
+            if(isDebuggingAI) console.log(debugTag+"<ERROR> aiPlayer is processing but aiTable is undefined");
             SetAIState(false);
             return;
         } 
-        var aiTeam = aiTable.teamObjects[aiTable.CurTurn];
+        const teamIndexAI = aiTable.CurTurn;
+        const teamAI = aiTable.teamObjects[teamIndexAI];
+        const teamIndexOther = aiTable.CurTurn === 0 ? 1 : 0;
+        const teamOther = aiTable.teamObjects[teamIndexOther];
         //ensure table has deck equipped
-        var aiDeck = aiTeam.RegisteredDeck;
+        const aiDeck = teamAI.RegisteredDeck;
         if(aiDeck == undefined) {
-            if(isDebugging) console.log(debugTag+"<ERROR> aiPlayer is processing but aiDeck is undefined");
+            if(isDebuggingAI) console.log(debugTag+"<ERROR> aiPlayer is processing but aiDeck is undefined");
             SetAIState(false);
             return;
         } 
 
-        //attempt to play all cards
-        if(aiProcessingState == 0) {
-            if(isDebugging) console.log(debugTag+"aiPlayer selecting card...");
-            //process all cards in NPC's hand to find next action
-            for(let i:number=0; i<aiDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND].size(); i++) {
-                var card = aiDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND].getItem(i);
-                //if NPC does not have enough energy to play card, skip
-                if(aiTeam.EnergyCur < card.Cost) continue;
-                //process card based on type
-                switch(card.DefData.type) {
-                    case CARD_TYPE.CHARACTER:
-                        //process every slot 
-                        for(let j:number=0; j<aiTeam.cardSlotObjects.length; j++) {
-                            //if slot is occupied, skip
-                            if(aiTeam.IsCardSlotOccupied(j)) continue;
-                            if(isDebugging) console.log(debugTag+"aiPlayer playing character card="+card.Key+" to slot="+j);
-                            //select card & slot
+        //process
+        switch(aiProcessingState) {
+            //attempt to play card
+            case AI_PROCESSING_STATES.PLAY_CARD:
+                if(isDebuggingAI) console.log(debugTag+"aiPlayer selecting card...");
+                //process all cards in NPC's hand to find next action
+                for(let i:number=0; i<aiDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND].size(); i++) {
+                    var card = aiDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND].getItem(i);
+                    //if NPC does not have enough energy to play card, skip
+                    if(teamAI.EnergyCur < card.Cost) continue;
+                    //process card based on type
+                    switch(card.DefData.type) {
+                        case CARD_TYPE.CHARACTER:
+                            //process every slot 
+                            for(let j:number=0; j<teamAI.cardSlotObjects.length; j++) {
+                                //if slot is occupied, skip
+                                if(teamAI.IsCardSlotOccupied(j)) continue;
+                                if(isDebuggingAI) console.log(debugTag+"aiPlayer playing character card="+card.Key+" to slot="+j);
+                                //select card & play
+                                aiTable.SelectCard(card.Key);
+                                aiTable.SelectSlot(aiTable.CurTurn, j);
+                                //play card
+                                aiTable.LocalPlayCard();
+                                return;
+                            }
+                        break;
+                        case CARD_TYPE.SPELL:
+                            //if valid enemy unit is on field, cast at that unit
+                        break;
+                        case CARD_TYPE.TERRAIN:
+                            //select card & play
+                            if(isDebuggingAI) console.log(debugTag+"aiPlayer playing field card="+card.Key);
                             aiTable.SelectCard(card.Key);
-                            aiTable.SelectSlot(aiTable.CurTurn, j);
-                            //play card
                             aiTable.LocalPlayCard();
-                            return;
-                        }
-                    break;
-                    case CARD_TYPE.SPELL:
-                        //if valid enemy unit is on field, cast at that unit
-                        continue;
-                    break;
-                    case CARD_TYPE.TERRAIN:
-                        //play card to field
-                        continue;
-                    break;
+                        return;
+                    }
                 }
-            }
-            //if no card was played, push state forward
-            if(isDebugging) console.log(debugTag+"aiPlayer no viable cards remain");
-            aiProcessingState++;
-        }
-        //attempt to make all units attack enemy units
-        if(aiProcessingState == 1) {
-            //process all units in NCP's field
-                //if unit has not attacked yet
-                    //select unit
-                    //determine target
-                    //send attack command
-            //if no unit was given an attack command, push state forward
-            if(isDebugging) console.log(debugTag+"aiPlayer no viable unit attacks remain");
-            aiProcessingState++;
-        }
-        //end processing
-        if(aiProcessingState == 2) {
-            //end turn and remove system
-            aiTable.LocalNextTurn();
-            SetAIState(false);
+                //if no card was played, push state forward
+                if(isDebuggingAI) console.log(debugTag+"aiPlayer no viable cards remain");
+                aiProcessingState = AI_PROCESSING_STATES.USE_UNIT;
+            break;
+            //attempt to make unit attack
+            case AI_PROCESSING_STATES.USE_UNIT:
+                //process all units in NCP's field
+                if(isDebuggingAI) console.log(debugTag+"aiPlayer selecting unit to use as attacker...");
+                //process all cards in NPC's field to find the next 
+                for(let i:number=0; i<teamAI.cardSlotObjects.length; i++) {
+                    const slot = teamAI.cardSlotObjects[i];
+                    //ensure slot has a unit
+                    if(!slot.SlottedCard) continue;
+                    //ensure slot's unit has actions remaining
+                    if(!slot.SlottedCard.ActionRemaining) continue;
+                    //select attacker slot
+                    aiTable.InteractionSlotSelection(teamIndexAI, i, true);
+                    //attempt attack on other units -> process all cards on the other team's field
+                    for(let j:number=0; j<teamOther.cardSlotObjects.length; j++) {
+                        console.log("value; "+i)
+                        //ensure an enemy unit exists in targeted slot
+                        if(!teamOther.IsCardSlotOccupied(j)) continue;
+                        if(isDebuggingAI) console.log(debugTag+"aiPlayer unit in slot="+i+" is attacking unit in slot="+j);
+                        //select defender as enemy unit & begin attack
+                        aiTable.InteractionSlotSelection(teamIndexOther, j, true);
+                        aiTable.LocalUnitAttack();
+                        return;
+                    }
+                    //select defender as enemy unit & begin attack
+                    aiTable.InteractionTeamSelection(teamIndexOther, true);
+                    aiTable.LocalUnitAttack();
+                    return;
+                }
+                //if no unit was given an attack command, push state forward
+                if(isDebuggingAI) console.log(debugTag+"aiPlayer no viable unit attacks remain");
+                aiProcessingState = AI_PROCESSING_STATES.END_TURN;
+            break;
+            //end turn
+            case AI_PROCESSING_STATES.END_TURN:
+                //end turn and remove system
+                aiTable.LocalNextTurn();
+                SetAIState(false);
+            break;
         }
     }
 }

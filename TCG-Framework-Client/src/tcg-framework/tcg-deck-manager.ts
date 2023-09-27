@@ -384,7 +384,7 @@ export module DeckManager {
 
                     GenerateCardObjects();
                     //select and load the first deck
-                    DeckInteractionSelect(0);
+                    DeckInteractionSelect(2);
                     DeckInteractionLoad();
                     //select first card from display
                     InteractionCard("0");
@@ -1015,7 +1015,7 @@ export module DeckManager {
             case CARD_TYPE.SPELL:
             break;
             case CARD_TYPE.CHARACTER:
-                infoText.text =
+                infoText.text +=
                     "\nHealth: "+dataDef.attributeCharacter?.unitHealth+
                     "\nArmor: "+dataDef.attributeCharacter?.unitArmour+
                     "\nDamage: "+dataDef.attributeCharacter?.unitAttack;

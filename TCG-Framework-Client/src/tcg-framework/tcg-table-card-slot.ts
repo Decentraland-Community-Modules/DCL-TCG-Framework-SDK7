@@ -1,7 +1,6 @@
-import { Billboard, ColliderLayer, Entity, Font, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Billboard, ColliderLayer, Entity, GltfContainer, InputAction, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { CardData, CardDataObject } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
 import { CardSubjectObject } from "./tcg-card-subject-object";
 
@@ -158,7 +157,7 @@ export module TableCardSlot {
                 scale: SELECTION_SCALE,
                 rotation: Quaternion.fromEulerDegrees(SELECTION_ROTATION.x, SELECTION_ROTATION.y, SELECTION_ROTATION.z)
             });
-            //  add model
+            //  add custom model
             GltfContainer.create(this.entitySelection, {
                 src: MODEL_CARD_SLOT_SELECTOR,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
@@ -173,7 +172,7 @@ export module TableCardSlot {
                 scale: INTERACTION_SCALE,
                 rotation: Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z)
             });
-            //  add model
+            //  add custom model
             GltfContainer.create(this.entityInteraction, {
                 src: MODEL_CARD_SLOT,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,

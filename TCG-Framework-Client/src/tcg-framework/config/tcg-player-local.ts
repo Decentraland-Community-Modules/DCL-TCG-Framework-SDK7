@@ -55,34 +55,35 @@ export module PlayerLocal {
     ];
 
     //provide default decks
-    for(let j:number=0; j<5; j++){
-        //spells
-        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_HEAL); }
-        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_FIREBOLT); }
-        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_ICEBOLT); }
-        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT); }
-        for(let i:number=0; i<1; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.SPELL_VOIDBOLT); }
-        //characters
-        for(let i:number=0; i<3; i++) { PlayerDecks[j].AddCard(CARD_DATA_ID.CHARACTER_ICE_GOLEM); }
-        //PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
-        //terrain
-        /*PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_FIRE);
-        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ICE);
-        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_ELECTRIC);
-        PlayerDecks[j].AddCard(CARD_DATA_ID.TERRAIN_VOID);*/
-    }
+    //  neutral deck
+    for(let i:number=0; i<3; i++) { PlayerDecks[0].AddCard(CARD_DATA_ID.SPELL_HEAL); }
+    for(let i:number=0; i<5; i++) { PlayerDecks[0].AddCard(CARD_DATA_ID.CHARACTER_NEUTRAL_GOLEM); }
+    //  neutral deck
+    for(let i:number=0; i<2; i++) { PlayerDecks[1].AddCard(CARD_DATA_ID.SPELL_FIREBOLT); }
+    for(let i:number=0; i<5; i++) { PlayerDecks[1].AddCard(CARD_DATA_ID.CHARACTER_FIRE_GOLEM); }
+    PlayerDecks[1].AddCard(CARD_DATA_ID.TERRAIN_FIRE);
+    //  neutral deck
+    for(let i:number=0; i<2; i++) { PlayerDecks[2].AddCard(CARD_DATA_ID.SPELL_ICEBOLT); }
+    for(let i:number=0; i<5; i++) { PlayerDecks[2].AddCard(CARD_DATA_ID.CHARACTER_ICE_GOLEM); }
+    PlayerDecks[2].AddCard(CARD_DATA_ID.TERRAIN_ICE);
+    //  neutral deck
+    for(let i:number=0; i<2; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT); }
+    for(let i:number=0; i<5; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.CHARACTER_LIGHTNING_GOLEM); }
+    PlayerDecks[3].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT);
+    //  neutral deck
+    for(let i:number=0; i<2; i++) { PlayerDecks[4].AddCard(CARD_DATA_ID.SPELL_VOIDBOLT); }
+    for(let i:number=0; i<5; i++) { PlayerDecks[4].AddCard(CARD_DATA_ID.CHARACTER_VOID_GOLEM); }
+    PlayerDecks[4].AddCard(CARD_DATA_ID.TERRAIN_VOID);
 
     //TODO: move this to an external pve segment
     /** deck used for pve enemy */
     export const DeckPVE:PlayCardDeck.PlayCardDeckObject = PlayCardDeck.Create({key:"PvE", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL});
-    //  add spells
-    for(let i:number = 0; i<3; i++) {
-        DeckPVE.AddCard(CARD_DATA_ID.SPELL_FIREBOLT);
-    }
+    //  add fire spells
+    for(let i:number = 0; i<3; i++) { DeckPVE.AddCard(CARD_DATA_ID.SPELL_FIREBOLT); }
     //  add fire golems
-    for(let i:number = 0; i<5; i++) {
-        DeckPVE.AddCard(CARD_DATA_ID.CHARACTER_FIRE_GOLEM);
-    }
+    for(let i:number = 0; i<5; i++) { DeckPVE.AddCard(CARD_DATA_ID.CHARACTER_FIRE_GOLEM); }
+    //  add fire terrain
+    for(let i:number = 0; i<1; i++) { DeckPVE.AddCard(CARD_DATA_ID.TERRAIN_FIRE); }
 
     /** attempts to load the local player's data */
     export async function LoadPlayerData() {

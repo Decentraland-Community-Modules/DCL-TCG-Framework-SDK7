@@ -1,9 +1,15 @@
+import { executeTask } from "@dcl/sdk/ecs";
 import { TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
 import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { CardDataRegistry } from "./tcg-framework/data/tcg-card-registry";
+import { NFTLinkageRegistry } from "./tcg-framework/data/tcg-nft-linkage-registry";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
+
+/**
+ 
+*/
 
 /**
  * main function that initializes scene and prepares it for play
@@ -52,4 +58,8 @@ export function main()
 	
 	//start prewarm routine
     CardDataRegistry.Instance.PrewarmAssetStart();
+
+	//test calls for nft linkage
+    executeTask(NFTLinkageRegistry.fetchPlayerData);
+    executeTask(NFTLinkageRegistry.fetchWearablesData);
 }

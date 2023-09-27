@@ -20,7 +20,7 @@ import { PlayerLocal } from "./config/tcg-player-local";
 */
 export module TableTeam {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table Team: ";
 
@@ -420,11 +420,15 @@ export module TableTeam {
             this.entityTeamTargetorView = engine.addEntity();
             Transform.create(this.entityTeamTargetorView, {
                 parent: this.entityParent,
-                position: {x:0,y:2.5,z:2.3},
+                position: {x:0,y:2.0,z:5.3},
                 scale: PARENT_SCALE_OFF,
                 rotation: Quaternion.fromEulerDegrees(0,0,0)
             });
-            MeshRenderer.setBox(this.entityTeamTargetorView);
+            GltfContainer.create(this.entityTeamTargetorView, {
+                src: 'models/tcg-framework/card-table/team-selection-indicator.glb',
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
 
             //create team selection slot 
             //  parent object
@@ -705,6 +709,8 @@ export module TableTeam {
                 const teamObject = this.cardSlotObjects.pop();
                 if(teamObject) teamObject.Disable();
             }
+            //reset terrain card
+            this.SetTerrainCard(undefined);
 
             //create card slot objects
             for(let i:number=0; i<CARD_SLOT_POSITIONS.length; i++) {
@@ -722,7 +728,7 @@ export module TableTeam {
         /** resets the team, setting it to the starting state for a table */
         public Reset() {
             //reset values
-            this.healthCur = 60;
+            this.healthCur = 24;
             this.energyCur = 3;
             this.energyGain = 1;
             //update stats display
@@ -753,6 +759,16 @@ export module TableTeam {
                 Transform.getMutable(this.entityTeamTargetorInteraction).scale = SELECTOR_SCALE_ON;
                 Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_ON;
             }
+
+            //clear previous terrain card
+            this.TerrainCard = undefined;
+            //clear previous card slot objects
+            while(this.cardSlotObjects.length > 0) {
+                const teamObject = this.cardSlotObjects.pop();
+                if(teamObject) teamObject.Disable();
+            }
+            //reset terrain card
+            this.SetTerrainCard(undefined);
         }
 
         /** updates buttons display based on the current state */

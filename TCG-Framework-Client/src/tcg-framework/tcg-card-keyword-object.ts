@@ -22,7 +22,7 @@ import { CardEffectDataObject } from "./data/tcg-card-data";
 export module CardKeywordDisplayObject
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Keyword Object: ";
 

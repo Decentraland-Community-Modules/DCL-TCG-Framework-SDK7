@@ -464,7 +464,7 @@ export const CardData:CardDataObject[] = [
         name: "Fire Terrain",
         desc: "A terrain of burning feilds, molten rivers and dark clouds",
         //display 2D
-        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-fire.glb",
         //Attributes
@@ -480,7 +480,7 @@ export const CardData:CardDataObject[] = [
         name: "Ice Terrain",
         desc: "A terrain of frozen rivers, whipping winds and heavy snowfall",
         //display 2D
-        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 2, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-ice.glb",
         //Attributes
@@ -496,7 +496,7 @@ export const CardData:CardDataObject[] = [
         name: "Electric Terrain",
         desc: "A terrain situated admidst thunderous clouds",
         //display 2D
-        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 3, posY: 0 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-lightning.glb",
         //Attributes
@@ -512,7 +512,7 @@ export const CardData:CardDataObject[] = [
         name: "Void Terrain",
         desc: "An ominous terrain with green scattered around",
         //display 2D
-        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 0, posY: 1 },
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-void.glb",
         //Attributes
