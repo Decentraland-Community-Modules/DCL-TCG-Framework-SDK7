@@ -8,7 +8,15 @@ import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
 
 /**
- 
+	TODO:
+	- clean-up team stats when a the game ends
+	- NFT ownership checks
+	- dynamic card count limiting
+	- modify ai to play spells
+	- friendly spells cause flinch atm, they should not
+	- timed/DOT effect processing (fire, acid, etc.)
+	- unit stats display rework (thinking base-plates or something)
+	- lock controls from players when an attack/spell is on-going to halt the possibility of animators getting scuffed
 */
 
 /**

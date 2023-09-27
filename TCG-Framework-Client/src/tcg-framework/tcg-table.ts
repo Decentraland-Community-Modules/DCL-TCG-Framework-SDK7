@@ -713,8 +713,8 @@ export module Table {
             //update turn display
             TextShape.getMutable(this.entityLobbyTurn).text = this.teamObjects[this.curTurn].RegisteredPlayer +"'S TURN (ROUND: "+this.curRound+")";
 
-            //if ai's turn and table owner, start processing
-            if(this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
+            //if table owner and ai's turn, start processing
+            if(PlayerLocal.DisplayName() == this.TableOwner && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
                 SetAIState(true, this);
             }
 
@@ -1684,6 +1684,12 @@ export module Table {
 
     /** system used to act as a non-player card player at a card table */
     function processingTurnAI(dt: number) {
+        //ensure ai is running
+        if(!aiDisplayState) {
+            SetAIState(false);
+            return;
+        }
+
         //process time change
         timeCounter -= dt;
         //check if new action should be taken
