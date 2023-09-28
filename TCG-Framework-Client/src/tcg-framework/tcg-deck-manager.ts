@@ -383,9 +383,6 @@ export module DeckManager {
                     if(!playerInZone) return;
 
                     GenerateCardObjects();
-                    //select and load the first deck
-                    DeckInteractionSelect(0);
-                    DeckInteractionLoad();
                     //select first card from display
                     InteractionCard("0");
                     //show display
@@ -1036,4 +1033,8 @@ export module DeckManager {
         }
         if(isDebugging) console.log(debugTag+"released display card, remaining="+entityGridCards.length); 
     }
+    
+    //select and load the first deck
+    DeckInteractionSelect(0);
+    DeckInteractionLoad();
 }

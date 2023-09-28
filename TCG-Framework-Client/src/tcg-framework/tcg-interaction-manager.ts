@@ -173,7 +173,7 @@ export module InteractionManager {
                         const table = Table.GetByKey(component.tableID);
                         if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
                         //pass interaction call to table
-                        table.InteractionCardActivation(parseInt(component.teamID), component.slotID);
+                        table.InteractionCardActivation();
                     break;
                     //deck manager
                     case CARD_OBJECT_OWNER_TYPE.DECK_MANAGER:
@@ -207,7 +207,7 @@ export module InteractionManager {
                 if(isDebugging) console.log(debugTag+"table card slot activated, table="+component.tableID+", team="+component.teamID+", slot="+component.slotID);
                 const table = Table.GetByKey(component.tableID.toString());
                 if(!table) { if(isDebugging) console.log(debugTag+"<ERROR> interaction attempt on non-existant table!"); return; }
-                table.LocalUnitAttack();
+                table.InteractionCardActivation();
             }
         }
     }
