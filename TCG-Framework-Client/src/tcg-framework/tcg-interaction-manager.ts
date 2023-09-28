@@ -73,6 +73,7 @@ export module InteractionManager {
                             if(isDebugging) console.log(debugTag+"<WARNING> targeted table="+split[0]+" does not exist!");
                             return;            
                         }
+                        if(isDebugging) console.log(debugTag+"processing action="+component.action+" on table="+table.TableID+", with state="+table.CurState);
             
                         //process based on current state
                         switch(table.CurState) {
@@ -98,7 +99,7 @@ export module InteractionManager {
                                         table.LocalNextTurn();
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.TEAM_TARGET:
-                                        table.InteractionTeamSelection(parseInt(component.target));
+                                        table.InteractionTeamSelection(parseInt(split[1]));
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.GAME_LEAVE:
                                         table.LocalForfeitGame();

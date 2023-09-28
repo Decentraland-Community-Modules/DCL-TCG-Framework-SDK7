@@ -666,7 +666,7 @@ export module TableTeam {
             //update team selection interaction
             InteractionObject.InteractionObjectComponent.createOrReplace(this.entityTeamTargetorInteraction, {
                 ownerType: InteractionObject.INTERACTION_TYPE.GAME_TABLE,
-                target: this.TeamID,
+                target: this.Key,
                 action: LOBBY_BUTTONS.TEAM_TARGET,
             });
 

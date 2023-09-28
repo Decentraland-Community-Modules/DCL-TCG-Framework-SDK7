@@ -41,7 +41,7 @@ export module PlayerLocal {
     export var CurTeamID:undefined|number;
 
     /** player's currently selected deck (used for playing at card tables) */
-    var curDeck:number = 0;
+    var curDeck:number = 3;
     export function GetPlayerDeckIndex():number { return curDeck; }
     export function GetPlayerDeck():PlayCardDeck.PlayCardDeckObject { return PlayerDecks[curDeck]; }
     export function SetPlayerDeck(value:number) { return curDeck = value; }
@@ -85,7 +85,7 @@ export module PlayerLocal {
     //  add fire terrain
     for(let i:number = 0; i<1; i++) { DeckPVE.AddCard(CARD_DATA_ID.TERRAIN_FIRE); }
 
-    /** attempts to load the local player's data */
+    /** attempts to load the local player's data, processes their owned contracts, and */
     export async function LoadPlayerData() {
         if(isDebugging) console.log(debugTag+"loading player data...");
 

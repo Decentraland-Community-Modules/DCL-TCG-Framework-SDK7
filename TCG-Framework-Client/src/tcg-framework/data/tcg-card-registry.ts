@@ -1,4 +1,4 @@
-/*      CARD REGISTRY
+/*      TRADING CARD GAME - CARD REGISTRY
     contains access to all cards, with a variety of access methods. card entries
     contain the max number of instances each card can have, as well as their 
     available rarities.
@@ -10,7 +10,7 @@
     contact: TheCryptoTrader69@gmail.com 
 */
 
-import { Entity, EntityMappingMode, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, engine } from "@dcl/sdk/ecs";
+import { Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, engine } from "@dcl/sdk/ecs";
 import Dictionary, { List } from "../../utilities/collections";
 import { CARD_DATA_ID, CardData, CardDataObject} from "./tcg-card-data";
 import { CardTextureData, CardTextureDataObject } from "./tcg-card-texture-data";
@@ -51,7 +51,7 @@ export class CardEntry {
 
     //max allowed number of this card in the player's deck
     //  this will either be defined  by the card's tier or the player's NFT ownership
-    public Count: number = 0;
+    public CountAllowed: number = 0;
     
     /** prepares card data entry for use */
     constructor(pos:number, id:CARD_DATA_ID) {
@@ -162,7 +162,7 @@ export class CardDataRegistry {
 
     public PrewarmIndex:number = 0;
     public PrewarmEntity:Entity = engine.addEntity();
-    /** used to prewarm asset when a scene starts, cycling through each provided model */
+    /** begins card asset pre-warming, cycling through each provided model */
     public async PrewarmAssetStart() {
         //prepare holder entity
         Transform.create(this.PrewarmEntity, {
@@ -177,13 +177,13 @@ export class CardDataRegistry {
         engine.addSystem(this.PrewarmAssetCheck);
     }
     
-    /** */
+    /** halts card asset pre-warming */
     public PrewarmAssetFinish() {
         engine.removeEntity(this.PrewarmEntity);
         engine.removeSystem(this.PrewarmAssetCheck);
     }
 
-    /**  */
+    /** attempts to prewarm all card assets, ensuring they are made available for use upon request without having to wait on a first-load */
     private PrewarmAssetCheck(deltaTime:number) {
         //get loading state
         const loadingState = GltfContainerLoadingState.getOrNull(CardDataRegistry.Instance.PrewarmEntity);

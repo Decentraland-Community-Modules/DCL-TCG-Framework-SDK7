@@ -1,17 +1,17 @@
-/**     CARD DATA
- *  all definitions relavent to cards playable in the game, this includes a card's id,
- *  display details, and keywords.
- * 
- *  NOTE: some details are held seperately
- *      audio (we use an audio manager & play-by-key to reduce overhead) - 
- *      types (factions, elements, etc) - tcg-card-type-data.ts
- *      collection tokens (ownership) -
- * 
- *  NOTE: ids are passed over the network, so it is important to keep them small, the
- *  currently indexing scheme is as follows:
- *      (prefix)    (faction ID)    (type)      (card index)    
- *      'tcg-'      '0'             '0'         '00'
- *  this effectively gives us 99 card ids per type per factions
+/**     TRADING CARD GAME - CARD DATA
+    all definitions relavent to cards playable in the game, this includes a card's id,
+    display details, and keywords.
+   
+    NOTE: some details are held seperately
+        audio (we use an audio manager & play-by-key to reduce overhead) - 
+        types (factions, elements, etc) - tcg-card-type-data.ts
+        collection tokens (ownership) -
+   
+    NOTE: ids are passed over the network, so it is important to keep them small, the
+    currently indexing scheme is as follows:
+        (prefix)    (faction ID)    (type)      (card index)    
+        'tcg-'      '0'             '0'         '00'
+    this effectively gives us 99 card ids per type per factions
  */
 
 import { TEXTURE_SHEET_CARDS } from "./tcg-card-texture-data";
@@ -132,7 +132,7 @@ export interface CardDataObject {
     attributeSpell?:CardSpellDataObject;
 }
 
-//list of card ID's
+/** listing of all card IDs */
 export enum CARD_DATA_ID { 
     //### SPELLS
     //## NEUTRAL SPELLS

@@ -146,6 +146,38 @@ export module Table {
         private curState:TABLE_GAME_STATE = TABLE_GAME_STATE.IDLE;
         public get CurState():TABLE_GAME_STATE { return this.curState; };
 
+        /** sets the lobby display state */
+        public SetGameState(state:TABLE_GAME_STATE) {
+            this.curState = state;
+            const textShape = TextShape.getMutable(this.entityLobbyState);
+            switch(state) {
+                case TABLE_GAME_STATE.IDLE:
+                    //update text
+                    textShape.text = "JOIN TO PLAY";
+                    //hide team displays
+                    this.entityStateDisplays[0].SetState(false);
+                    this.entityStateDisplays[1].SetState(false);
+                break;
+                case TABLE_GAME_STATE.ACTIVE:
+                    //update text
+                    textShape.text = "IN SESSION";
+                    //show team displays
+                    this.entityStateDisplays[0].SetState(true);
+                    this.entityStateDisplays[1].SetState(true);
+                break;
+                case TABLE_GAME_STATE.OVER:
+                    //update text
+                    textShape.text = "<GAME_RESULT>";
+                    //show team displays
+                    this.entityStateDisplays[0].SetState(true);
+                    this.entityStateDisplays[1].SetState(true);
+                break;
+            }
+            //clear turn display
+            TextShape.getMutable(this.entityLobbyTurn).text = "";
+            if(isDebugging) console.log(debugTag+"table="+this.TableID+" state set to state="+state);
+        }
+
         /** table owner */
         private tableOwner:string = "";
         public get TableOwner():string { return this.tableOwner; }
@@ -366,44 +398,12 @@ export module Table {
             });
             
             //set default lobby state
-            this.SetLobbyState(TABLE_GAME_STATE.IDLE);
+            this.SetGameState(TABLE_GAME_STATE.IDLE);
             this.UpdatePlayerDisplay();
             //update team buttons
             for(let i:number=0; i<this.teamObjects.length; i++) {
                 this.teamObjects[i].UpdateButtonStates();
             }
-        }
-
-        /** sets the lobby display state */
-        public SetLobbyState(state:TABLE_GAME_STATE) {
-            this.curState = state;
-            const textShape = TextShape.getMutable(this.entityLobbyState);
-            switch(state) {
-                case TABLE_GAME_STATE.IDLE:
-                    //update text
-                    textShape.text = "JOIN TO PLAY";
-                    //hide team displays
-                    this.entityStateDisplays[0].SetState(false);
-                    this.entityStateDisplays[1].SetState(false);
-                break;
-                case TABLE_GAME_STATE.ACTIVE:
-                    //update text
-                    textShape.text = "IN SESSION";
-                    //show team displays
-                    this.entityStateDisplays[0].SetState(true);
-                    this.entityStateDisplays[1].SetState(true);
-                break;
-                case TABLE_GAME_STATE.OVER:
-                    //update text
-                    textShape.text = "<GAME_RESULT>";
-                    //show team displays
-                    this.entityStateDisplays[0].SetState(true);
-                    this.entityStateDisplays[1].SetState(true);
-                break;
-            }
-            //clear turn display
-            TextShape.getMutable(this.entityLobbyTurn).text = "";
-            if(isDebugging) console.log(debugTag+"table="+this.TableID+" state set to "+state);
         }
 
         /** redraws team display objects */
@@ -610,7 +610,7 @@ export module Table {
             this.curTurn = this.teamObjects.length-1;
             this.curRound = 0;
             //set lobby state
-            this.SetLobbyState(TABLE_GAME_STATE.ACTIVE);
+            this.SetGameState(TABLE_GAME_STATE.ACTIVE);
 
             //process each team
             for(let i:number=0; i<this.teamObjects.length; i++) {
@@ -629,7 +629,7 @@ export module Table {
                 this.LocalNextTurn();
             }
 
-            if(isDebugging) console.log(debugTag+"<REMOTE> started game on table="+this.TableID+"!");
+            if(isDebugging) console.log(debugTag+"<REMOTE> started game on table="+this.TableID+", curState="+this.CurState+"!");
         }
         
         //## END GAME
@@ -659,7 +659,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<REMOTE> ending game on table="+this.TableID+", loserTeam="+defeated+"...");
 
             //set game state
-            this.SetLobbyState(TABLE_GAME_STATE.IDLE);
+            this.SetGameState(TABLE_GAME_STATE.IDLE);
 
             //force any players out of teams
             for(let i:number = 0; i<this.teamObjects.length; i++) {

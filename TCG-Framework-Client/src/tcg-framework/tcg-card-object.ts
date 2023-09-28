@@ -472,16 +472,6 @@ export module CardDisplayObject
             var cardEffects:CardEffectDataObject[] = [];
             switch(def.type) {
                 case CARD_TYPE.SPELL:
-                    if(def.attributeCharacter == undefined) break;
-                    //core
-                    Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
-                    TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
-                    TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
-                    TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
-                    //set keyword listing
-                    cardEffects = def.attributeCharacter.effects;
-                break;
-                case CARD_TYPE.CHARACTER:
                     if(def.attributeSpell == undefined) break;
                     //core
                     Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
@@ -490,6 +480,16 @@ export module CardDisplayObject
                     TextShape.getMutable(this.entityTextArmour).text = "";
                     //set keyword listing
                     cardEffects = def.attributeSpell.effects;
+                break;
+                case CARD_TYPE.CHARACTER:
+                    if(def.attributeCharacter == undefined) break;
+                    //core
+                    Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
+                    TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
+                    TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
+                    TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
+                    //set keyword listing
+                    cardEffects = def.attributeCharacter.effects;
                 break;
                 case CARD_TYPE.TERRAIN:
                     //core

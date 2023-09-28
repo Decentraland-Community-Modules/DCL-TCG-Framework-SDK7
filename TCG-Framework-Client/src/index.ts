@@ -66,8 +66,4 @@ export function main()
 	
 	//start prewarm routine
     CardDataRegistry.Instance.PrewarmAssetStart();
-
-	//test calls for nft linkage
-    executeTask(NFTLinkageRegistry.fetchPlayerData);
-    executeTask(NFTLinkageRegistry.fetchWearablesData);
 }

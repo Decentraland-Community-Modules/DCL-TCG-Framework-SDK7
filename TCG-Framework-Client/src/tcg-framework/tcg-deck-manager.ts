@@ -384,7 +384,7 @@ export module DeckManager {
 
                     GenerateCardObjects();
                     //select and load the first deck
-                    DeckInteractionSelect(2);
+                    DeckInteractionSelect(0);
                     DeckInteractionLoad();
                     //select first card from display
                     InteractionCard("0");
