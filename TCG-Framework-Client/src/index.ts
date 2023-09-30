@@ -6,6 +6,7 @@ import { NFTLinkageRegistry } from "./tcg-framework/data/tcg-nft-linkage-registr
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
+import { InfoPanel } from "./tcg-framework/tcg-info-display-panel";
 
 /**
 	TODO:
@@ -26,13 +27,16 @@ export function main() {
 	//prepare tcg framework
 	executeTask(tcgSetUp);
 }
-
+	
 /** routine for setting up the trading card game framework (loading player data/decks/level, preparing deck manager & tables) */
 async function tcgSetUp() {
 	try {
 		//load player
 		await PlayerLocal.LoadPlayerData();
-	
+
+		//create info panel
+		InfoPanel.SetPosition({ x:24, y:2, z:8 });
+
 		//create deck managers
 		//	left
 		DeckManager.Create({ 

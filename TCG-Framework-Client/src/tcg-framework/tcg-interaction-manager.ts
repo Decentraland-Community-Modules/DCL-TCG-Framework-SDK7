@@ -7,6 +7,7 @@ import { Table } from "./tcg-table";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { TableTeam } from "./tcg-table-team";
 import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE } from "./config/tcg-config";
+import { InfoPanel } from "./tcg-info-display-panel";
 
 /*      TRADING CARD GAME - INTERACTION MANAGER
     used to process all interactions with tcg tables/card slots
@@ -110,6 +111,10 @@ export module InteractionManager {
                                 
                             break;
                         }
+                    break;
+                    //card info display
+                    case InteractionObject.INTERACTION_TYPE.INFO_DISPLAY:
+                        InfoPanel.SetDisplayContent(Number.parseInt(component.target))
                     break;
                 }
             }

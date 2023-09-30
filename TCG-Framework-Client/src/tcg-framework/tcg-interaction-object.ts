@@ -26,6 +26,7 @@ export module InteractionObject
         DECK_MANAGER_MODIFY = 1, //de/increasing cards in deck 
         DECK_MANAGER_PAGING = 2,
         GAME_TABLE = 10, //call from table/team buttons
+        INFO_DISPLAY = 20, //scene info display content buttons
     }
     
     /** transform defaults - parental enabled */
