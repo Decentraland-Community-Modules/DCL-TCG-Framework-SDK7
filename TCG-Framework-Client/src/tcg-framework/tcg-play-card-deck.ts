@@ -1,4 +1,5 @@
 import Dictionary, { List } from "../utilities/collections";
+import { MAX_CARD_COUNT_PER_TYPE } from "./config/tcg-config";
 import { CardData } from "./data/tcg-card-data";
 import { PlayCard } from "./tcg-play-card";
 
@@ -24,7 +25,7 @@ export module PlayCardDeck {
         PLAYER_LOCAL,  //local player
         PLAYER_REMOTE, //remote player (local is peer-to-peer auth)
         AI, //deck is being used in a pve encounter
-    }
+    };
 
     /** index per targeted collection */
     export enum DECK_CARD_STATES {
@@ -33,14 +34,7 @@ export module PlayCardDeck {
         FIELD,
         TERRAIN,
         DISCARD,
-    }
-
-    //TODO: move limiters when done/balanced
-    const CARD_LIMIT_PER_TYPE:number[] = [
-        3,
-        5,
-        1
-    ];
+    };
     
     /* min number of cards in a viable deck */
     export const DECK_SIZE_MIN = 8;
@@ -141,7 +135,7 @@ export module PlayCardDeck {
         public AddCard(defIndex:number) {
             if(isDebugging) console.log(debugTag+"adding card to deck="+this.key+", def="+defIndex+"...");
             //ensure card instance limit is not over max
-            if(this.GetCardCount(defIndex) >= CARD_LIMIT_PER_TYPE[CardData[defIndex].type]) {
+            if(this.GetCardCount(defIndex) >= MAX_CARD_COUNT_PER_TYPE[CardData[defIndex].type]) {
                 if(isDebugging) console.log(debugTag+"failed to add card - too many instances of cards in deck (count="+this.GetCardCount(defIndex)+")!");
                 return;
             } 

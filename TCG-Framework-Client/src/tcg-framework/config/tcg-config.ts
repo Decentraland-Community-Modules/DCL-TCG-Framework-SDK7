@@ -7,6 +7,9 @@
     TeamContact: thecryptotrader69@gmail.com
 */
 
+import { CARD_DATA_ID } from "../data/tcg-card-data";
+import { CardProvisionDataObject } from "../data/tcg-nft-linkage-data";
+
 /** all possible connectivity/load states for a player */
 export enum PLAYER_CONNECTIVITY_STATE {
     UNINITIALIZED, //no attempt has been made to load player data
@@ -65,3 +68,26 @@ export enum TABLE_TURN_TYPE {
     ACTIVE,
     INACTIVE,
 }
+
+/** max number of cards of the same instance allowed to be added to a deck */
+export const MAX_CARD_COUNT_PER_TYPE:number[] = [
+    3, //spell
+    5, //character
+    1, //terrain
+];
+
+/** defines the set of cards provided to a player by default */
+export const STARTING_CARD_PROVISION:CardProvisionDataObject[] = [
+    //provide fire cards
+    { id:CARD_DATA_ID.SPELL_FIREBOLT, count:3 },
+    { id:CARD_DATA_ID.CHARACTER_FIRE_GOLEM, count:5 },
+    { id:CARD_DATA_ID.TERRAIN_FIRE, count:1 },
+    //provide ice cards
+    { id:CARD_DATA_ID.SPELL_ICEBOLT, count:3 },
+    { id:CARD_DATA_ID.CHARACTER_ICE_GOLEM, count:5 },
+    { id:CARD_DATA_ID.TERRAIN_ICE, count:1 },
+    //provide electric cards
+    { id:CARD_DATA_ID.SPELL_LIGHTNINGBOLT, count:3 },
+    { id:CARD_DATA_ID.CHARACTER_ELECTRIC_GOLEM, count:5 },
+    { id:CARD_DATA_ID.TERRAIN_ELECTRIC, count:1 },
+];

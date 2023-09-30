@@ -155,7 +155,7 @@ export enum CARD_DATA_ID {
     //## ICE CHARACTERS
     CHARACTER_ICE_GOLEM,
     //## ELECTRIC CHARACTERS
-    CHARACTER_LIGHTNING_GOLEM,
+    CHARACTER_ELECTRIC_GOLEM,
     //## VOID CHARACTERS
     CHARACTER_VOID_GOLEM,
 
@@ -402,7 +402,7 @@ export const CardData:CardDataObject[] = [
         //indexing
         type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.ELECTRIC,
-        id:CARD_DATA_ID.CHARACTER_LIGHTNING_GOLEM,
+        id:CARD_DATA_ID.CHARACTER_ELECTRIC_GOLEM,
         //display text 
         name: "Lightning Golem",
         desc: "A golem formed from pure energy",

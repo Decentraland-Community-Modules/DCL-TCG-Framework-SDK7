@@ -7,7 +7,7 @@
 import { CARD_DATA_ID } from "./tcg-card-data";
 
 /** data interface for defining how many instances of a card owning an nft adds */
-export interface ContractProvisionDataObject {
+export interface CardProvisionDataObject {
     //targeted card
     id:CARD_DATA_ID;
     //number of instances provided
@@ -19,7 +19,7 @@ export interface ContractDataObject {
     //indexing
     id:CONTRACT_DATA_ID; //unique id for this card
     //added cards
-    linkedCards:ContractProvisionDataObject[];
+    linkedCards:CardProvisionDataObject[];
 }
 
 /** listing of all contract IDs */
