@@ -2,6 +2,8 @@ import { getUserData } from '~system/UserIdentity';
 import { getRealm } from '~system/Runtime';
 import { CONTRACT_DATA_ID, ContractData, ContractDataObject } from './tcg-nft-linkage-data';
 import Dictionary, { List } from '../../utilities/collections';
+import { CardData } from './tcg-card-data';
+import { CardDataRegistry } from './tcg-card-registry';
     
 /*      TRADING CARD GAME - NFT LINKAGE REGISTRY
 
@@ -55,9 +57,9 @@ export class NFTLinkageRegistry {
 
     //data registries
     //  to ALL registered data (unsorted)
-    private cardRegistryAll: List<NFTLinkageEntry>;
+    private registryAll: List<NFTLinkageEntry>;
     //  id as key 
-    private cardRegistryViaID: Dictionary<NFTLinkageEntry>;
+    private registryViaID: Dictionary<NFTLinkageEntry>;
     
     /**
      * prepares the inventory for use, populating all inventory item and callback dictionaries. 
@@ -66,8 +68,8 @@ export class NFTLinkageRegistry {
         if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"initializing...");
 
         //initialize card collections
-        this.cardRegistryAll = new List<NFTLinkageEntry>();
-        this.cardRegistryViaID = new Dictionary<NFTLinkageEntry>();
+        this.registryAll = new List<NFTLinkageEntry>();
+        this.registryViaID = new Dictionary<NFTLinkageEntry>();
 
         //populate registry collections
         //  process every card def
@@ -76,14 +78,23 @@ export class NFTLinkageRegistry {
             const entry = new NFTLinkageEntry(i, ContractData[i].id);
             if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"creating entry=" + i + ", id=" + ContractData[i].id.toString());
             //add to registry
-            this.cardRegistryAll.addItem(entry);
-            this.cardRegistryViaID.addItem(ContractData[i].id.toString(), entry);
+            this.registryAll.addItem(entry);
+            this.registryViaID.addItem(ContractData[i].id.toString(), entry);
         }
 
-        if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"initialized, total count=" + this.cardRegistryAll.size());
+        if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"initialized, total count=" + this.registryAll.size());
     }
 
-    //attempts to collect the player's data
+    /** recalculates what what cards/how many cards the player is allowed to add to their decks */
+    public CalculateCardProvisionCounts() {
+        //reset all counts for cards in registry
+        for(let i:number=0; i < CardData.length; i++) {
+            CardDataRegistry.Instance.GetEntryByPos(i).CountAllowed = 0;
+        }
+
+    }
+
+    /** attempts to collect the player's data */
     public async fetchPlayerData() {
         //attempt to process json
         try {
@@ -110,7 +121,7 @@ export class NFTLinkageRegistry {
         }
     }
 
-    //attempts to collect the player's wearable data
+    /** attempts to collect the player's wearable data */
     public async fetchWearablesData() {
         try {
             if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"attempting to fetch player wearable data");
@@ -136,8 +147,8 @@ export class NFTLinkageRegistry {
     //### CONTRACTS
     /** returns contract entry at given position */
     public CallbackGetEntryByPos(index: number): NFTLinkageEntry { return NFTLinkageRegistry.Instance.GetEntryByPos(index); }
-    public GetEntryByPos(index: number): NFTLinkageEntry { return this.cardRegistryAll.getItem(index); }
+    public GetEntryByPos(index: number): NFTLinkageEntry { return this.registryAll.getItem(index); }
     /** returns entry of given id */
     public CallbackGetEntryByID(id: string): NFTLinkageEntry { return NFTLinkageRegistry.Instance.GetEntryByID(id); }
-    public GetEntryByID(id: string): NFTLinkageEntry { return this.cardRegistryViaID.getItem(id); }
+    public GetEntryByID(id: string): NFTLinkageEntry { return this.registryViaID.getItem(id); }
 }

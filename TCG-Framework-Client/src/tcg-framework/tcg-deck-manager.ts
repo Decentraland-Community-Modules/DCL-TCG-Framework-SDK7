@@ -1,7 +1,7 @@
 import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
-import { CardDataRegistry } from "./data/tcg-card-registry";
+import { CardDataRegistry, CardEntry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
 import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
@@ -383,6 +383,9 @@ export module DeckManager {
                     if(!playerInZone) return;
 
                     GenerateCardObjects();
+                    //select and load the player's current deck
+                    DeckInteractionSelect(PlayerLocal.GetPlayerDeckIndex());
+                    DeckInteractionLoad();
                     //select first card from display
                     InteractionCard("0");
                     //show display
@@ -546,21 +549,21 @@ export module DeckManager {
     function getCardLength():number{
         var index = 0;
         var cardLength = 0;
-        var cardData;
+        var cardEntry;
 
         while(index < CardData.length) {
             //set card data
-            cardData = CardData[index];
+            cardEntry = CardDataRegistry.Instance.GetEntryByPos(index);
             //push to next card data
             index++;
 
             //check filters
             //  faction
-            if(!filterFactionMask[cardData.faction]) continue;
+            if(!filterFactionMask[cardEntry.DataDef.faction]) continue;
             //  type
-            else if(!filterTypeMask[cardData.type]) continue;
+            else if(!filterTypeMask[cardEntry.DataDef.type]) continue;
             //  cost
-            else if(!filterCostMask[cardData.attributeCost]) continue;
+            else if(!filterCostMask[cardEntry.DataDef.attributeCost]) continue;
 
             cardLength++;
         }
@@ -802,14 +805,24 @@ export module DeckManager {
         invisibleMeshesCollisionMask: undefined
     });
     /** selected card name header text */
-    const cardInfoHeaderText:Entity = engine.addEntity();
-    Transform.create(cardInfoHeaderText,{
+    const cardInfoHeaderNameText:Entity = engine.addEntity();
+    Transform.create(cardInfoHeaderNameText,{
         parent:cardInfoParent,
-        position: { x:0, y:0.5, z:-0.12 },
+        position: { x:0, y:0.535, z:-0.105 },
         scale: { x:0.085, y:0.085, z:0.1, },
     });
-    TextShape.create(cardInfoHeaderText, { text: "CARD_DEF_NAME", 
+    TextShape.create(cardInfoHeaderNameText, { text: "CARD_DEF_NAME", 
         textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+    });
+    /** selected card allowed count header text */
+    const cardInfoHeaderAllowedText:Entity = engine.addEntity();
+    Transform.create(cardInfoHeaderAllowedText,{
+        parent:cardInfoParent,
+        position: { x:0, y:0.45, z:-0.105 },
+        scale: { x:0.085, y:0.085, z:0.1, },
+    });
+    TextShape.create(cardInfoHeaderAllowedText, { text: "COUNT ALLOWED: #", fontSize:6,
+        textColor:Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
     });
     /** selected card details background */
     const cardInfoDetailsBackground:Entity = engine.addEntity();
@@ -827,7 +840,7 @@ export module DeckManager {
     const cardInfoDetailsText:Entity = engine.addEntity();
     Transform.create(cardInfoDetailsText,{
         parent:cardInfoParent,
-        position: { x:-0.32, y:0.10, z:-0.11 },
+        position: { x:-0.32, y:0.10, z:-0.105 },
         scale: { x:0.05, y:0.05, z:0.1, },
     });
     TextShape.create(cardInfoDetailsText, { text: "\nFaction: \nType: \nCost:", 
@@ -864,7 +877,7 @@ export module DeckManager {
     const cardInfoDescText:Entity = engine.addEntity();
     Transform.create(cardInfoDescText,{
         parent:cardInfoParent,
-        position: { x:0, y:-0.30, z:-0.11 },
+        position: { x:0, y:-0.30, z:-0.105 },
         scale: { x:0.05, y:0.05, z:0.1, },
     });
     TextShape.create(cardInfoDescText, { text: "Description:", 
@@ -929,37 +942,45 @@ export module DeckManager {
         TextShape.getMutable(cardPageCurText).text = (curPage +1)+"/"+maxPage();
         while(indexDisplay < entityGridCards.length) {
             //attempt to get next card data
-            var cardData:undefined|CardDataObject = undefined;
+            var cardEntry:undefined|CardEntry = undefined;
             while(indexData < CardData.length) {
                 //set card data
-                cardData = CardData[indexData];
+                cardEntry = CardDataRegistry.Instance.GetEntryByPos(indexData);
                 //push to next card data
                 indexData++;
 
                 //check filters
                 //  faction
-                if(!filterFactionMask[cardData.faction]) cardData = undefined;
+                if(!filterFactionMask[cardEntry.DataDef.faction]) cardEntry = undefined;
                 //  type
-                else if(!filterTypeMask[cardData.type]) cardData = undefined;
+                else if(!filterTypeMask[cardEntry.DataDef.type]) cardEntry = undefined;
                 //  cost
-                else if(!filterCostMask[cardData.attributeCost]) cardData = undefined;
+                else if(!filterCostMask[cardEntry.DataDef.attributeCost]) cardEntry = undefined;
 
                 //displays cards based on current page 
-                if(curProcessingPage < curPage*DISPLAY_GRID_TOTAL){
+                if(curProcessingPage < curPage*DISPLAY_GRID_TOTAL) {
                     curProcessingPage++;
-                    cardData = undefined;
+                    cardEntry = undefined;
                 }
 
                 //if card data was found, exit
-                if(cardData != undefined) break;
+                if(cardEntry != undefined) break;
             }
 
             //if card data was found, populate display object based on data 
             var cardObject:CardDisplayObject.CardDisplayObject = entityGridCards[indexDisplay];
-            if(cardData != undefined) {
-                cardObject.SetCard(cardData);
-                //update count text
-                cardObject.SetCounterValue(deckLocalContainer.GetCardCount(cardObject.DefIndex).toString());
+            if(cardEntry != undefined) {
+                //set card object's def
+                cardObject.SetCard(cardEntry.DataDef);
+                //if player is allowed to add cards to their inventory
+                if(cardEntry.CountAllowed > 0) {
+                    //show counter & update counter text
+                    cardObject.SetCounterState(true);
+                    cardObject.SetCounterValue(deckLocalContainer.GetCardCount(cardObject.DefIndex).toString());
+                } else {
+                    //hide counter
+                    cardObject.SetCounterState(false);
+                }
             }
             //if no card data, hide card object
             else {
@@ -1001,7 +1022,8 @@ export module DeckManager {
         //  card preview
         cardInfoObject.SetCard(dataDef, false);
         //  header text
-        TextShape.getMutable(cardInfoHeaderText).text = dataDef.name;
+        TextShape.getMutable(cardInfoHeaderNameText).text = dataDef.name;
+        //TextShape.getMutable(cardInfoHeaderAllowedText).text = "COUNT ALLOWED: "+CardDataRegistry.Instance.GetEntryByID(da);
         //  info text
         const infoText = TextShape.getMutable(cardInfoDetailsText); 
         infoText.text = 
@@ -1033,8 +1055,4 @@ export module DeckManager {
         }
         if(isDebugging) console.log(debugTag+"released display card, remaining="+entityGridCards.length); 
     }
-    
-    //select and load the first deck
-    DeckInteractionSelect(0);
-    DeckInteractionLoad();
 }

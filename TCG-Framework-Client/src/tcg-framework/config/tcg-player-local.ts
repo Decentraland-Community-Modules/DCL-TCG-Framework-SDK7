@@ -68,7 +68,7 @@ export module PlayerLocal {
     PlayerDecks[2].AddCard(CARD_DATA_ID.TERRAIN_ICE);
     //  neutral deck
     for(let i:number=0; i<2; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT); }
-    for(let i:number=0; i<5; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.CHARACTER_LIGHTNING_GOLEM); }
+    for(let i:number=0; i<5; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.CHARACTER_ELECTRIC_GOLEM); }
     PlayerDecks[3].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT);
     //  neutral deck
     for(let i:number=0; i<2; i++) { PlayerDecks[4].AddCard(CARD_DATA_ID.SPELL_VOIDBOLT); }
