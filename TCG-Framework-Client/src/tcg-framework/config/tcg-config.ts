@@ -25,6 +25,12 @@ export enum PLAYER_ACCOUNT_TYPE {
     STANDARD, //logged in with a web3 wallet
     PREMIUM, //logged in and confirmed to own cards
 }
+export const PLAYER_ACCOUNT_TYPE_STRINGS:string[] = [
+    "UNINITIALIZED",
+    "GUEST",
+    "STANDARD",
+    "PREMIUM",
+];
 
 /** all connectivity types for the scene */
 export enum SCENE_CONNECTIVITY_TYPE {

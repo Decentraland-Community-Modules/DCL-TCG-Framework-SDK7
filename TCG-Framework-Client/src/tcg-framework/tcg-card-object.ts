@@ -30,9 +30,11 @@ export module CardDisplayObject
     const debugTag:string = "TCG Card Object: ";
 
     /** object model location */
-    const MODEL_CARD_FRAME_CORE:string = 'models/tcg-framework/card-core/tcg-card-prototype-core.glb';
-    const MODEL_CARD_FRAME_CHARACTER:string = 'models/tcg-framework/card-core/tcg-card-prototype-character.glb';
-    const MODEL_CARD_FRAME_COUNTER:string = 'models/tcg-framework/card-core/tcg-card-prototype-counter.glb';
+    const MODEL_CARD_FRAME_CORE:string = 'models/tcg-framework/card-core/tcg-card-frame-core.glb';
+    const MODEL_CARD_FRAME_CHARACTER_STATS:string = 'models/tcg-framework/card-core/tcg-card-frame-character-stats.glb';
+    const MODEL_CARD_FRAME_COUNTER_FRAME:string = 'models/tcg-framework/card-core/tcg-card-counter.glb';
+    const MODEL_CARD_FRAME_COUNTER_UP:string = 'models/tcg-framework/card-core/tcg-card-counter-up.glb';
+    const MODEL_CARD_FRAME_COUNTER_DOWN:string = 'models/tcg-framework/card-core/tcg-card-counter-down.glb';
     
     /** determines all possible card interaction types */
     export enum CARD_OBJECT_INTERACTION_TYPE {
@@ -56,13 +58,10 @@ export module CardDisplayObject
 
     /** default frame object size */
     const CARD_CORE_SCALE = {x:0.25, y:0.25, z:0.25};
-    /**  */
-    const COUNTER_BUTTON_POSITION_INCREASE = {x:1.1, y:0.6, z:-0.15};
-    const COUNTER_BUTTON_POSITION_DECREASE = {x:1.1, y:-0.6, z:-0.15};
-    const COUNTER_BUTTON_SCALE = {x:0.5, y:0.5, z:0.1};
+    /** card amount counter text transform */
     const COUNTER_TEXT_POSITION = {x:1.1, y:0.0, z:-0.15};
     const COUNTER_TEXT_SCALE = {x:0.35, y:0.35, z:0.35};
-    /** background object size */
+    /** background object transform */
     const CARD_BACKGROUND_POSITION = {x:0, y:0, z:-0.01};
     const CARD_BACKGROUND_SCALE = {x:2, y:3, z:1};
     /** character object size */
@@ -230,7 +229,7 @@ export module CardDisplayObject
             });
             //  add custom model
             GltfContainer.create(this.entityCharacterFrameObject, {
-                src: MODEL_CARD_FRAME_CHARACTER,
+                src: MODEL_CARD_FRAME_CHARACTER_STATS,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
@@ -243,28 +242,32 @@ export module CardDisplayObject
             });
             //  add custom model
             GltfContainer.create(this.entityCounterFrame, {
-                src: MODEL_CARD_FRAME_COUNTER,
+                src: MODEL_CARD_FRAME_COUNTER_FRAME,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
             //create counter button up
             this.entityCounterButtonUp = engine.addEntity();
             Transform.create(this.entityCounterButtonUp, {
-                parent: this.entityCounterFrame,
-                position: COUNTER_BUTTON_POSITION_INCREASE,
-                scale: COUNTER_BUTTON_SCALE
+                parent: this.entityCoreFrameObject,
             });
-            //MeshRenderer.setBox(this.entityCounterButtonUp);
-            MeshCollider.setBox(this.entityCounterButtonUp);
+            //  add custom model
+            GltfContainer.create(this.entityCounterButtonUp, {
+                src: MODEL_CARD_FRAME_COUNTER_UP,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
             //create counter button down
             this.entityCounterButtonDown = engine.addEntity();
             Transform.create(this.entityCounterButtonDown, {
-                parent: this.entityCounterFrame,
-                position: COUNTER_BUTTON_POSITION_DECREASE,
-                scale: COUNTER_BUTTON_SCALE
+                parent: this.entityCoreFrameObject,
             });
-            //MeshRenderer.setBox(this.entityCounterButtonDown);
-            MeshCollider.setBox(this.entityCounterButtonDown);
+            //  add custom model
+            GltfContainer.create(this.entityCounterButtonDown, {
+                src: MODEL_CARD_FRAME_COUNTER_DOWN,
+                visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+                invisibleMeshesCollisionMask: undefined
+            });
             //counter text
             this.entityCounterText = engine.addEntity();
             Transform.create(this.entityCounterText, {
@@ -552,10 +555,20 @@ export module CardDisplayObject
             }
         }
 
-        /** */
-        public SetCounterState(state:boolean) {
-            if(state) Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_ON
-            else Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_OFF
+        /** updates the cards inc/dec counter object's display state (controls both the overhead object & the inc/dec objects) */
+        public SetCounterState(state:boolean, arrowStates:boolean=true) {
+            //set state for main counter object
+            if(state) Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_ON;
+            else Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_OFF;
+            //set state for inc/dec objects
+            if(arrowStates) {
+                Transform.getMutable(this.entityCounterButtonUp).scale = PARENT_SCALE_ON;
+                Transform.getMutable(this.entityCounterButtonDown).scale = PARENT_SCALE_ON;
+            }
+            else {
+                Transform.getMutable(this.entityCounterButtonUp).scale = PARENT_SCALE_OFF;
+                Transform.getMutable(this.entityCounterButtonDown).scale = PARENT_SCALE_OFF;
+            } 
         }
 
         /** */

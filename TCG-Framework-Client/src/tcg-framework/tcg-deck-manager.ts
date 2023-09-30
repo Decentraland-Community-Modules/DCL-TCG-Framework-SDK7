@@ -10,7 +10,7 @@ import { InteractionObject } from "./tcg-interaction-object";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { Dictionary, List } from "../utilities/collections";
-import { CARD_OBJECT_OWNER_TYPE } from "./config/tcg-config";
+import { CARD_OBJECT_OWNER_TYPE, MAX_CARD_COUNT_PER_TYPE } from "./config/tcg-config";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 /*      TRADING CARD GAME FRAMEWORK - DECK MANAGER
     all utilities for viewing cards and managing card decks; this includes viewing all cards (with 
@@ -1011,12 +1011,12 @@ export module DeckManager {
                 //if player is allowed to add cards to their inventory
                 if(cardEntry.CountAllowed > 0) {
                     //show counter & update counter text
-                    cardObject.SetCounterState(true);
-                    cardObject.SetCounterValue(deckLocalContainer.GetCardCount(cardObject.DefIndex).toString());
+                    cardObject.SetCounterState(true, true);
                 } else {
                     //hide counter
-                    cardObject.SetCounterState(false);
+                    cardObject.SetCounterState(true, false);
                 }
+                cardObject.SetCounterValue(deckLocalContainer.GetCardCount(cardObject.DefIndex).toString());
             }
             //if no card data, hide card object
             else {
@@ -1048,63 +1048,64 @@ export module DeckManager {
         if(isDebugging) console.log(debugTag+"player interacted with card, key="+slotID);
         if(curDisplayObject == undefined) return;
 
-        //get card def
-        const dataDef = CardData[entityGridCards[Number.parseInt(slotID)].DefIndex];
+        //get card entry
+        const cardEntry = CardDataRegistry.Instance.GetEntryByPos(entityGridCards[Number.parseInt(slotID)].DefIndex);
 
         //create character display model 
-        curDisplayObject.SetSelection(dataDef);
+        curDisplayObject.SetSelection(cardEntry.DataDef);
         
         //update selected card display
         //  card preview
-        cardInfoObject.SetCard(dataDef, false);
+        cardInfoObject.SetCard(cardEntry.DataDef, false);
         //  header text
-        TextShape.getMutable(cardInfoHeaderNameText).text = dataDef.name;
-        //TextShape.getMutable(cardInfoHeaderAllowedText).text = "COUNT ALLOWED: "+CardDataRegistry.Instance.GetEntryByID(da);
+        TextShape.getMutable(cardInfoHeaderNameText).text = cardEntry.DataDef.name;
+        TextShape.getMutable(cardInfoHeaderAllowedText).text = "COUNT ALLOWED: "+cardEntry.CountAllowed+" (MAX: "+MAX_CARD_COUNT_PER_TYPE[cardEntry.DataDef.type]+")";
         //  info text
         const infoText = TextShape.getMutable(cardInfoDetailsText); 
         infoText.text = 
-            "\nFaction: "+CardDataRegistry.Instance.GetFaction(dataDef.faction).name+
-            "\nType: "+CARD_TYPE_STRINGS[dataDef.type]+
-            "\nCost: "+dataDef.attributeCost;
-        switch(dataDef.type) {
+            "\nFaction: "+CardDataRegistry.Instance.GetFaction(cardEntry.DataDef.faction).name+
+            "\nType: "+CARD_TYPE_STRINGS[cardEntry.DataDef.type]+
+            "\nCost: "+cardEntry.DataDef.attributeCost;
+        switch(cardEntry.DataDef.type) {
             case CARD_TYPE.SPELL:
             break;
             case CARD_TYPE.CHARACTER:
                 infoText.text +=
-                    "\nHealth: "+dataDef.attributeCharacter?.unitHealth+
-                    "\nArmor: "+dataDef.attributeCharacter?.unitArmour+
-                    "\nDamage: "+dataDef.attributeCharacter?.unitAttack;
+                    "\nHealth: "+cardEntry.DataDef.attributeCharacter?.unitHealth+
+                    "\nArmor: "+cardEntry.DataDef.attributeCharacter?.unitArmour+
+                    "\nDamage: "+cardEntry.DataDef.attributeCharacter?.unitAttack;
             break;
             case CARD_TYPE.TERRAIN:
             break;
         }
         //  desc text
-        TextShape.getMutable(cardInfoDescText).text = dataDef.desc;
+        TextShape.getMutable(cardInfoDescText).text = cardEntry.DataDef.desc;
 
         //update keyword description
         var cardeffects:CardEffectDataObject[] = [];
-        switch(dataDef.type){
+        switch(cardEntry.DataDef.type){
             case CARD_TYPE.SPELL:
-                if(dataDef.attributeSpell) cardeffects = dataDef.attributeSpell.effects;
+                if(cardEntry.DataDef.attributeSpell) cardeffects = cardEntry.DataDef.attributeSpell.effects;
             break;
             case CARD_TYPE.CHARACTER:
-                if(dataDef.attributeCharacter) cardeffects = dataDef.attributeCharacter.effects;
+                if(cardEntry.DataDef.attributeCharacter) cardeffects = cardEntry.DataDef.attributeCharacter.effects;
             break;
             case CARD_TYPE.TERRAIN:
             break;
         }
-        //current generated length
+        //process each keyword display element
         for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
             {
+                //if effects exists, update element
                 if(cardeffects.length - 1 >= i )
                 {   
                     const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardeffects[i].type);
                     TextShape.getMutable(cardKeywordDescText[i]).text = keywordDef.displayDesc.replace(/@P/g, cardeffects[i].strength.toString());
                 }
+                //if no effect, clear element
                 else
                 {
                     TextShape.getMutable(cardKeywordDescText[i]).text = "";
-                    //assign text to empty string
                 }
             }
         }

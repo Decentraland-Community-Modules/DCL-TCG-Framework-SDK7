@@ -25,9 +25,8 @@ export interface ContractDataObject {
 /** listing of all contract IDs */
 export enum CONTRACT_DATA_ID { 
     //### DEMO CONTRACTS
-    DCL_HAT,    //void cards
-    DCL_SHIRT,  //fire cards
-    DCL_SHOES   //electric cards
+    DCL_HAT,    //provides neutral cards
+    DCL_SHIRT,  //provides void cards
 }
 
 /** listing of all cards included in the game */
@@ -39,9 +38,8 @@ export const ContractData:ContractDataObject[] = [
         id:CONTRACT_DATA_ID.DCL_HAT, //unique id for this card
         //added cards
         linkedCards:[
-            { id:CARD_DATA_ID.SPELL_VOIDBOLT, count:3 },
-            { id:CARD_DATA_ID.CHARACTER_VOID_GOLEM, count:5 },
-            { id:CARD_DATA_ID.TERRAIN_VOID, count:1 }
+            { id:CARD_DATA_ID.SPELL_HEAL, count:3 },
+            { id:CARD_DATA_ID.CHARACTER_NEUTRAL_GOLEM, count:5 },
         ],
     },
     //## DEMO SHIRT
@@ -50,20 +48,9 @@ export const ContractData:ContractDataObject[] = [
         id:CONTRACT_DATA_ID.DCL_SHIRT, //unique id for this card
         //added cards
         linkedCards:[
-            { id:CARD_DATA_ID.SPELL_FIREBOLT, count:3 },
-            { id:CARD_DATA_ID.CHARACTER_FIRE_GOLEM, count:5 },
-            { id:CARD_DATA_ID.TERRAIN_FIRE, count:1 }
-        ],
-    },
-    //## DEMO SHOES
-    {
-        //indexing
-        id:CONTRACT_DATA_ID.DCL_SHOES, //unique id for this card
-        //added cards
-        linkedCards:[
-            { id:CARD_DATA_ID.SPELL_ICEBOLT, count:3 },
-            { id:CARD_DATA_ID.CHARACTER_ICE_GOLEM, count:5 },
-            { id:CARD_DATA_ID.TERRAIN_ICE, count:1 }
+            { id:CARD_DATA_ID.SPELL_VOIDBOLT, count:3 },
+            { id:CARD_DATA_ID.CHARACTER_VOID_GOLEM, count:5 },
+            { id:CARD_DATA_ID.TERRAIN_VOID, count:1 }
         ],
     },
 ];

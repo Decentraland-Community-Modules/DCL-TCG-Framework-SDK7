@@ -28,7 +28,7 @@ export module CardKeywordDisplayObject
     const debugTag:string = "TCG Card Keyword Object: ";
 
     /** object model location */
-    const MODEL_KEYWORD_FRAME:string = 'models/tcg-framework/card-core/tcg-card-prototype-keyword.glb';
+    const MODEL_KEYWORD_FRAME:string = 'models/tcg-framework/card-core/tcg-card-keyword.glb';
 
     /** transform - parent */
     const PARENT_POSITION_ON:Vector3 = { x:0, y:0, z:0 };

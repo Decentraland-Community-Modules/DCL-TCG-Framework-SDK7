@@ -22,48 +22,57 @@ import { Table } from "./tcg-framework/tcg-table";
 /**
  * main function that initializes scene and prepares it for play
  */
-export function main() 
-{
-	//load player
-	PlayerLocal.LoadPlayerData();
+export function main() {
+	//prepare tcg framework
+	executeTask(tcgSetUp);
+}
 
-	//create deck managers
-	//	left
-	DeckManager.Create({ 
-		key:"dm-0",
-        parent: undefined,
-		position: { x:2, y:0, z:6 },
-		rotation: { x:0, y:270, z:0 } 
-	});
-	//	right
-	DeckManager.Create({ 
-		key:"dm-1",
-        parent: undefined,
-		position: { x:46, y:0, z:6 },
-		rotation: { x:0, y:90, z:0 } 
-	});
-
-	//create card tables
-	//	peer to peer
-	Table.Create({
-		tableID:0,
-		teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
-        parent: undefined,
-		position: { x:14, y:0, z:24 },
-		rotation: { x:0, y:90, z:0 }
-	});
-	//	ai
-	Table.Create({
-		tableID:1,
-		teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
-        parent: undefined,
-		position: { x:34, y:0, z:24 },
-		rotation: { x:0, y:90, z:0 }
-	});
-
-	//enable processing
-	InteractionManager.ProcessingStart();
+/** routine for setting up the trading card game framework (loading player data/decks/level, preparing deck manager & tables) */
+async function tcgSetUp() {
+	try {
+		//load player
+		await PlayerLocal.LoadPlayerData();
 	
-	//start prewarm routine
-    CardDataRegistry.Instance.PrewarmAssetStart();
+		//create deck managers
+		//	left
+		DeckManager.Create({ 
+			key:"dm-0",
+			parent: undefined,
+			position: { x:2, y:0, z:6 },
+			rotation: { x:0, y:270, z:0 } 
+		});
+		//	right
+		DeckManager.Create({ 
+			key:"dm-1",
+			parent: undefined,
+			position: { x:46, y:0, z:6 },
+			rotation: { x:0, y:90, z:0 } 
+		});
+	
+		//create card tables
+		//	peer to peer
+		Table.Create({
+			tableID:0,
+			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
+			parent: undefined,
+			position: { x:14, y:0, z:24 },
+			rotation: { x:0, y:90, z:0 }
+		});
+		//	ai
+		Table.Create({
+			tableID:1,
+			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
+			parent: undefined,
+			position: { x:34, y:0, z:24 },
+			rotation: { x:0, y:90, z:0 }
+		});
+	
+		//enable processing
+		InteractionManager.ProcessingStart();
+		
+		//start prewarm routine
+		CardDataRegistry.Instance.PrewarmAssetStart();
+	} catch (error) {
+	  console.error(error);
+	}
 }

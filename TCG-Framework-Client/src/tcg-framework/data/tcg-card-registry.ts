@@ -223,13 +223,13 @@ export class CardDataRegistry {
     //### CARDS
     /** returns card sheet index */
     public CallbackGetCardTexture(id: CARD_DATA_ID): CardTextureDataObject { return CardDataRegistry.Instance.GetCardTexture(id); }
-    public GetCardTexture(id:CARD_DATA_ID): CardTextureDataObject { return this.cardTextureRegistry.getItem(this.GetEntryByID(id.toString()).DataDef.sheetData.id.toString()); }
+    public GetCardTexture(id:CARD_DATA_ID): CardTextureDataObject { return this.cardTextureRegistry.getItem(this.GetEntryByID(id).DataDef.sheetData.id.toString()); }
     /** returns card entry at given position */
     public CallbackGetEntryByPos(index: number): CardEntry { return CardDataRegistry.Instance.GetEntryByPos(index); }
     public GetEntryByPos(index: number): CardEntry { return this.cardRegistryAll.getItem(index); }
     /** returns entry of given id */
-    public CallbackGetEntryByID(id: string): CardEntry { return CardDataRegistry.Instance.GetEntryByID(id); }
-    public GetEntryByID(id: string): CardEntry { return this.cardRegistryViaID.getItem(id); }
+    public CallbackGetEntryByID(id: CARD_DATA_ID): CardEntry { return CardDataRegistry.Instance.GetEntryByID(id); }
+    public GetEntryByID(id: CARD_DATA_ID): CardEntry { return this.cardRegistryViaID.getItem(id.toString()); }
     /** returns entry of given faction and position within the faction listing*/
     public CallbackGetEntryByFaction(faction: CARD_FACTION_TYPE, index: number): CardEntry { return CardDataRegistry.Instance.GetEntryByFaction(faction, index); }
     public GetEntryByFaction(faction: CARD_FACTION_TYPE, index: number): CardEntry { return this.cardRegistryViaFaction.getItem(faction.toString()).getItem(index); }

@@ -4,6 +4,8 @@ import { CONTRACT_DATA_ID, ContractData, ContractDataObject } from './tcg-nft-li
 import Dictionary, { List } from '../../utilities/collections';
 import { CardData } from './tcg-card-data';
 import { CardDataRegistry } from './tcg-card-registry';
+import { STARTING_CARD_PROVISION } from '../config/tcg-config';
+import { executeTask } from '@dcl/sdk/ecs';
     
 /*      TRADING CARD GAME - NFT LINKAGE REGISTRY
 
@@ -65,7 +67,7 @@ export class NFTLinkageRegistry {
      * prepares the inventory for use, populating all inventory item and callback dictionaries. 
      */
     public constructor() {
-        if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"initializing...");
+        if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"initializing...");
 
         //initialize card collections
         this.registryAll = new List<NFTLinkageEntry>();
@@ -76,71 +78,103 @@ export class NFTLinkageRegistry {
         for (var i: number = 0; i < ContractData.length; i++) {
             //prepare entry
             const entry = new NFTLinkageEntry(i, ContractData[i].id);
-            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"creating entry=" + i + ", id=" + ContractData[i].id.toString());
+            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"creating entry=" + i + ", id=" + ContractData[i].id.toString());
             //add to registry
             this.registryAll.addItem(entry);
             this.registryViaID.addItem(ContractData[i].id.toString(), entry);
         }
 
-        if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.IsDebugging+"initialized, total count=" + this.registryAll.size());
+        if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"initialized, total count=" + this.registryAll.size());
     }
 
     /** recalculates what what cards/how many cards the player is allowed to add to their decks */
-    public CalculateCardProvisionCounts() {
-        //reset all counts for cards in registry
-        for(let i:number=0; i < CardData.length; i++) {
-            CardDataRegistry.Instance.GetEntryByPos(i).CountAllowed = 0;
-        }
+    public async CalculateCardProvisionCounts() {
+        try {
+            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"recalculating card provisions...");
+            //reset all counts for cards in registry
+            for(let i:number=0; i < CardData.length; i++) {
+                CardDataRegistry.Instance.GetEntryByPos(i).CountAllowed = 0;
+            }
 
+            //provide default card set
+            for(let i:number=0; i < STARTING_CARD_PROVISION.length; i++) {
+                CardDataRegistry.Instance.GetEntryByID(STARTING_CARD_PROVISION[i].id).CountAllowed += STARTING_CARD_PROVISION[i].count;
+            }
+
+            //refresh nft ownership
+            await this.assertOwnedNFTs();
+
+            //process all contract entries
+            var logOwnership = "";
+            for(let i:number=0; i < this.registryAll.size(); i++) {
+                //if nft is owned by player
+                const contractEntry = this.registryAll.getItem(i);
+                if(contractEntry.IsOwned) {
+                    //provide all associated cards
+                    for(let j:number=0; j < contractEntry.DataDef.linkedCards.length; j++) {
+                        CardDataRegistry.Instance.GetEntryByID(contractEntry.DataDef.linkedCards[j].id).CountAllowed += contractEntry.DataDef.linkedCards[j].count;
+                    }
+                    logOwnership += "\n\t" + i + " owned=true";
+                } else {
+                    logOwnership += "\n\t" + i + " owned=false";
+                }
+            }
+            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"recalculated card provisions!\ncontracts by pos:"+logOwnership);
+        } catch (error) {
+            console.log(NFTLinkageRegistry.debugTag+"an error occurred while recalculating player card provisions:\n"+error);
+        }
     }
 
-    /** attempts to collect the player's data */
-    public async fetchPlayerData() {
+    /** attempts reassert what nfts the local player owns */
+    public async assertOwnedNFTs() {
         //attempt to process json
         try {
-            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"attempting to fetch player data");
+            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"reasserting owned NFT sets...");
+
+            //reset nft ownership (all entries to false)
+            for (var i: number = 0; i < this.registryAll.size(); i++) {
+                this.registryAll.getItem(i).IsOwned = false;
+            }
+
             //get user data
             const userData = await getUserData({});
-            if(!userData.data) return;
+            if(!userData) {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get user data");
+                return;
+            }
+            if(!userData.data) {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get user data return");
+                return;
+            }
             //get realm info
             const realmInfo = await getRealm({});
-            if(!realmInfo.realmInfo) return;
-            
+            if(!realmInfo) {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get realm data");
+                return;
+            }
+            if(!realmInfo.realmInfo) {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get realm data return");
+                return;
+            }
+
             //create url 
             const url = realmInfo.realmInfo.baseUrl+"/lambdas/profile/"+userData.data.userId;
             if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"making call using url: "+url);
             
             //attempt to pull json from url
             const json = (await fetch(url)).json();
+            if(!json) {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to process fetch into json output");
+                return;
+            }
             if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"full response: "+json);
+
+            //TODO: process all contracts vs returned ownership data from player
 
             //console.log('player is wearing :'+json[0].metadata.avatars[0].avatar.wearables);
             //console.log('player owns :'+json[0].metadata.avatars[0].inventory);
-        } catch {
-            console.log('an error occurred while reaching for player data');
-        }
-    }
-
-    /** attempts to collect the player's wearable data */
-    public async fetchWearablesData() {
-        try {
-            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"attempting to fetch player wearable data");
-            //get user data
-            const userData = await getUserData({});
-            if(!userData.data) return;
-            //get realm info
-            const realmInfo = await getRealm({});
-            if(!realmInfo.realmInfo) return;
-
-            //create url
-            const url = realmInfo.realmInfo.baseUrl+"/lambdas/collections/wearables-by-owner/"+userData.data.userId+"includeDefinitions";
-            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"making call using url: "+url);
-
-            //attempt to pull json from url
-            const json = (await fetch(url)).json();
-            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"full response: "+json);
-        } catch {
-            console.log('an error occurred while reaching for wearables data');
+        } catch (error) {
+            console.log(NFTLinkageRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
         }
     }
 

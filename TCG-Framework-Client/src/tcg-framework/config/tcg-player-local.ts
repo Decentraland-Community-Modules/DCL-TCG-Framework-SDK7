@@ -1,7 +1,9 @@
 import { getUserData } from "~system/UserIdentity"
 import { PlayCardDeck } from "../tcg-play-card-deck";
 import { CARD_DATA_ID } from "../data/tcg-card-data";
-import { PLAYER_ACCOUNT_TYPE, PLAYER_CONNECTIVITY_STATE } from "./tcg-config";
+import { PLAYER_ACCOUNT_TYPE, PLAYER_ACCOUNT_TYPE_STRINGS, PLAYER_CONNECTIVITY_STATE } from "./tcg-config";
+import { NFTLinkageRegistry } from "../data/tcg-nft-linkage-registry";
+import { executeTask } from "@dcl/sdk/ecs";
 /*      TRADING CARD GAME - LOCAL PLAYER
     contains properties and configurations regarding the local player's
     instance, such as if they are logged in via web3, their display name, and wallet.
@@ -13,7 +15,7 @@ export module PlayerLocal {
     /** when true debug logs are generated (toggle off when you deploy) */
     const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
-    const debugTag:string = "Player: ";
+    const debugTag:string = "Player Local: ";
 
     /** local player's connectivity state */
     var connectivityState:PLAYER_CONNECTIVITY_STATE = PLAYER_CONNECTIVITY_STATE.UNINITIALIZED;
@@ -114,9 +116,8 @@ export module PlayerLocal {
         } 
         //public key is found, player logged in through web3 wallet 
         else {
+            if(isDebugging) console.log(debugTag+"player is a logged account (has web3 key)");
             accountType = PLAYER_ACCOUNT_TYPE.STANDARD;
-
-            //TODO: check for NFT ownership
         } 
 
         //determined to be at least standard account
@@ -125,11 +126,13 @@ export module PlayerLocal {
         userID = userData.data.userId;
         displayName = userData.data.displayName;
 
-        //TODO: run ownership checks to determine if user is a premium account
+        //recalculate what cards the player owns/has access to
+        await NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();
 
+        //update the player's connectivity state
         connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTED;
         if(isDebugging) console.log(debugTag+"loaded player data!"+
-            "\n\taccountType="+accountType+
+            "\n\taccountType="+PLAYER_ACCOUNT_TYPE_STRINGS[accountType]+
             "\n\tisWeb3="+isWeb3+
             "\n\tuserID="+userID+
             "\n\tdisplayName="+displayName
