@@ -3,7 +3,7 @@ import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry, CardEntry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
@@ -11,6 +11,7 @@ import { PlayCardDeck } from "./tcg-play-card-deck";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { Dictionary, List } from "../utilities/collections";
 import { CARD_OBJECT_OWNER_TYPE } from "./config/tcg-config";
+import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 /*      TRADING CARD GAME FRAMEWORK - DECK MANAGER
     all utilities for viewing cards and managing card decks; this includes viewing all cards (with 
     filtering options), adding/removing cards to/from a deck, and saving/loading decks. 
@@ -429,6 +430,8 @@ export module DeckManager {
     const CARD_SIZE_X:number = 0.35;
     /* width size of cards in display grid */
     const CARD_SIZE_Y:number = 0.45;
+    /* max number of keywords displayed */
+    const KEYWORD_DISPLAY_SIZE:number = 4;
     
     //card
     /** display card object scale */
@@ -873,6 +876,7 @@ export module DeckManager {
         visibleMeshesCollisionMask: undefined,
         invisibleMeshesCollisionMask: undefined
     });
+
     /** selected card desc text */
     const cardInfoDescText:Entity = engine.addEntity();
     Transform.create(cardInfoDescText,{
@@ -886,6 +890,7 @@ export module DeckManager {
         textWrapping:true,
         width: 23, height:5
     });
+    
     /** selected card display object */
     const cardInfoObject = CardDisplayObject.Create({
         ownerType: CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
@@ -898,6 +903,37 @@ export module DeckManager {
         scale: { x:0.125, y:0.125, z:0.125, },
     });
 
+    /** generate selected card keyword desc */
+    const cardkeywordDescBackground:Entity[] = [];
+    const cardKeywordDescText:Entity[] = [];
+    for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
+        cardkeywordDescBackground[i] = engine.addEntity();
+        Transform.create(cardkeywordDescBackground[i],{
+            parent:cardInfoParent,
+            position: { x:0.1, y:0.275 + (i*-0.116), z:-0.10 },
+            scale: { x:0.12, y:0.13, z:0.01, },
+        });        
+        GltfContainer.create(cardkeywordDescBackground[i], {
+            src: "models/tcg-framework/menu-displays/keyword-base-plate.glb",
+            visibleMeshesCollisionMask: undefined,
+            invisibleMeshesCollisionMask: undefined
+        });
+        /** selected keyword desc text */
+        cardKeywordDescText[i] = engine.addEntity();
+        Transform.create(cardKeywordDescText[i],{
+        parent:cardkeywordDescBackground[i],
+        position: { x:0, y:0.0, z:-0.11 },
+        scale: { x:0.2, y:0.2, z:0.1, },
+        });
+        TextShape.create(cardKeywordDescText[i], { text: "Title:", 
+            textColor: Color4.White(), 
+            textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
+            textWrapping:true,
+            fontSize: 7,
+            width: 8, height:5
+            
+        });
+    }
     //## CARD DISPLAY GRID FUNCTIONALITY
     /** displays a list of cards in the game, based on the current filters/page  */
     function GenerateCardObjects() {
@@ -1044,8 +1080,35 @@ export module DeckManager {
         }
         //  desc text
         TextShape.getMutable(cardInfoDescText).text = dataDef.desc;
-    }
 
+        //update keyword description
+        var cardeffects:CardEffectDataObject[] = [];
+        switch(dataDef.type){
+            case CARD_TYPE.SPELL:
+                if(dataDef.attributeSpell) cardeffects = dataDef.attributeSpell.effects;
+            break;
+            case CARD_TYPE.CHARACTER:
+                if(dataDef.attributeCharacter) cardeffects = dataDef.attributeCharacter.effects;
+            break;
+            case CARD_TYPE.TERRAIN:
+            break;
+        }
+        //current generated length
+        for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
+            {
+                if(cardeffects.length - 1 >= i )
+                {   
+                    const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardeffects[i].type);
+                    TextShape.getMutable(cardKeywordDescText[i]).text = keywordDef.displayDesc.replace(/@P/g, cardeffects[i].strength.toString());
+                }
+                else
+                {
+                    TextShape.getMutable(cardKeywordDescText[i]).text = "";
+                    //assign text to empty string
+                }
+            }
+        }
+    }
     /** releases all card objects in the current display grid */
     function ReleaseCardObjects() {
         if(isDebugging) console.log(debugTag+"releasing display card, count="+entityGridCards.length); 
