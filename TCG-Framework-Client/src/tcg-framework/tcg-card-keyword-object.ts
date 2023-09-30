@@ -1,3 +1,4 @@
+
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
 import { ColliderLayer, Entity, GltfContainer, InputAction, Material, MaterialTransparencyMode, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, TextureWrapMode, Transform, engine } from "@dcl/sdk/ecs";

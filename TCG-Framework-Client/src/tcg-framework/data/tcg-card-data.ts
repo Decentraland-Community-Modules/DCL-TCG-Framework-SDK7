@@ -182,7 +182,7 @@ export const CardData:CardDataObject[] = [
         id:CARD_DATA_ID.SPELL_HEAL,
         //display text 
         name:"Heal",
-        desc:"Heals a single ally unit.",
+        desc:"Heals a single ally unit health.",
         //display 2D
         sheetData:{ id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 0 },
         //display 3D

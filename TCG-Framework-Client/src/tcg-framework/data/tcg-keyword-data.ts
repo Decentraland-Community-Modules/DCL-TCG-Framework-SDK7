@@ -217,7 +217,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.HEAL,
         //displays
         displayName: "Heal",
-        displayDesc: "Heals any allied card targeted over time",
+        displayDesc: "Heals any allied unit for @P",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
