@@ -198,7 +198,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.MELT,
         //displays 
         displayName: "Melt",
-        displayDesc: "Causes damage to the enemy target(s) armour",
+        displayDesc: "Causes @P damage to the enemy target(s) armour",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 7 },
@@ -247,7 +247,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.EXPAND,
         //displays 
         displayName: "Expand",
-        displayDesc: "increases the max HP of targeted unit(s)",
+        displayDesc: "increases the max HP of targeted unit(s) by @P",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
