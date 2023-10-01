@@ -8,7 +8,7 @@ import { STARTING_CARD_PROVISION } from '../config/tcg-config';
 import { Entity, TextAlignMode, TextShape, Transform, engine } from '@dcl/sdk/ecs';
 import { Quaternion } from '@dcl/sdk/math';
 import { onProfileChanged } from '@dcl/sdk/observables';
-import { UserData } from '~system/Players';
+import * as utils from '@dcl-sdk/utils'
     
 /*      TRADING CARD GAME - NFT LINKAGE REGISTRY
 
@@ -115,7 +115,9 @@ export class NFTLinkageRegistry {
 
         //assign event => refresh card ownership whenever player changes their equipped items 
         onProfileChanged.add((profileData) => {
-            NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();    
+            utils.timers.setInterval(function () {
+                NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();   
+            }, 2000);
         });
     }
 
