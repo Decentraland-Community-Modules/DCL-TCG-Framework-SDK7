@@ -852,18 +852,6 @@ export module DeckManager {
         textWrapping:true,
         width: 9, height:10
     });
-    /** selected card details background */
-    const cardKeywordDetailsBackground:Entity = engine.addEntity();
-    Transform.create(cardKeywordDetailsBackground,{
-        parent:cardInfoParent,
-        position: { x:0.1, y:0.10, z:-0.10 },
-        scale: { x:0.25, y:0.19, z:0.01, },
-    });
-    GltfContainer.create(cardKeywordDetailsBackground, {
-        src: "models/tcg-framework/menu-displays/keyword-base-pldwate.glb",
-        visibleMeshesCollisionMask: undefined,
-        invisibleMeshesCollisionMask: undefined
-    });
     /** selected card desc background */
     const cardInfoDescBackground:Entity = engine.addEntity();
     Transform.create(cardInfoDescBackground,{

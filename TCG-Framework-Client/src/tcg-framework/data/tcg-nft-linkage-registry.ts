@@ -1,11 +1,14 @@
-import { getUserData } from '~system/UserIdentity';
+import { GetUserDataResponse, getUserData } from '~system/UserIdentity';
 import { getRealm } from '~system/Runtime';
-import { CONTRACT_DATA_ID, ContractData, ContractDataObject } from './tcg-nft-linkage-data';
+import { CONTRACT_DATA_ID, ContractData, ContractDataObject, NFT_ACTIVATION_TYPE } from './tcg-nft-linkage-data';
 import Dictionary, { List } from '../../utilities/collections';
 import { CardData } from './tcg-card-data';
 import { CardDataRegistry } from './tcg-card-registry';
 import { STARTING_CARD_PROVISION } from '../config/tcg-config';
-import { executeTask } from '@dcl/sdk/ecs';
+import { Entity, TextAlignMode, TextShape, Transform, engine } from '@dcl/sdk/ecs';
+import { Quaternion } from '@dcl/sdk/math';
+import { onProfileChanged } from '@dcl/sdk/observables';
+import * as utils from '@dcl-sdk/utils'
     
 /*      TRADING CARD GAME - NFT LINKAGE REGISTRY
 
@@ -41,6 +44,8 @@ export class NFTLinkageRegistry {
     static IsDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     static debugTag:string = "TCG NFT Link Registry: ";
+    //debugging entity (b.c dcl sucks at displaying logs when deployed)
+    private dLogEntity:Entity = engine.addEntity();
 
     /** represents the current load-state of the module, when true system is refreshing NFT contract ownership rights */
     private isLoading:boolean = false;
@@ -57,21 +62,39 @@ export class NFTLinkageRegistry {
         return NFTLinkageRegistry.instance;
     }
 
+    public userID:string = "";
+
     //data registries
     //  to ALL registered data (unsorted)
     private registryAll: List<NFTLinkageEntry>;
     //  id as key 
     private registryViaID: Dictionary<NFTLinkageEntry>;
+    private registryViaType: Dictionary<List<NFTLinkageEntry>>;
     
     /**
      * prepares the inventory for use, populating all inventory item and callback dictionaries. 
      */
     public constructor() {
+        //setup 3D debug log 
+        Transform.create(this.dLogEntity, {
+            position: {x:0.1, y:1.8, z:10},
+            rotation: Quaternion.fromEulerDegrees(0,-90,0),
+            scale: {x:0.1, y:0.1, z:0.1}
+        });
+        TextShape.create(this.dLogEntity, {
+            text: "<LOG TEXT>",
+            fontSize: 4,
+            textAlign: TextAlignMode.TAM_MIDDLE_LEFT,
+            textWrapping: false,
+            width: 24, height:8
+        });
+
         if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"initializing...");
 
         //initialize card collections
         this.registryAll = new List<NFTLinkageEntry>();
         this.registryViaID = new Dictionary<NFTLinkageEntry>();
+        this.registryViaType = new Dictionary<List<NFTLinkageEntry>>();
 
         //populate registry collections
         //  process every card def
@@ -79,12 +102,23 @@ export class NFTLinkageRegistry {
             //prepare entry
             const entry = new NFTLinkageEntry(i, ContractData[i].id);
             if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"creating entry=" + i + ", id=" + ContractData[i].id.toString());
+            //ensure type registry exists
+            if(!this.registryViaType.containsKey(ContractData[i].type.toString()))
+                this.registryViaType.addItem(ContractData[i].type.toString(), new List<NFTLinkageEntry>());
             //add to registry
             this.registryAll.addItem(entry);
             this.registryViaID.addItem(ContractData[i].id.toString(), entry);
+            this.registryViaType.getItem(ContractData[i].type.toString()).addItem(entry);
         }
 
         if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"initialized, total count=" + this.registryAll.size());
+
+        //assign event => refresh card ownership whenever player changes their equipped items 
+        onProfileChanged.add((profileData) => {
+            utils.timers.setTimeout(function () {
+                NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();   
+            }, 2000);
+        });
     }
 
     /** recalculates what what cards/how many cards the player is allowed to add to their decks */
@@ -130,6 +164,7 @@ export class NFTLinkageRegistry {
         //attempt to process json
         try {
             if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"reasserting owned NFT sets...");
+            TextShape.getMutable(this.dLogEntity).text = "THIS LOG DISPLAYS THE LATEST LOAD ATTMEPT FOR CHECKING PLAYER-OWNED NFTS & WEARABLES";
 
             //reset nft ownership (all entries to false)
             for (var i: number = 0; i < this.registryAll.size(); i++) {
@@ -137,44 +172,128 @@ export class NFTLinkageRegistry {
             }
 
             //get user data
-            const userData = await getUserData({});
-            if(!userData) {
+            TextShape.getMutable(this.dLogEntity).text += "\n\tcalculating cards for userID="+this.userID;
+            /*this.userData = await getUserData({});
+            if(!this.userData || !this.userData.data) {
                 if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get user data");
                 return;
-            }
-            if(!userData.data) {
-                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get user data return");
-                return;
-            }
-            //get realm info
-            const realmInfo = await getRealm({});
-            if(!realmInfo) {
-                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get realm data");
-                return;
-            }
-            if(!realmInfo.realmInfo) {
-                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get realm data return");
-                return;
-            }
+            }*/
 
-            //create url 
-            const url = realmInfo.realmInfo.baseUrl+"/lambdas/profile/"+userData.data.userId;
-            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"making call using url: "+url);
-            
-            //attempt to pull json from url
-            const json = (await fetch(url)).json();
-            if(!json) {
-                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to process fetch into json output");
-                return;
-            }
-            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"full response: "+json);
+            //## process all items player is wearing
+            await this.ProcessCardsetsWear();
 
-            //TODO: process all contracts vs returned ownership data from player
+            //process ownership of all contracts based on whether the player owns the required NFT
+            await this.ProcessCardsetsOwn();
 
-            //console.log('player is wearing :'+json[0].metadata.avatars[0].avatar.wearables);
-            //console.log('player owns :'+json[0].metadata.avatars[0].inventory);
+            TextShape.getMutable(this.dLogEntity).text += "\nNFT CARDSET PROCESSING COMPLETED!";
         } catch (error) {
             console.log(NFTLinkageRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
+            TextShape.getMutable(this.dLogEntity).text += "\nfailed, error:\n"+error;
+        }
+    }
+
+    public async ProcessCardsetsWear() {
+        //attempt to process json
+        try {
+            TextShape.getMutable(this.dLogEntity).text += "\n\n\tprocessing player's worn NFTs: (current test, unlock void cards by wearing: eye-patch)";
+            //## process all items player is wearing
+            const listWorn = this.registryViaType.getItem(NFT_ACTIVATION_TYPE.WEAR.toString());
+            if(listWorn) {
+
+                //  create url 
+                const urlWear = "https://peer.decentraland.org/lambdas/profiles/"+this.userID;
+                //DEBUGGING URL => const urlWear = "https://peer.decentraland.org/lambdas/profiles/0xC24789C6f165329290Ddd3fBEac3b6842a294003";
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"making call using url: "+urlWear);
+                TextShape.getMutable(this.dLogEntity).text += "\n\tgetting currently worn through url="+urlWear;
+                
+                //get player's inventory
+                let resultWear = await fetch(urlWear);
+                if(!resultWear) {
+                    if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get player's inventory");
+                    return;
+                }
+
+                //attempt to pull json from url
+                let jsonWear = await resultWear.json();
+                if(!jsonWear || !jsonWear["avatars"] || !jsonWear["avatars"]["0"]) {
+                    if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to process fetch into json output");
+                    return;
+                }
+
+                //process provided listing
+                const wearables = jsonWear["avatars"]["0"]["avatar"]["wearables"].toString().split(',');
+                wearables.forEach((dclNFT: any) => {
+                    console.log(dclNFT)
+                    //process all wearable nfts
+                    for(let j:number=0; j < listWorn.size(); j++) {
+                        const entry = listWorn.getItem(j);
+                        if (entry.DataDef.urn === dclNFT) {
+                            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"contract="+entry.ID+" unlocked cards by wearing NFT="+dclNFT);
+                            TextShape.getMutable(this.dLogEntity).text += "\n\t\tunlocked cardset="+entry.ID+" by wearing NFT="+dclNFT;
+                            entry.IsOwned = true;
+                            break;
+                        }
+                    }
+                });
+
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"finished processing player's worn NFTs!");
+            } else {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"no cardsets are locked behind wearing NFTs, skipping check");
+            }
+        } catch (error) {
+            console.log(NFTLinkageRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
+            TextShape.getMutable(this.dLogEntity).text += "\nfailed, error:\n"+error;
+        }
+    }
+    
+    public async ProcessCardsetsOwn() {
+        //attempt to process json
+        try {
+            //process ownership of all contracts based on whether the player owns the required NFT
+            TextShape.getMutable(this.dLogEntity).text += "\n\n\tprocessing player's owned NFTs: (current test, unlock neutral cards by owning: shoes of speed)";
+            const listOwned = this.registryViaType.getItem(NFT_ACTIVATION_TYPE.OWN.toString());
+            if(listOwned) {
+                //  create url 
+                const urlOwn = "https://peer.decentraland.org/lambdas/collections/wearables-by-owner/"+this.userID//+"?includeDefinitions";
+                //DEBUGGING URL => const urlOwn = "https://peer.decentraland.org/lambdas/collections/wearables-by-owner/0xC24789C6f165329290Ddd3fBEac3b6842a294003?includeDefinitions";
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"making call using url: "+urlOwn);
+                TextShape.getMutable(this.dLogEntity).text += "\n\tgetting currently worn through url="+urlOwn;
+                
+                //get player's inventory
+                let resultOwn = await fetch(urlOwn);
+                if(!resultOwn) {
+                    if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to get player's inventory");
+                    return;
+                }
+
+                //attempt to pull json from url
+                let jsonOwn = await resultOwn.json();
+                if(!jsonOwn) {
+                    if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"<ERROR> failed to process fetch into json output");
+                    return;
+                }
+
+                //process provided listing
+                jsonOwn.forEach((dclNFT: any) => {
+                    //process all wearable nfts
+                    for(let j:number=0; j < listOwned.size(); j++) {
+                        const entry = listOwned.getItem(j);
+                        if (entry.DataDef.urn === dclNFT["urn"]) {
+                            if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"contract="+entry.ID+" required player to wear NFT="+dclNFT["urn"]);
+                            TextShape.getMutable(this.dLogEntity).text += "\n\t\tunlocked cardset="+entry.ID+" by owning NFT="+dclNFT["urn"];
+                            entry.IsOwned = true;
+                            break;
+                        }
+                    }
+                });
+
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"finished processing player's owned NFTs!");
+            } else {
+                if(NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"no cardsets are locked behind owning NFTs, skipping check");
+            }
+        } catch (error) {
+            console.log(NFTLinkageRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
+            TextShape.getMutable(this.dLogEntity).text += "\nfailed, error:\n"+error;
         }
     }
 
