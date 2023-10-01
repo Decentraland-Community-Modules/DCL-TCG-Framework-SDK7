@@ -431,7 +431,7 @@ export module DeckManager {
     /* width size of cards in display grid */
     const CARD_SIZE_Y:number = 0.45;
     /* max number of keywords displayed */
-    const KEYWORD_DISPLAY_SIZE:number = 4;
+    const KEYWORD_DISPLAY_SIZE:number = 3;
     
     //card
     /** display card object scale */
@@ -1100,7 +1100,10 @@ export module DeckManager {
                 if(cardeffects.length - 1 >= i )
                 {   
                     const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardeffects[i].type);
-                    TextShape.getMutable(cardKeywordDescText[i]).text = keywordDef.displayDesc.replace(/@P/g, cardeffects[i].strength.toString());
+                    let pReplaced = keywordDef.displayDesc.replace(/@P/g, cardeffects[i].strength.toString());
+                    const dur = cardeffects[i].duration;
+                    if(dur) pReplaced = pReplaced.replace(/@T/g, dur.toString());             
+                    TextShape.getMutable(cardKeywordDescText[i]).text = pReplaced;       
                 }
                 //if no effect, clear element
                 else

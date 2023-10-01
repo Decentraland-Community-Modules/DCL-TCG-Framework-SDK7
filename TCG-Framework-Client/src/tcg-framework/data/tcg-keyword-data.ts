@@ -138,7 +138,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID: CARD_KEYWORD_ID.STRIKE,
         //displays
         displayName: "Strike",
-        displayDesc: "Causes damage to the enemy target",
+        displayDesc: "Causes @P damage to the enemy target",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
@@ -153,7 +153,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.BLEED,
         //displays  
         displayName: "Bleed",
-        displayDesc: "inflicts constant direct damage to targeted unit(s)",
+        displayDesc: "Inflicts @P damage to targeted unit every turn for @T turns",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 7 },
@@ -168,7 +168,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.BURN,
         //displays 
         displayName: "Burn",
-        displayDesc: "inflicts constant overall damage to targeted unit(s)",
+        displayDesc: "Inflicts @P damage to the targeted unit for @T turns",
         //display 2D
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
@@ -183,7 +183,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.REND,
         //displays 
         displayName: "Rend",
-        displayDesc: "Causes damage to the enemy target(s) armour",
+        displayDesc: "Causes @P damage to the enemy targets armour",
         //display 2D
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 7 },
@@ -198,7 +198,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.MELT,
         //displays 
         displayName: "Melt",
-        displayDesc: "Causes @P damage to the enemy target(s) armour",
+        displayDesc: "Causes @P damage to the enemy target(s) armour for @T turns",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 7 },
@@ -232,7 +232,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.MEND,
         //displays 
         displayName: "Mend",
-        displayDesc: "Heals any allied card targeted",
+        displayDesc: "Heals any allied unit for @P for @T turns",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 6, posY: 7 },
@@ -247,7 +247,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.EXPAND,
         //displays 
         displayName: "Expand",
-        displayDesc: "increases the max HP of targeted unit(s) by @P",
+        displayDesc: "Increases the max HP of targeted unit(s) by @P",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
@@ -262,7 +262,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.GROWTH,
         //displays 
         displayName: "Growth",
-        displayDesc: "regenerates HP of targeted unit(s)",
+        displayDesc: "Regenerate @P HP of the targeted units health for @T turns",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
@@ -277,7 +277,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.FORTIFY,
         //displays 
         displayName: "Fortify",
-        displayDesc: "regenerates armour of targeted unit(s)",
+        displayDesc: "Regenerates @P armour of the targeted unit(s)",
         //display 2D
         iconColour: Color4.Blue(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
@@ -295,7 +295,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.SHARPEN,
         //displays 
         displayName: "Sharpen",
-        displayDesc: "increases the max dmg of targeted unit(s)",
+        displayDesc: "Increases the max dmg of targeted unit(s) by @P",
         //display 2D
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 6 },
@@ -310,7 +310,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.EMPOWERED,
         //displays 
         displayName: "Empowered",
-        displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
+        displayDesc: "Increases the max dmg of targeted unit(s) by @P for @T turns",
         //display 2D
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 6 },
@@ -327,8 +327,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
     {
         ID:CARD_KEYWORD_ID.GUARD,
         //displays 
-        displayName: "Guard",
-        displayDesc: "increases the max dmg of targeted unit(s) for a set ammount of turns",
+        displayName: "Taunt",
+        displayDesc: "Forces all attacks to be directed at this unit",
         //display 2D
         iconColour: Color4.Blue(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 6 },
@@ -338,12 +338,12 @@ export const CardKeywordData: CardKeywordDataObject [] = [
             {type:CARD_KEYWORD_EFFECT_TYPE.MODIFIER_TAUNT},
         ]
     },
-    //forces next negative debuff upon unit
+    //Negates the next debuff targeted at this unit
     {
         ID:CARD_KEYWORD_ID.SHEILDED,
         //displays 
         displayName: "Sheilded",
-        displayDesc: "forces next debuff upon targeted unit(s)",
+        displayDesc: "Negates the next debuff targeted at this unit",
         //display 2D
         iconColour: Color4.Teal(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 6 },
@@ -358,7 +358,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.STEALTH,
         //displays 
         displayName: "Stealth",
-        displayDesc: "puts targeted unit(s) into an undetectable state until next action",
+        displayDesc: "This unit untargetable until it next performs an action",
         //display 2D
         iconColour: Color4.Gray(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 6, posY: 6 },
@@ -373,7 +373,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.DISABLE,
         //displays 
         displayName: "Disable",
-        displayDesc: "puts targeted unit(s) into a disabled state until cleared",
+        displayDesc: "The unit is unable to perfom actions until the effect is purged or wears off",
         //display 2D
         iconColour: Color4.Purple(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 6 },
@@ -388,7 +388,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.REFRESH,
         //displays 
         displayName: "Refresh",
-        displayDesc: "allows targeted unit(s) into a re-enabled state once played",
+        displayDesc: "Allows targeted unit to attack again this turn",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 5 },
@@ -403,7 +403,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.DRAIN,
         //displays 
         displayName: "Drain",
-        displayDesc: "syphons health from enemy unit(s) and applies it to your own",
+        displayDesc: "Syphons @P health from enemy unit and applies it to your own",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 5 },
@@ -418,7 +418,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         ID:CARD_KEYWORD_ID.ANNIHILATION,
         //displays 
         displayName: "Annihilation",
-        displayDesc: "when this card kills another card remove that card from the game",
+        displayDesc: "@P Damage, for @T Turns",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 5 },
