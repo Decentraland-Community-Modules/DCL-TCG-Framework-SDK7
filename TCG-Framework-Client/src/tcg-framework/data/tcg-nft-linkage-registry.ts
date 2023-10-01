@@ -115,7 +115,7 @@ export class NFTLinkageRegistry {
 
         //assign event => refresh card ownership whenever player changes their equipped items 
         onProfileChanged.add((profileData) => {
-            utils.timers.setInterval(function () {
+            utils.timers.setTimeout(function () {
                 NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();   
             }, 2000);
         });
