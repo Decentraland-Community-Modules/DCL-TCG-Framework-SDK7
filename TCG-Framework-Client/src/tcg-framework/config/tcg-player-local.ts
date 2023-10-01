@@ -126,8 +126,22 @@ export module PlayerLocal {
         userID = userData.data.userId;
         displayName = userData.data.displayName;
 
-        //recalculate what cards the player owns/has access to
+        //local: recalculate what cards the player owns/has access to
+        NFTLinkageRegistry.Instance.userID = userID;
         await NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();
+
+        //if player is using a web3 login
+        if(isWeb3) {
+            //attempt to contact server
+
+            //get player's progression (experience)
+
+            //get player's saved decks
+
+        } else {
+            //provide the player with default deck configuration
+
+        }
 
         //update the player's connectivity state
         connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTED;
