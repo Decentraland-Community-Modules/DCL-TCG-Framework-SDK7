@@ -138,7 +138,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.DAMAGE_STRIKE,
         //displays
         displayName: "Strike",
-        displayDesc: "Deals @P damage to the unit, reduced by armour",
+        displayDesc: "Inflicts @P damage, reduced by armour",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
@@ -153,7 +153,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.DAMAGE_PULVERIZE,
         //displays
         displayName: "Pulverize",
-        displayDesc: "Deals @P damage per round to the unit, reduced by armour",
+        displayDesc: "Inflicts @P damage for @T rounds, reduced by armour",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
@@ -171,7 +171,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_HEAL,
         //displays
         displayName: "Heal",
-        displayDesc: "Heals any allied unit for @P",
+        displayDesc: "Restores @P health",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
@@ -186,7 +186,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_MEND,
         //displays
         displayName: "Mend",
-        displayDesc: "Heals any allied card targeted",
+        displayDesc: "Restores @P health for @T rounds",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
@@ -201,7 +201,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_PUNCTURE,
         //displays
         displayName: "Puncture",
-        displayDesc: "Removes @P health from the unit, ignores armour",
+        displayDesc: "Inflicts @P damage to the unit, ignores armour",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
@@ -216,7 +216,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_BLEED,
         //displays
         displayName: "Bleed",
-        displayDesc: "Removes @P health from the unit each round, ignores armour",
+        displayDesc: "Inflicts @P damage for @T rounds, ignores armour",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 7 },
@@ -231,7 +231,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_GIGANTAZIE,
         //displays
         displayName: "Gigantazie",
-        displayDesc: "Adds @P max health to the unit",
+        displayDesc: "Increases max health by @P",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
@@ -246,7 +246,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_GROWTH,
         //displays
         displayName: "Growth",
-        displayDesc: "Adds @P max health to the unit each round",
+        displayDesc: "Increases max health by @P for @T rounds",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
@@ -261,7 +261,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_SHRINK,
         //displays
         displayName: "Shrink",
-        displayDesc: "Removes @P max health from the unit",
+        displayDesc: "Reduces max health by @P",
         //display 2D
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
@@ -276,7 +276,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_DECAY,
         //displays
         displayName: "Decay",
-        displayDesc: "Removes @P max health from the unit",
+        displayDesc: "Reduces max health by @P",
         //display 2D
         iconColour: Color4.Purple(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
@@ -291,7 +291,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_IGNITE,
         //displays
         displayName: "Ignite",
-        displayDesc: "Removes @P max health from the unit each round",
+        displayDesc: "Reduces max health by @P for @T rounds",
         //display 2D
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
@@ -306,7 +306,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_WITHER,
         //displays
         displayName: "Wither",
-        displayDesc: "Removes @P max health from the unit each round",
+        displayDesc: "Reduces max health by @P for @T rounds",
         //display 2D
         iconColour: Color4.Purple(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
@@ -320,7 +320,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.HEALTH_CAUTERIZE,
         //displays
         displayName: "Cauterize",
-        displayDesc: "Heals @P0 cur health, but also applies @P1 burning on the target for @D1 rounds",
+        displayDesc: "Restores @P health, but also inflicts burning on the target for @T rounds",
         //display 2D
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
@@ -339,7 +339,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ATTACK_SHARPEN,
         //displays
         displayName: "Sharpen",
-        displayDesc: "Adds @P attack damage to the unit",
+        displayDesc: "Increases attack damage by @P",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
@@ -354,7 +354,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ATTACK_ASCEND,
         //displays
         displayName: "Ascend",
-        displayDesc: "Adds @P attack damage to the unit each round",
+        displayDesc: "Increases attack damage by @P for @T rounds",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 6 },
@@ -369,7 +369,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ATTACK_BLUNT,
         //displays
         displayName: "Blunt",
-        displayDesc: "Removes @P attack damage from the unit",
+        displayDesc: "Reduces attack damage by @P",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
@@ -384,7 +384,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ATTACK_WEAKEN,
         //displays
         displayName: "Weaken",
-        displayDesc: "Removes @P attack damage from the unit each round",
+        displayDesc: "Reduces attack damage by @P for @T rounds",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
@@ -402,7 +402,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ARMOUR_REINFORCE,
         //displays
         displayName: "Reinforce",
-        displayDesc: "Adds @P armour to the unit",
+        displayDesc: "Increases armour by @P",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
@@ -417,7 +417,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ARMOUR_FORTIFY,
         //displays
         displayName: "Fortify",
-        displayDesc: "Adds @P armour to the unit each round",
+        displayDesc: "Increases armour by @P for @T rounds",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
@@ -432,7 +432,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ARMOUR_SHEAR,
         //displays
         displayName: "Shear",
-        displayDesc: "Removes @P armour from the unit",
+        displayDesc: "Reduces armour by @P",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 7 },
@@ -447,7 +447,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         id: CARD_KEYWORD_ID.ARMOUR_MELTING,
         //displays
         displayName: "Melting",
-        displayDesc: "Removes @P armour from the unit each round",
+        displayDesc: "Reduces armour by @P for @T rounds",
         //display 2D
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 7 },

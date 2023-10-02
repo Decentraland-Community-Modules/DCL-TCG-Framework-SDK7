@@ -431,7 +431,7 @@ export module DeckManager {
     /* width size of cards in display grid */
     const CARD_SIZE_Y:number = 0.45;
     /* max number of keywords displayed */
-    const KEYWORD_DISPLAY_SIZE:number = 4;
+    const KEYWORD_DISPLAY_SIZE:number = 3;
     
     //card
     /** display card object scale */
@@ -1072,11 +1072,18 @@ export module DeckManager {
 
         //update keyword description
         for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
-            //if effects exists, update element
+            //if effects exists, update display element
             if(cardEntry.DataDef.cardEffects.length - 1 >= i )
             {   
                 const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardEffects[i].type);
-                TextShape.getMutable(cardKeywordDescText[i]).text = keywordDef.displayDesc.replace(/@P/g, cardEntry.DataDef.cardEffects[i].strength.toString());
+                let effectString:string = keywordDef.displayDesc;
+                //insert effect power
+                effectString = effectString.replace(/@P/g, cardEntry.DataDef.cardEffects[i].strength.toString());
+                //insert effect duration (can be non-existant)
+                const duration = cardEntry.DataDef.cardEffects[i].duration;
+                if(duration) effectString = effectString.replace(/@T/g, duration.toString());
+                //update text
+                TextShape.getMutable(cardKeywordDescText[i]).text = effectString;  
             }
             //if no effect, clear element
             else
@@ -1085,6 +1092,7 @@ export module DeckManager {
             }
         }
     }
+    
     /** releases all card objects in the current display grid */
     function ReleaseCardObjects() {
         if(isDebugging) console.log(debugTag+"releasing display card, count="+entityGridCards.length); 
