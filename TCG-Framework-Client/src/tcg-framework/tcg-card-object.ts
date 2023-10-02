@@ -470,29 +470,24 @@ export module CardDisplayObject
             });
 
             //update cost text
-            TextShape.getMutable(this.entityTextCost).text = def.attributeCost.toString();
-            //prime keyword data object listing
-            var cardEffects:CardEffectDataObject[] = [];
-            switch(def.type) {
+            TextShape.getMutable(this.entityTextCost).text = def.cardCost.toString();
+            //update type specific components
+            switch(def.cardAttributes.type) {
                 case CARD_TYPE.SPELL:
-                    if(def.attributeSpell == undefined) break;
+                    if(def.cardAttributes == undefined) break;
                     //core
                     Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.Zero();
                     TextShape.getMutable(this.entityTextAttack).text = "";
                     TextShape.getMutable(this.entityTextHealth).text = "";
                     TextShape.getMutable(this.entityTextArmour).text = "";
-                    //set keyword listing
-                    cardEffects = def.attributeSpell.effects;
                 break;
                 case CARD_TYPE.CHARACTER:
-                    if(def.attributeCharacter == undefined) break;
+                    if(def.cardAttributes == undefined) break;
                     //core
                     Transform.getOrCreateMutable(this.entityCharacterFrameObject).scale = Vector3.One();
-                    TextShape.getMutable(this.entityTextAttack).text = def.attributeCharacter.unitAttack.toString();
-                    TextShape.getMutable(this.entityTextHealth).text = def.attributeCharacter.unitHealth.toString();
-                    TextShape.getMutable(this.entityTextArmour).text = def.attributeCharacter.unitArmour.toString();
-                    //set keyword listing
-                    cardEffects = def.attributeCharacter.effects;
+                    TextShape.getMutable(this.entityTextAttack).text = def.cardAttributes.unitAttack.toString();
+                    TextShape.getMutable(this.entityTextHealth).text = def.cardAttributes.unitHealth.toString();
+                    TextShape.getMutable(this.entityTextArmour).text = def.cardAttributes.unitArmour.toString();
                 break;
                 case CARD_TYPE.TERRAIN:
                     //core
@@ -503,19 +498,19 @@ export module CardDisplayObject
                 break;
             }
 
-            //keyword display objects
+            //update keyword display
             //  ensure correct number of objects
-            while(this.keywordObjects.length > cardEffects.length) {
+            while(this.keywordObjects.length > def.cardEffects.length) {
                 const keyword = this.keywordObjects.pop();
                 if(keyword) CardKeywordDisplayObject.Disable(keyword);
             }
             //  process all required keywords
-            for(let i:number=0; i<cardEffects.length; i++) {
+            for(let i:number=0; i<def.cardEffects.length; i++) {
                 //if new keyword object needs to be claimed, create new keyword object
                 if(i > this.keywordObjects.length-1) {
                     this.keywordObjects.push(CardKeywordDisplayObject.Create({
                         ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
-                        def:cardEffects[i],
+                        def:def.cardEffects[i],
                         tableID:this.TableID,
                         teamID:this.TeamID,
                         slotID:this.SlotID,
@@ -528,7 +523,7 @@ export module CardDisplayObject
                 } 
                 //if keyword object already exists, repopulate keyword object
                 else {
-                    this.keywordObjects[i].SetKeyword(cardEffects[0]);
+                    this.keywordObjects[i].SetKeyword(def.cardEffects[0]);
                 }
             }
 

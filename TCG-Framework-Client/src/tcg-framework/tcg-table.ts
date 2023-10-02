@@ -843,13 +843,12 @@ export module Table {
             this.teamObjects[this.curTurn].UpdateCardObjectDisplay(key);
             
             //set filtering based on card type
-            switch(card.DefData.type) {
+            switch(card.DefData.cardAttributes.type) {
                 //spells -> load specific settings
                 case CARD_TYPE.SPELL:
-                    this.targetingCount = card.DefData.attributeSpell?.targetCount??1;
-                    this.targetingOwner = card.DefData.attributeSpell?.targetOwner;
-                    this.targetingType = card.DefData.attributeSpell?.targetType;
-                    //auto process selections for 'all' or 'only team' 
+                    this.targetingCount = card.DefData.cardAttributes.targetCount??1;
+                    this.targetingOwner = card.DefData.cardAttributes.targetOwner;
+                    this.targetingType = card.DefData.cardAttributes.targetType; 
                 break;
                 //characters -> only allow friendly unoccupied slot
                 case CARD_TYPE.CHARACTER:
@@ -930,6 +929,9 @@ export module Table {
                     return;
                 }
 
+                //set selected card to the current 
+                this.selectedCardLocation = CARD_SELECTION_LOCATION.FIELD_SLOT;
+                this.selectedCard = this.teamObjects[team].cardSlotObjects[slotID].SlottedCard;
                 //set targeting to ally when selecting my unit (unit that will be attacking)
                 this.targetingCount = 2;
                 this.targetingOwner = CARD_TARGETING_OWNER.ALLY;
@@ -1063,8 +1065,8 @@ export module Table {
         
         //## ACTIVATION/START CARD PROCESSING
         /** called when an activation attempt is made by the local player */
-        public InteractionCardActivation(aiPVE:boolean=false) {
-            if(isDebugging) console.log(debugTag+"local player attempted to process card="+this.selectedCard?.Key);
+        public InteractionAttemptActivation(aiPVE:boolean=false) {
+            if(isDebugging) console.log(debugTag+"local player attempted to activate card="+this.selectedCard?.Key);
             
             //halt if game is not in-session
             if(this.curState != TABLE_GAME_STATE.ACTIVE) {

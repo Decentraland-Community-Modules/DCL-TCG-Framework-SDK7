@@ -70,8 +70,8 @@ export class CardKeywordRegistry {
         //  process every def
         for (var i: number = 0; i < CardKeywordData.length; i++) {
             //prepare entry
-            const entry = new CardKeywordEntry(i, CardKeywordData[i].ID.toString());
-            if (CardKeywordRegistry.IsDebugging) console.log("Card Keyword Registry: creating entry=" + i + ", ID=" + CardKeywordData[i].ID);
+            const entry = new CardKeywordEntry(i, CardKeywordData[i].id.toString());
+            if (CardKeywordRegistry.IsDebugging) console.log("Card Keyword Registry: creating entry=" + i + ", ID=" + CardKeywordData[i].id);
             //add to registry
             this.entryRegistry.addItem(entry);
             this.entryRegistryViaID.addItem(entry.ID, entry);

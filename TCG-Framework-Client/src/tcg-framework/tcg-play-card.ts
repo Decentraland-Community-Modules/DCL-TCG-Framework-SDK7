@@ -1,6 +1,6 @@
 import Dictionary, { List } from "../utilities/collections";
-import { CARD_TYPE, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
-import { CARD_KEYWORD_EFFECT_TYPE, CARD_KEYWORD_ID, CardKeywordDataObject } from "./data/tcg-keyword-data";
+import { CARD_TYPE, CardData, CardDataObject } from "./data/tcg-card-data";
+import { CARD_KEYWORD_ID, CardKeywordDataObject } from "./data/tcg-keyword-data";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 
 /*      TRADING CARD GAME - PLAY CARD
@@ -201,9 +201,9 @@ export module PlayCard
             if(isDebugging) console.log(debugTag+"applying effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
             
             //deternime how keyword should be processed based on effect type (what keyword is being applied)
-            switch(effect.ID) {
+            /*switch(effect.ID) {
                 //deals damage to character's health
-                case CARD_KEYWORD_ID.STRIKE:
+                case CARD_KEYWORD_ID.DAMAGE_STRIKE:
                     const damage = effect.Strength - this.Armour;
                     if(damage > 0) this.HealthCur -= damage;
                 break;
@@ -269,7 +269,7 @@ export module PlayCard
                 case CARD_KEYWORD_ID.EXHAUST:
                     this.ActionRemaining = false;
                 break;
-            }
+            }*/
 
             if(isDebugging) console.log(debugTag+"applyed effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
         }
@@ -310,34 +310,41 @@ export module PlayCard
             const def = CardData[index];
             //general stats
             this.defIndex = index
-            this.Cost = def.attributeCost;
+            this.Cost = def.cardCost;
+            
+            //TODO: adding all effects to offensive list atm, split this later
             //keywords/effects
             this.ActiveEffects = new List<ActiveKeywordEffect>();
             this.EffectsOffensive = new List<ActiveKeywordEffect>();
             this.EffectsDefensive = new List<ActiveKeywordEffect>();
             this.EffectsTurnStart = new List<ActiveKeywordEffect>();
             this.EffectsTurnEnd = new List<ActiveKeywordEffect>();
-            //process spell
-            if(def.attributeSpell) {
-                //TODO: adding all effects to offensive list atm, split this later
-                //process all effects
-                for(let i=0; i<def.attributeSpell.effects.length; i++) {
-                    const effect:ActiveKeywordEffect = {
-                        ID:def.attributeSpell.effects[i].type,
-                        Strength:def.attributeSpell.effects[i].strength,
-                        Duration:def.attributeSpell.effects[i].duration??0
-                    };
-                    //add to correct listing
-                    this.ActiveEffects.addItem(effect);
-                    this.EffectsOffensive.addItem(effect);
-                }
+            //process all effects
+            for(let i=0; i<def.cardEffects.length; i++) {
+                const effect:ActiveKeywordEffect = {
+                    ID:def.cardEffects[i].type,
+                    Strength:def.cardEffects[i].strength,
+                    Duration:def.cardEffects[i].duration??0
+                };
+                //add to correct listing
+                this.ActiveEffects.addItem(effect);
+                this.EffectsOffensive.addItem(effect);
             }
-            //process character
-            else if(def.attributeCharacter) {
-                this.HealthCur = def.attributeCharacter.unitHealth;
-                this.HealthMax = def.attributeCharacter.unitHealth;
-                this.Attack = def.attributeCharacter.unitAttack;
-                this.Armour = def.attributeCharacter.unitArmour;
+
+            //process type specific effects
+            switch(def.cardAttributes.type) {
+                case CARD_TYPE.SPELL:
+
+                break;
+                case CARD_TYPE.CHARACTER:
+                    this.HealthCur = def.cardAttributes.unitHealth;
+                    this.HealthMax = def.cardAttributes.unitHealth;
+                    this.Attack = def.cardAttributes.unitAttack;
+                    this.Armour = def.cardAttributes.unitArmour;
+                break;
+                case CARD_TYPE.TERRAIN:
+
+                break;
             }
         }
     }
