@@ -241,7 +241,7 @@ export module CardKeywordDisplayObject
             const defData:CardKeywordDataObject = CardKeywordRegistry.Instance.GetDefByID(data.type);
             //set keyword icon image
             //  get required def references
-            const keywordSheet: CardKeywordTextureDataObject = CardKeywordRegistry.Instance.CallbackGetKeywordTexture(defData.ID);
+            const keywordSheet: CardKeywordTextureDataObject = CardKeywordRegistry.Instance.CallbackGetKeywordTexture(defData.id);
             //  background image
             MeshRenderer.setPlane(this.entityDisplayIcon, GetCardDrawVectors(
                 keywordSheet.sheetDetails.totalSizeX, 

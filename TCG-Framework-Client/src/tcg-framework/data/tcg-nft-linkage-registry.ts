@@ -117,7 +117,7 @@ export class NFTLinkageRegistry {
         onProfileChanged.add((profileData) => {
             utils.timers.setTimeout(function () {
                 NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();   
-            }, 2000);
+            }, 10000);
         });
     }
 

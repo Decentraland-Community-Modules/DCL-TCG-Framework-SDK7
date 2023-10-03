@@ -567,7 +567,7 @@ export module DeckManager {
             //  type
             else if(!filterTypeMask[cardEntry.DataDef.type]) continue;
             //  cost
-            else if(!filterCostMask[cardEntry.DataDef.attributeCost]) continue;
+            else if(!filterCostMask[cardEntry.DataDef.cardCost]) continue;
 
             cardLength++;
         }
@@ -891,6 +891,7 @@ export module DeckManager {
         position: { x:0.41, y:0.10, z:-0.1 },
         scale: { x:0.125, y:0.125, z:0.125, },
     });
+    cardInfoObject.SetCounterState(true, false);
 
     /** generate selected card keyword desc */
     const cardkeywordDescBackground:Entity[] = [];
@@ -980,7 +981,7 @@ export module DeckManager {
                 //  type
                 else if(!filterTypeMask[cardEntry.DataDef.type]) cardEntry = undefined;
                 //  cost
-                else if(!filterCostMask[cardEntry.DataDef.attributeCost]) cardEntry = undefined;
+                else if(!filterCostMask[cardEntry.DataDef.cardCost]) cardEntry = undefined;
 
                 //displays cards based on current page 
                 if(curProcessingPage < curPage*DISPLAY_GRID_TOTAL) {
@@ -1047,62 +1048,55 @@ export module DeckManager {
         //update selected card display
         //  card preview
         cardInfoObject.SetCard(cardEntry.DataDef, false);
+        cardInfoObject.SetCounterValue(deckLocalContainer.GetCardCount(cardInfoObject.DefIndex).toString());
         //  header text
         TextShape.getMutable(cardInfoHeaderNameText).text = cardEntry.DataDef.name;
         TextShape.getMutable(cardInfoHeaderAllowedText).text = "COUNT ALLOWED: "+cardEntry.CountAllowed+" (MAX: "+MAX_CARD_COUNT_PER_TYPE[cardEntry.DataDef.type]+")";
         //  info text
-        const infoText = TextShape.getMutable(cardInfoDetailsText); 
-        infoText.text = 
+        var infoString =
             "\nFaction: "+CardDataRegistry.Instance.GetFaction(cardEntry.DataDef.faction).name+
             "\nType: "+CARD_TYPE_STRINGS[cardEntry.DataDef.type]+
-            "\nCost: "+cardEntry.DataDef.attributeCost;
-        switch(cardEntry.DataDef.type) {
+            "\nCost: "+cardEntry.DataDef.cardCost;
+        //update type specific text
+        switch(cardEntry.DataDef.cardAttributes.type) {
             case CARD_TYPE.SPELL:
             break;
             case CARD_TYPE.CHARACTER:
-                infoText.text +=
-                    "\nHealth: "+cardEntry.DataDef.attributeCharacter?.unitHealth+
-                    "\nArmor: "+cardEntry.DataDef.attributeCharacter?.unitArmour+
-                    "\nDamage: "+cardEntry.DataDef.attributeCharacter?.unitAttack;
+                infoString +=
+                    "\nHealth: "+cardEntry.DataDef.cardAttributes.unitHealth+
+                    "\nArmor: "+cardEntry.DataDef.cardAttributes.unitArmour+
+                    "\nDamage: "+cardEntry.DataDef.cardAttributes.unitAttack;
             break;
             case CARD_TYPE.TERRAIN:
             break;
         }
+        TextShape.getMutable(cardInfoDetailsText).text = infoString;
         //  desc text
         TextShape.getMutable(cardInfoDescText).text = cardEntry.DataDef.desc;
-
+        
         //update keyword description
-        var cardeffects:CardEffectDataObject[] = [];
-        switch(cardEntry.DataDef.type){
-            case CARD_TYPE.SPELL:
-                if(cardEntry.DataDef.attributeSpell) cardeffects = cardEntry.DataDef.attributeSpell.effects;
-            break;
-            case CARD_TYPE.CHARACTER:
-                if(cardEntry.DataDef.attributeCharacter) cardeffects = cardEntry.DataDef.attributeCharacter.effects;
-            break;
-            case CARD_TYPE.TERRAIN:
-            break;
-        }
-        //process each keyword display element
         for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
+            //if effects exists, update display element
+            if(cardEntry.DataDef.cardEffects.length - 1 >= i )
+            {   
+                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardEffects[i].type);
+                let effectString:string = keywordDef.displayDesc;
+                //insert effect power
+                effectString = effectString.replace(/@P/g, cardEntry.DataDef.cardEffects[i].strength.toString());
+                //insert effect duration (can be non-existant)
+                const duration = cardEntry.DataDef.cardEffects[i].duration;
+                if(duration) effectString = effectString.replace(/@T/g, duration.toString());
+                //update text
+                TextShape.getMutable(cardKeywordDescText[i]).text = effectString;  
+            }
+            //if no effect, clear element
+            else
             {
-                //if effects exists, update element
-                if(cardeffects.length - 1 >= i )
-                {   
-                    const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardeffects[i].type);
-                    let pReplaced = keywordDef.displayDesc.replace(/@P/g, cardeffects[i].strength.toString());
-                    const dur = cardeffects[i].duration;
-                    if(dur) pReplaced = pReplaced.replace(/@T/g, dur.toString());             
-                    TextShape.getMutable(cardKeywordDescText[i]).text = pReplaced;       
-                }
-                //if no effect, clear element
-                else
-                {
-                    TextShape.getMutable(cardKeywordDescText[i]).text = "";
-                }
+                TextShape.getMutable(cardKeywordDescText[i]).text = "";
             }
         }
     }
+
     /** releases all card objects in the current display grid */
     function ReleaseCardObjects() {
         if(isDebugging) console.log(debugTag+"releasing display card, count="+entityGridCards.length); 

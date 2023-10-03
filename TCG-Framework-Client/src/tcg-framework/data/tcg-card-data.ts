@@ -1,5 +1,5 @@
 /**     TRADING CARD GAME - CARD DATA
-    all definitions relavent to cards playable in the game, this includes a card's id,
+    all definitions relavent to cards playable in the game; this includes a card's id,
     display details, and keywords.
    
     NOTE: some details are held seperately
@@ -91,24 +91,29 @@ export interface CardEffectDataObject {
 }
 
 /** character attribute portions */
-export interface CardCharacterDataObject {
-    //stats
-    unitHealth:number; 
-    unitAttack:number; 
-    unitArmour:number;
-    //effects applied to self when played (use this for entry buffs)
-    effects:CardEffectDataObject[];
-    //TODO: activation effects/abilities
-}
-
-/** character attribute portions */
 export interface CardSpellDataObject {
+    //type
+    type:CARD_TYPE.SPELL,
     //targeting
     targetOwner:CARD_TARGETING_OWNER;
     targetType:CARD_TARGETING_TYPE;
     targetCount:number;
-    //effects of spell when played
-    effects:CardEffectDataObject[];
+}
+
+/** character attribute portions */
+export interface CardCharacterDataObject {
+    //type
+    type:CARD_TYPE.CHARACTER,
+    //stats
+    unitHealth:number; 
+    unitAttack:number; 
+    unitArmour:number;
+}
+
+/** character attribute portions */
+export interface CardTerrainDataObject {
+    //type
+    type:CARD_TYPE.TERRAIN,
 }
 
 /** data interface for defining a card */
@@ -124,12 +129,12 @@ export interface CardDataObject {
     sheetData:CardSheetDataObject; //defines how card's character will be drawn
     //display 3D
     objPath:string; //object location
-    //generic attributes
-    attributeCost:number;
-    //attributes for character (only add if card is character type)
-    attributeCharacter?:CardCharacterDataObject;
-    //attributes for character (only add if card is spell type)
-    attributeSpell?:CardSpellDataObject;
+    //cost for playing card
+    cardCost:number;
+    //all effects associated with this card
+    cardEffects:CardEffectDataObject[];
+    //specific attributes per card type
+    cardAttributes:CardSpellDataObject|CardCharacterDataObject|CardTerrainDataObject;
 }
 
 /** listing of all card IDs */
@@ -175,7 +180,7 @@ export enum CARD_DATA_ID {
 export const CardData:CardDataObject[] = [
     //### DEMO SPELLS
     //## NEUTRAL SPELLS
-    {
+    {   //heals an ally unit
         //indexing
         type:CARD_TYPE.SPELL,
         faction:CARD_FACTION_TYPE.NEUTRAL,
@@ -187,22 +192,24 @@ export const CardData:CardDataObject[] = [
         sheetData:{ id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 0 },
         //display 3D
         objPath:"models/tcg-framework/card-spells/spell-heal.glb",
-        //attributes
-        attributeCost:1,
-        //spell details
-        attributeSpell:{
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            { type:CARD_KEYWORD_ID.HEALTH_HEAL, strength:4 }
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.SPELL,
             //targeting
             targetOwner:CARD_TARGETING_OWNER.ALLY,
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
-            //effects
-            effects:[
-                { type:CARD_KEYWORD_ID.HEAL, strength:4 }
-            ]
         }
     },
     //## FIRE SPELLS
-    {
+    {   //deal damage and ignites an enemy unit
         //indexing
         type:CARD_TYPE.SPELL,
         faction:CARD_FACTION_TYPE.FIRE,
@@ -214,23 +221,25 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 1, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-firebolt.glb",
-        //Attributes
-        attributeCost:1,
-        //spell details
-        attributeSpell:{
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
+            { type:CARD_KEYWORD_ID.HEALTH_IGNITE, strength:2, duration:3 }
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.SPELL,
             //targeting
             targetOwner:CARD_TARGETING_OWNER.ENEMY,
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
-            //effects
-            effects:[
-                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
-                { type:CARD_KEYWORD_ID.BURN, strength:2, duration:3 }
-            ]
         }
     },
     //## ICE SPELLS
-    {
+    {   //deal damage and bleeds an enemy unit
         //indexing
         type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.ICE,
@@ -242,23 +251,25 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 2, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-icebolt.glb",
-        //Attributes
-        attributeCost:1,
-        //spell details
-        attributeSpell:{
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
+            { type:CARD_KEYWORD_ID.HEALTH_BLEED, strength:2, duration:3 }
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.SPELL,
             //targeting
             targetOwner:CARD_TARGETING_OWNER.ENEMY,
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
-            //effects
-            effects:[
-                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
-                { type:CARD_KEYWORD_ID.BLEED, strength:2, duration:3 }
-            ]
         }
     },
     //## ELECTRIC SPELLS
-    {
+    {   //deal damage and exhausts an enemy unit
         //indexing
         type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.ELECTRIC,
@@ -270,23 +281,25 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 3, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-lightningbolt.glb",
-        //Attributes
-        attributeCost:1,
-        //spell details
-        attributeSpell:{
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
+            { type:CARD_KEYWORD_ID.ACTIVITY_MOD_EXHAUST, strength:1, duration:0 }
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.SPELL,
             //targeting
             targetOwner:CARD_TARGETING_OWNER.ENEMY,
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
-            //effects
-            effects:[
-                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
-                { type:CARD_KEYWORD_ID.DISABLE, strength:1, duration:1 }
-            ]
         }
     },
     //## VOID SPELLS
-    {
+    {   //deal damage and annihilate an enemy unit
         //indexing
         type: CARD_TYPE.SPELL,
         faction: CARD_FACTION_TYPE.VOID,
@@ -298,26 +311,28 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 0, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-spells/spell-voidbolt.glb",
-        //Attributes
-        attributeCost:1,
-        //spell details
-        attributeSpell:{
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
+            { type:CARD_KEYWORD_ID.DEATH_MOD_DESTROY, strength:1, duration:-1 }
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.SPELL,
             //targeting
             targetOwner:CARD_TARGETING_OWNER.ENEMY,
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
-            //effects
-            effects:[
-                { type:CARD_KEYWORD_ID.STRIKE, strength:2 },
-                { type:CARD_KEYWORD_ID.ANNIHILATION, strength:1, duration:2 }
-            ]
         }
     },
 
    
     //### DEMO CHARACTERS
     //## NEUTRAL CHARACTERS 
-    {
+    {   //character with standard attacks
         //indexing
         type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.NEUTRAL,
@@ -329,22 +344,24 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 1, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-characters/golem-neutral.glb",
-        //Attributes
-        attributeCost:2,
-        //character details
-        attributeCharacter:{
+        //cost of playing card
+        cardCost:2,
+        //effects
+        cardEffects:[
+
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.CHARACTER,
             //unit stats
             unitHealth:5, 
             unitAttack:3, 
             unitArmour:1,
-            //innate effects
-            effects:[
-
-            ]
         },
     },
     //## FIRE CHARACTERS
-    {
+    {   //character with standard attacks
         //indexing
         type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.FIRE,
@@ -356,22 +373,24 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-characters/golem-fire.glb",
-        //Attributes
-        attributeCost:2,
-        //character details
-        attributeCharacter:{
+        //cost of playing card
+        cardCost:2,
+        //effects
+        cardEffects:[
+
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.CHARACTER,
             //unit stats
             unitHealth:5, 
             unitAttack:3, 
             unitArmour:1,
-            //innate effects
-            effects:[
-
-            ]
         }, 
     },
     //## ICE CHARACTERS
-    {
+    {   //character with standard attacks
         //indexing
         type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.ICE,
@@ -383,22 +402,24 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 2, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-characters/golem-ice.glb",
-        //Attributes
-        attributeCost:2,
-        //character details
-        attributeCharacter:{
+        //cost of playing card
+        cardCost:2,
+        //effects
+        cardEffects:[
+
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.CHARACTER,
             //unit stats
             unitHealth:5, 
             unitAttack:3, 
             unitArmour:1,
-            //innate effects
-            effects:[
-
-            ]
         },
     },
     //## ELECTRIC CHARACTERS
-    {
+    {   //character with standard attacks
         //indexing
         type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.ELECTRIC,
@@ -410,22 +431,24 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 0, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-characters/golem-electric.glb",
-        //Attributes
-        attributeCost:2,
-        //character details
-        attributeCharacter:{
+        //cost of playing card
+        cardCost:2,
+        //effects
+        cardEffects:[
+
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.CHARACTER,
             //unit stats
             unitHealth:5, 
             unitAttack:3, 
             unitArmour:1,
-            //innate effects
-            effects:[
-
-            ]
         },
     },
     //## VOID CHARACTERS
-    {
+    {   //character with standard attacks
         //indexing
         type: CARD_TYPE.CHARACTER,
         faction: CARD_FACTION_TYPE.VOID,
@@ -437,25 +460,27 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM, posX: 0, posY: 0 },
         //display 3D
         objPath: "models/tcg-framework/card-characters/golem-void.glb",
-        //Attributes
-        attributeCost:2,
-        //character details
-        attributeCharacter:{
+        //cost of playing card
+        cardCost:2,
+        //effects
+        cardEffects:[
+
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.CHARACTER,
             //unit stats
             unitHealth:5, 
             unitAttack:3, 
             unitArmour:1,
-            //innate effects
-            effects:[
-
-            ]
         },
     },
 
 
     //### DEMO TERRIANS
     //## FIRE TERRAIN
-    {
+    {   //terrain that ignites all enemies once per turn
         //indexing
         type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.FIRE,
@@ -467,11 +492,20 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-fire.glb",
-        //Attributes
-        attributeCost:1,
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            
+        ],
+        //type-specific cards
+        cardAttributes: {
+            //type
+            type:CARD_TYPE.TERRAIN,
+        },
     },
     //## ICE TERRAIN
-    {
+    {   //terrain that bleeds all enemies once per turn
         //indexing
         type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.ICE,
@@ -483,11 +517,20 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-ice.glb",
-        //Attributes
-        attributeCost:1,
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            
+        ],
+        //type-specific cards
+        cardAttributes: {
+            //type
+            type:CARD_TYPE.TERRAIN,
+        },
     },
     //## ELECTRIC TERRAIN
-    {
+    {   //terrain that strikes all enemies once per turn
         //indexing
         type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.ELECTRIC,
@@ -499,11 +542,20 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-lightning.glb",
-        //Attributes
-        attributeCost:1,
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            
+        ],
+        //type-specific cards
+        cardAttributes: {
+            //type
+            type:CARD_TYPE.TERRAIN,
+        },
     },
     //## VOID TERRAIN
-    {
+    {   //terrain that decays all enemies once per turn
         //indexing
         type: CARD_TYPE.TERRAIN,
         faction: CARD_FACTION_TYPE.VOID,
@@ -515,7 +567,16 @@ export const CardData:CardDataObject[] = [
         sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_TERRAIN, posX: 1, posY: 1 },
         //display 3D
         objPath: "models/tcg-framework/card-terrain/terrain-void.glb",
-        //Attributes
-        attributeCost:1,
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardEffects:[
+            
+        ],
+        //type-specific cards
+        cardAttributes: {
+            //type
+            type:CARD_TYPE.TERRAIN,
+        },
     },
 ];
