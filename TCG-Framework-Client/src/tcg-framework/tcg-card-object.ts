@@ -523,7 +523,7 @@ export module CardDisplayObject
                 } 
                 //if keyword object already exists, repopulate keyword object
                 else {
-                    this.keywordObjects[i].SetKeyword(def.cardEffects[0]);
+                    this.keywordObjects[i].SetKeyword(def.cardEffects[i]);
                 }
             }
 

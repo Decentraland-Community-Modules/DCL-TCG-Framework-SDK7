@@ -890,6 +890,7 @@ export module DeckManager {
         position: { x:0.41, y:0.10, z:-0.1 },
         scale: { x:0.125, y:0.125, z:0.125, },
     });
+    cardInfoObject.SetCounterState(true, false);
 
     /** generate selected card keyword desc */
     const cardkeywordDescBackground:Entity[] = [];
@@ -1045,6 +1046,7 @@ export module DeckManager {
         //update selected card display
         //  card preview
         cardInfoObject.SetCard(cardEntry.DataDef, false);
+        cardInfoObject.SetCounterValue(deckLocalContainer.GetCardCount(cardInfoObject.DefIndex).toString());
         //  header text
         TextShape.getMutable(cardInfoHeaderNameText).text = cardEntry.DataDef.name;
         TextShape.getMutable(cardInfoHeaderAllowedText).text = "COUNT ALLOWED: "+cardEntry.CountAllowed+" (MAX: "+MAX_CARD_COUNT_PER_TYPE[cardEntry.DataDef.type]+")";
@@ -1069,7 +1071,7 @@ export module DeckManager {
         TextShape.getMutable(cardInfoDetailsText).text = infoString;
         //  desc text
         TextShape.getMutable(cardInfoDescText).text = cardEntry.DataDef.desc;
-
+        
         //update keyword description
         for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
             //if effects exists, update display element
@@ -1092,7 +1094,7 @@ export module DeckManager {
             }
         }
     }
-    
+
     /** releases all card objects in the current display grid */
     function ReleaseCardObjects() {
         if(isDebugging) console.log(debugTag+"releasing display card, count="+entityGridCards.length); 

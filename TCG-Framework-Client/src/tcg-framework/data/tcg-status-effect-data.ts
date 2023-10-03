@@ -179,7 +179,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Damage",
-            displayDesc: "Deals @P damage to the unit, reduced by armour",
+            displayDesc: "Inflicts @P damage, reduced by armour",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -190,7 +190,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Recoiling",
-            displayDesc: "Deals @P damage to the unit each round, reduced by armour",
+            displayDesc: "Inflicts @P damage for @T rounds, reduced by armour",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -204,7 +204,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Heal",
-            displayDesc: "Restores @P health to the unit",
+            displayDesc: "Restores @P health",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -215,7 +215,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Mending",
-            displayDesc: "Restores @P health to the unit each round",
+            displayDesc: "Restores @P health for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -227,7 +227,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Puncture",
-            displayDesc: "Removes @P health from the unit, ignores armour",
+            displayDesc: "Inflicts @P damage to the unit, ignores armour",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -238,7 +238,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Bleeding",
-            displayDesc: "Removes @P health from the unit each round, ignores armour",
+            displayDesc: "Inflicts @P damage for @T rounds, ignores armour",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -250,7 +250,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Gigantazie",
-            displayDesc: "Adds @P max health to the unit",
+            displayDesc: "Increases max health by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -261,7 +261,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Growing",
-            displayDesc: "Adds @P max health to the unit each round",
+            displayDesc: "Increases max health by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -273,7 +273,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Shrink",
-            displayDesc: "Removes @P max health from the unit",
+            displayDesc: "Reduces max health by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -284,7 +284,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Decay",
-            displayDesc: "Removes @P max health from the unit",
+            displayDesc: "Reduces max health by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -295,7 +295,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Burning",
-            displayDesc: "Removes @P max health from the unit each round",
+            displayDesc: "Reduces max health by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -306,7 +306,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Wither",
-            displayDesc: "Removes @P max health from the unit each round",
+            displayDesc: "Reduces max health by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -320,7 +320,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Sharpen",
-            displayDesc: "Adds @P attack damage to the unit",
+            displayDesc: "Increases attack damage by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -331,7 +331,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Ascending",
-            displayDesc: "Adds @P attack damage to the unit each round",
+            displayDesc: "Increases attack damage by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -343,7 +343,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Blunt",
-            displayDesc: "Removes @P attack damage from the unit",
+            displayDesc: "Reduces attack damage by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -354,7 +354,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Weakening",
-            displayDesc: "Removes @P attack damage from the unit each round",
+            displayDesc: "Reduces attack damage by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -368,7 +368,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Reinforce",
-            displayDesc: "Adds @P armour to the unit",
+            displayDesc: "Increases armour by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -379,7 +379,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HELPFUL,
             //displays
             displayName: "Fortifying",
-            displayDesc: "Adds @P armour to the unit each round",
+            displayDesc: "Increases armour by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -391,7 +391,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Shear",
-            displayDesc: "Removes @P armour from the unit",
+            displayDesc: "Reduces armour by @P",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
@@ -402,7 +402,7 @@
             affinity:STATUS_EFFECT_AFFINITY.HARMFUL,
             //displays
             displayName: "Melting",
-            displayDesc: "Removes @P armour from the unit each round",
+            displayDesc: "Reduces armour by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
             sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
