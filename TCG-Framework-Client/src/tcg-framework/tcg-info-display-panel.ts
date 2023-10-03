@@ -30,7 +30,7 @@ export module InfoPanel {
     ];
     /** */
     const DESC_TEXT:string[] = [
-        "With this framework, you can play against other players or AI. To begin a match, just approach the matching arena and hit the Play button. Afterward, each player takes turns using unit, spell, or terrain cards with the ultimate aim of reducing their opponent's health to 0!",
+        "With this framework, you can play against other players or AI. To begin a match, just approach the matching arena and hit the Ready button. Afterward, each player takes turns using unit, spell, or terrain cards with the ultimate aim of reducing their opponent's health to 0!",
         "Units are categorized into 5 distinct factions, each with their own bonuses and effects. To deploy a unit, simply follow these steps: pick the unit from your hand, select your preferred spot on your side of the arena, and confirm by pressing F. While playing, you can command your unit to attack your opponent by selecting then interacting with them.",
         "Spells are versatile cards with multiple uses. They can damage or de-buff enemy units or heal and buff your own units. Like units, spells have a mana cost, shown by the number in the top right-hand corner of the card. They also come with various effects, which are represented by icons on the left-hand side.",
         "Effects or keywords can be found on both spell and some unit cards. These keywords are displayed on the left-hand side of the card, and their specific effects are represented by icons on the cards. Each card can have up to three different keywords, and each keyword may have a strength indicated by the letter P and/or a duration denoted by the letter T.",

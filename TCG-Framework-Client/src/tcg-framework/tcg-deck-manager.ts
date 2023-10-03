@@ -12,6 +12,7 @@ import { PlayerLocal } from "./config/tcg-player-local";
 import { Dictionary, List } from "../utilities/collections";
 import { CARD_OBJECT_OWNER_TYPE, MAX_CARD_COUNT_PER_TYPE } from "./config/tcg-config";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
+import { CardSubjectDisplayPanel } from "./tcg-card-subject-display";
 /*      TRADING CARD GAME FRAMEWORK - DECK MANAGER
     all utilities for viewing cards and managing card decks; this includes viewing all cards (with 
     filtering options), adding/removing cards to/from a deck, and saving/loading decks. 
@@ -1039,6 +1040,7 @@ export module DeckManager {
         //get card entry
         const cardEntry = CardDataRegistry.Instance.GetEntryByPos(entityGridCards[Number.parseInt(slotID)].DefIndex);
 
+        CardSubjectDisplayPanel.DisplayCardStats(cardEntry.DataDef)
         //create character display model 
         curDisplayObject.SetSelection(cardEntry.DataDef);
         
