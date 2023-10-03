@@ -137,7 +137,7 @@ export module TableTeam {
             this.entityModel = engine.addEntity();
             Transform.create(this.entityModel, { parent: this.entityParent, scale: {x:1.2,y:1.2,z:1.2}, rotation: Quaternion.fromEulerDegrees(0,180,0) });
             GltfContainer.create(this.entityModel, {
-                src: 'models/tcg-framework/menu-displays/display-wide.glb',
+                src: 'models/tcg-framework/menu-displays/display-frame-wide.glb',
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
@@ -628,7 +628,7 @@ export module TableTeam {
                 rotation: Quaternion.fromEulerDegrees(0, 180, 0)
             });
             GltfContainer.create(this.handCardObject, {
-                src: 'models/tcg-framework/menu-displays/display-wide.glb',
+                src: 'models/tcg-framework/menu-displays/display-frame-wide.glb',
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });

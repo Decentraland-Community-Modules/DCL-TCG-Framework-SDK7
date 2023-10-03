@@ -263,10 +263,11 @@ export module CardKeywordDisplayObject
             });
 
             //update text
-            var str:string = "P:"+data.strength;
-            if(data.duration != undefined) str += "\nT:"+data.duration;
+            var displayString:string = "";
+            if(data.strength != -1) displayString += "P:"+data.strength;
+            if(data.duration != undefined && data.duration != -1) displayString += "\nT:"+data.duration;
 
-            TextShape.getMutable(this.entityDisplayText).text = str;
+            TextShape.getMutable(this.entityDisplayText).text = displayString;
             
             //if card has interactions, add pointer event system
             if(hasInteractions) {
