@@ -80,7 +80,7 @@ export interface CardSheetDataObject {
 }
 
 /** defines an effect tied to a card */
-export interface CardEffectDataObject {
+export interface CardKeywordEffectsDataObject {
     //effect type
     type:CARD_KEYWORD_ID; 
     //power of effect (ex: how much damage/how many stacks to be applied to target)
@@ -132,7 +132,7 @@ export interface CardDataObject {
     //cost for playing card
     cardCost:number;
     //all effects associated with this card
-    cardEffects:CardEffectDataObject[];
+    cardKeywordEffects:CardKeywordEffectsDataObject[];
     //specific attributes per card type
     cardAttributes:CardSpellDataObject|CardCharacterDataObject|CardTerrainDataObject;
 }
@@ -195,7 +195,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             { type:CARD_KEYWORD_ID.HEALTH_HEAL, strength:4 }
         ],
         //type-specific cards
@@ -224,7 +224,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
             { type:CARD_KEYWORD_ID.HEALTH_IGNITE, strength:2, duration:3 }
         ],
@@ -254,7 +254,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
             { type:CARD_KEYWORD_ID.HEALTH_BLEED, strength:2, duration:3 }
         ],
@@ -284,7 +284,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
             { type:CARD_KEYWORD_ID.ACTIVITY_MOD_EXHAUST, strength:1, duration:0 }
         ],
@@ -314,7 +314,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
             { type:CARD_KEYWORD_ID.DEATH_MOD_DESTROY, strength:1, duration:-1 }
         ],
@@ -347,7 +347,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:2,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
 
         ],
         //type-specific cards
@@ -376,7 +376,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:2,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
 
         ],
         //type-specific cards
@@ -405,7 +405,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:2,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
 
         ],
         //type-specific cards
@@ -434,7 +434,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:2,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
 
         ],
         //type-specific cards
@@ -463,7 +463,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:2,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
 
         ],
         //type-specific cards
@@ -495,7 +495,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             
         ],
         //type-specific cards
@@ -520,7 +520,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             
         ],
         //type-specific cards
@@ -545,7 +545,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             
         ],
         //type-specific cards
@@ -570,7 +570,7 @@ export const CardData:CardDataObject[] = [
         //cost of playing card
         cardCost:1,
         //effects
-        cardEffects:[
+        cardKeywordEffects:[
             
         ],
         //type-specific cards

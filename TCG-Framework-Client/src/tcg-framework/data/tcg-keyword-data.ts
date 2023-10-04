@@ -26,13 +26,13 @@ import { STATUS_EFFECT_ID } from "./tcg-status-effect-data";
 export enum CARD_KEYWORD_EFFECT_TIMING {
     //applied 1 time, instantly after being played
     //  ex: healing a unit increases their current health (effect does not need tracking)
-    INSTANT,
+    INSTANT = -1,
     //applied 1 time, but effect is tracked (so can be purged/modified)
     //  ex: giving a unit a sword that increases attack (sword can be taken away)
-    CONSTANT,
-    //applied n times, once per round after being played
-    //  ex: healing a unit across multiple rounds (effect )
-    EXPIRES,
+    CONSTANT = 0,
+    //applied n times, once per round after being played 
+    //  ex: providing the unit with an increased strength per round (the buff providing further growth can be removed, but any power gained remain)
+    REPEATING = 1,
 }
 
 /** data interface for defining a card keyword's splice sheet draw details */
@@ -159,7 +159,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.DAMAGE_RECOILING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.DAMAGE_RECOILING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
 
@@ -192,7 +192,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.HEALTH_MENDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.HEALTH_MENDING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //decreases current health (skips armour calc)
@@ -222,7 +222,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 7 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //increases max health (current health also increases by amount)
@@ -252,7 +252,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //decreases max health (current health is not reduced by amount, but is leashed to max health)
@@ -297,7 +297,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.HEALTH_BURNING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.HEALTH_BURNING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //decreases max health (current health is not reduced by amount, but is leashed to max health)
@@ -312,7 +312,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.HEALTH_WITHERING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.HEALTH_WITHERING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //#COMPLEX => increases cur health, applies burn over time
@@ -327,7 +327,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         //gameplay
         playEffects: [
             { id:STATUS_EFFECT_ID.HEALTH_HEAL, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true },
-            { id:STATUS_EFFECT_ID.HEALTH_BURNING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.HEALTH_BURNING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     
@@ -360,7 +360,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 6 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.ATTACK_ASCENDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.ATTACK_ASCENDING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //decreases attack
@@ -390,7 +390,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.ATTACK_WEAKENING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.ATTACK_WEAKENING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
 
@@ -423,7 +423,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.ARMOUR_FORTIFYING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.ARMOUR_FORTIFYING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     //decreases armour
@@ -453,7 +453,7 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 7 },
         //gameplay
         playEffects: [
-            { id:STATUS_EFFECT_ID.ARMOUR_MELTING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+            { id:STATUS_EFFECT_ID.ARMOUR_MELTING, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING, isPurgable:true }
         ]
     },
     

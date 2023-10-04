@@ -7,7 +7,7 @@ import { CARD_KEYWORD_ID, CardKeywordDataObject } from "./data/tcg-keyword-data"
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
 import { CardKeywordTextureDataObject } from "./data/tcg-keyword-texture-data";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
-import { CardEffectDataObject } from "./data/tcg-card-data";
+import { CardKeywordEffectsDataObject } from "./data/tcg-card-data";
 
 
 /*      TRADING CARD GAME - CARD KEYWORD OBJECT
@@ -87,7 +87,7 @@ export module CardKeywordDisplayObject
 	export interface CardKeywordObjectCreationData {
         //display type
         ownerType:CARD_OBJECT_OWNER_TYPE,
-        def:CardEffectDataObject,
+        def:CardKeywordEffectsDataObject,
         //indexing
         tableID?:string,
         teamID?:string,
@@ -232,7 +232,7 @@ export module CardKeywordDisplayObject
         }
 
         /** */
-        public SetKeyword(data:CardEffectDataObject, hasInteractions:boolean=true) {
+        public SetKeyword(data:CardKeywordEffectsDataObject, hasInteractions:boolean=true) {
             this.defID = data.type;
             //enable object
             Transform.getOrCreateMutable(this.entityParent).scale = PARENT_SCALE_ON;

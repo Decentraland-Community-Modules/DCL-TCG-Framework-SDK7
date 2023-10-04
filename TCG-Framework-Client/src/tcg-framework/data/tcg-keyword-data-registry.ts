@@ -1,4 +1,4 @@
-/*      FARM CROP REGISTRY
+/*      TRADING CARD GAME - KEYWORD DATA
     provides sorted access to all farm crop data pieces
 
     author: Alex Pazder
@@ -10,7 +10,7 @@ import { CARD_KEYWORD_ID, CardKeywordData, CardKeywordDataObject } from "./tcg-k
 import { CardKeywordTextureData, CardKeywordTextureDataObject } from "./tcg-keyword-texture-data";
 
 
-/** defines a single accessory's live data in-scene */
+/** defines a keyword */
 export class CardKeywordEntry {
     /** id data object referenced by this entry */
     private id: string;
@@ -26,10 +26,12 @@ export class CardKeywordEntry {
         this.id = id;
     }
 }
-/** manages the state of all accessories in the game */
+/** manages all keywords */
 export class CardKeywordRegistry {
     /** when true debugging logs will be generated (ensure is false when deploying to remove overhead) */
     private static IsDebugging: boolean = false;
+    /** hard-coded tag for module, helps log search functionality */
+    private static debugTag:string = "Card Keyword Entry: ";
 
     //access pocketing
     private static instance: undefined | CardKeywordRegistry;
@@ -43,8 +45,7 @@ export class CardKeywordRegistry {
     }
 
     //sheet registries
-    //  faction
-    private keywordTextureRegistry: Dictionary<CardKeywordTextureDataObject>;
+    private textureRegistry: Dictionary<CardKeywordTextureDataObject>;
 
     //registries for data access
     //  ALL registered data
@@ -54,12 +55,12 @@ export class CardKeywordRegistry {
 
     /** prepares registry for use, this is done automatically when the instance is first called */
     public constructor() {
-        if (CardKeywordRegistry.IsDebugging) console.log("Card Keyword Entry: initializing...");
+        if (CardKeywordRegistry.IsDebugging) console.log(CardKeywordRegistry.debugTag+"initializing...");
 
         //initialize texture collections
-        this.keywordTextureRegistry = new Dictionary<CardKeywordTextureDataObject>();
+        this.textureRegistry = new Dictionary<CardKeywordTextureDataObject>();
         for(let i:number=0; i<CardKeywordTextureData.length; i++) {
-            this.keywordTextureRegistry.addItem(CardKeywordTextureData[i].id.toString(), CardKeywordTextureData[i]);
+            this.textureRegistry.addItem(CardKeywordTextureData[i].id.toString(), CardKeywordTextureData[i]);
         }
 
         //initialize collection sets
@@ -71,13 +72,13 @@ export class CardKeywordRegistry {
         for (var i: number = 0; i < CardKeywordData.length; i++) {
             //prepare entry
             const entry = new CardKeywordEntry(i, CardKeywordData[i].id.toString());
-            if (CardKeywordRegistry.IsDebugging) console.log("Card Keyword Registry: creating entry=" + i + ", ID=" + CardKeywordData[i].id);
+            if (CardKeywordRegistry.IsDebugging) console.log(CardKeywordRegistry.debugTag+"creating entry=" + i + ", ID=" + CardKeywordData[i].id);
             //add to registry
             this.entryRegistry.addItem(entry);
             this.entryRegistryViaID.addItem(entry.ID, entry);
         }
 
-        if (CardKeywordRegistry.IsDebugging) console.log("Card Keyword Registry: initialized, total count=" + this.entryRegistry.size());
+        if (CardKeywordRegistry.IsDebugging) console.log(CardKeywordRegistry.debugTag+"initialized, total count=" + this.entryRegistry.size());
     }
 
     //access functions (we do not want to allow direct access to registries, as they should remain unchanged)
@@ -86,7 +87,7 @@ export class CardKeywordRegistry {
 
     /** returns keyword sheet */
     public CallbackGetKeywordTexture(keyword:CARD_KEYWORD_ID): CardKeywordTextureDataObject { return CardKeywordRegistry.Instance.GetKeywordTexture(keyword); }
-    public GetKeywordTexture(keyword:CARD_KEYWORD_ID): CardKeywordTextureDataObject { return this.keywordTextureRegistry.getItem(this.GetDefByID(keyword).sheetData.id.toString()); }
+    public GetKeywordTexture(keyword:CARD_KEYWORD_ID): CardKeywordTextureDataObject { return this.textureRegistry.getItem(this.GetDefByID(keyword).sheetData.id.toString()); }
     
     /** returns entry at given position */
     public CallbackGetEntryByPos(index: number): CardKeywordEntry { return CardKeywordRegistry.Instance.GetEntryByPos(index); }

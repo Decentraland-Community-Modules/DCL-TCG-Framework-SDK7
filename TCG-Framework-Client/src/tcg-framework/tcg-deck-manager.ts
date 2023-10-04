@@ -3,7 +3,7 @@ import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry, CardEntry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
@@ -12,6 +12,7 @@ import { PlayerLocal } from "./config/tcg-player-local";
 import { Dictionary, List } from "../utilities/collections";
 import { CARD_OBJECT_OWNER_TYPE, MAX_CARD_COUNT_PER_TYPE } from "./config/tcg-config";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
+import { CardSubjectDisplayPanel } from "./tcg-card-subject-display";
 /*      TRADING CARD GAME FRAMEWORK - DECK MANAGER
     all utilities for viewing cards and managing card decks; this includes viewing all cards (with 
     filtering options), adding/removing cards to/from a deck, and saving/loading decks. 
@@ -1056,6 +1057,7 @@ export module DeckManager {
         //get card entry
         const cardEntry = CardDataRegistry.Instance.GetEntryByPos(entityGridCards[Number.parseInt(slotID)].DefIndex);
 
+        CardSubjectDisplayPanel.DisplayCardStats(cardEntry.DataDef)
         //create character display model 
         curDisplayObject.SetSelection(cardEntry.DataDef);
         
@@ -1091,15 +1093,15 @@ export module DeckManager {
         //update keyword description
         for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
             //if effects exists, update display element
-            if(cardEntry.DataDef.cardEffects.length - 1 >= i ) {   
+            if(cardEntry.DataDef.cardKeywordEffects.length - 1 >= i ) {   
                 //get keyword's def
-                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardEffects[i].type);
+                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardKeywordEffects[i].type);
                 //update name text
                 TextShape.getMutable(cardKeywordNameText[i]).text = keywordDef.displayName;  
                 let effectString:string = keywordDef.displayDesc;
                 //update desc text (replacing for power & duration)
-                effectString = effectString.replace(/@P/g, cardEntry.DataDef.cardEffects[i].strength.toString());
-                const duration = cardEntry.DataDef.cardEffects[i].duration;
+                effectString = effectString.replace(/@P/g, cardEntry.DataDef.cardKeywordEffects[i].strength.toString());
+                const duration = cardEntry.DataDef.cardKeywordEffects[i].duration;
                 if(duration && duration != -1) effectString = effectString.replace(/@T/g, duration.toString());
                 TextShape.getMutable(cardKeywordDescText[i]).text = effectString;  
             }

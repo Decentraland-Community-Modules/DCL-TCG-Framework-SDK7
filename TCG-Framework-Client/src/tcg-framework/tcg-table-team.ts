@@ -8,6 +8,7 @@ import { PlayCard } from "./tcg-play-card";
 import { InteractionObject } from "./tcg-interaction-object";
 import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { PlayerLocal } from "./config/tcg-player-local";
+import { STATUS_EFFECT_AFFINITY } from "./data/tcg-status-effect-data";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
     represents team on a table
@@ -852,7 +853,7 @@ export module TableTeam {
             }
         }
 
-        /**  */
+        /** called when a turn starts */
         public TurnStart() {
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn started");
 
@@ -866,13 +867,14 @@ export module TableTeam {
                 const slot = this.cardSlotObjects[i];
                 if(slot.SlottedCard != undefined) {
                     //process card's start turn effects
-                    slot.SlottedCard.ProcessTurnStartEffects();
+                    slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HELPFUL);
+                    //update display
                     slot.UpdateStatDisplay();
                 }
             }
         }
 
-        /** */
+        /** called when a turn ends */
         public TurnEnd() { 
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn ended");
 
@@ -881,8 +883,11 @@ export module TableTeam {
                 //if there is a card tied to the slot
                 const slot = this.cardSlotObjects[i];
                 if(slot.SlottedCard != undefined) {
+                    //re-enable card's action (we do this at the end of the turn so enemy has a chance to stun the character)
+                    slot.SlottedCard.ActionRemaining = true;
                     //process card's end turn effects
-                    slot.SlottedCard.ProcessTurnEndEffects();
+                    slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HARMFUL);
+                    //update display
                     slot.UpdateStatDisplay();
                 }
             }

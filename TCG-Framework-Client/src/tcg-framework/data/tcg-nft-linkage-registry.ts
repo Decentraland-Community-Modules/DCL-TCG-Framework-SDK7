@@ -1,5 +1,3 @@
-import { GetUserDataResponse, getUserData } from '~system/UserIdentity';
-import { getRealm } from '~system/Runtime';
 import { CONTRACT_DATA_ID, ContractData, ContractDataObject, NFT_ACTIVATION_TYPE } from './tcg-nft-linkage-data';
 import Dictionary, { List } from '../../utilities/collections';
 import { CardData } from './tcg-card-data';

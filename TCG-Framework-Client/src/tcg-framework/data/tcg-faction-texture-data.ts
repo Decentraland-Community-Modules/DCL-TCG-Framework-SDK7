@@ -1,4 +1,4 @@
-/**     FACTION TEXTURE DATA
+/**     TRADING CARD GAME - FACTION TEXTURE DATA
  *  desc pending
  */
 

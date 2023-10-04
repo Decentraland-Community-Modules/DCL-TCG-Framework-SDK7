@@ -1,4 +1,4 @@
-import { executeTask } from "@dcl/sdk/ecs";
+import { Entity, GltfContainer, Transform, engine, executeTask } from "@dcl/sdk/ecs";
 import { TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
 import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { CardDataRegistry } from "./tcg-framework/data/tcg-card-registry";
@@ -7,6 +7,9 @@ import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
 import { InfoPanel } from "./tcg-framework/tcg-info-display-panel";
+import { TableCardSlot } from "./tcg-framework/tcg-table-card-slot";
+import { PlayCard } from "./tcg-framework/tcg-play-card";
+import { CardSubjectDisplayPanel } from "./tcg-framework/tcg-card-subject-display";
 
 /**
 	TODO:
@@ -36,6 +39,9 @@ async function tcgSetUp() {
 
 		//create info panel
 		InfoPanel.SetPosition({ x:24, y:2, z:8 });
+
+		//create card subject display panel
+		CardSubjectDisplayPanel.SetPosition({ x:30, y:2, z:24 });
 
 		//create deck managers
 		//	left
@@ -69,6 +75,21 @@ async function tcgSetUp() {
 			parent: undefined,
 			position: { x:34, y:0, z:24 },
 			rotation: { x:0, y:90, z:0 }
+		});
+
+		//create test character
+		//	test char
+		/** selected card details background */
+		const statDetails:Entity = engine.addEntity();
+		Transform.create(statDetails,{
+			parent:undefined,
+			position: { x:-0.32, y:0.10, z:-0.10 },
+			scale: { x:1, y:1, z:1, },
+		});
+		GltfContainer.create(statDetails, {
+			src: "models/tcg-framework/menu-displays/info-base-plate.glb",
+			visibleMeshesCollisionMask: undefined,
+			invisibleMeshesCollisionMask: undefined
 		});
 	
 		//enable processing
