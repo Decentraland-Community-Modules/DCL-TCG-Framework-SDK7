@@ -9,6 +9,7 @@ import { InteractionObject } from "./tcg-interaction-object";
 import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { STATUS_EFFECT_AFFINITY } from "./data/tcg-status-effect-data";
+import { CARD_KEYWORD_EFFECT_EXECUTION } from "./data/tcg-keyword-data";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
     represents team on a table
@@ -752,7 +753,7 @@ export module TableTeam {
             }
 
             //if character is registered to table
-            if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
+            if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer) {
                 //disable team selector & display
                 Transform.getMutable(this.entityTeamTargetorInteraction).scale = PARENT_SCALE_OFF;
                 Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_OFF;
@@ -782,11 +783,11 @@ export module TableTeam {
                             if(this.RegisteredPlayer != undefined) {
                                 Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                                 //if registered player is local player, display leave button
-                                if(this.RegisteredPlayer == PlayerLocal.DisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
+                                if(this.RegisteredPlayer == PlayerLocal.GetDisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
                                 else Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
 
                                 //if local player owns table
-                                if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
+                                if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer) {
                                     //ready state toggling
                                     if(this.ReadyState) {
                                         Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
@@ -819,7 +820,7 @@ export module TableTeam {
                             Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             //if local player's turn
-                            if(PlayerLocal.DisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
+                            if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
                                 Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_SMALL; 
                                 Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_SMALL; 
                             } 

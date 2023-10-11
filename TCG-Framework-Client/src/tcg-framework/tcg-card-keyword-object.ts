@@ -233,12 +233,12 @@ export module CardKeywordDisplayObject
 
         /** */
         public SetKeyword(data:CardKeywordEffectsDataObject, hasInteractions:boolean=true) {
-            this.defID = data.type;
+            this.defID = data.id;
             //enable object
             Transform.getOrCreateMutable(this.entityParent).scale = PARENT_SCALE_ON;
             
             //get keyword definition
-            const defData:CardKeywordDataObject = CardKeywordRegistry.Instance.GetDefByID(data.type);
+            const defData:CardKeywordDataObject = CardKeywordRegistry.Instance.GetDefByID(data.id);
             //set keyword icon image
             //  get required def references
             const keywordSheet: CardKeywordTextureDataObject = CardKeywordRegistry.Instance.CallbackGetKeywordTexture(defData.id);

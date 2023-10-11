@@ -31,7 +31,7 @@ export class CardKeywordRegistry {
     /** when true debugging logs will be generated (ensure is false when deploying to remove overhead) */
     private static IsDebugging: boolean = false;
     /** hard-coded tag for module, helps log search functionality */
-    private static debugTag:string = "Card Keyword Entry: ";
+    private static debugTag:string = "Card Keyword Registry: ";
 
     //access pocketing
     private static instance: undefined | CardKeywordRegistry;

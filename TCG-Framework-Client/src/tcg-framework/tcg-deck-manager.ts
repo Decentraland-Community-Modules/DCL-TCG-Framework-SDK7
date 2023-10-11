@@ -35,7 +35,7 @@ import { CardSubjectDisplayPanel } from "./tcg-card-subject-display";
 */
 export module DeckManager {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Deck Manager: ";
 
@@ -383,7 +383,13 @@ export module DeckManager {
                 function() {
                     //ensure player is still inside zone
                     if(!playerInZone) return;
+                    
+                    //update all deck selection text pieces (card counts might change when manager is hidden due to player's data loading)
+                    for(let i:number=0; i<CardFactionData.length; i++) {
+                        TextShape.getMutable(deckInfoButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i].CardsAll.size()+")";
+                    }
 
+                    //claim all required card objects
                     GenerateCardObjects();
                     //select and load the player's current deck
                     DeckInteractionSelect(PlayerLocal.GetPlayerDeckIndex());
@@ -712,14 +718,14 @@ export module DeckManager {
             scale: { x:1.0, y:0.10, z:0.01 }
         }));
         Material.setPbrMaterial(deckInfoButtonSelectors[i].entityInteraction, { albedoColor: Color4.White(), });
-        TextShape.getMutable(deckInfoButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i]?.CardsAll.size()+")";
+        TextShape.getMutable(deckInfoButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i].CardsAll.size()+")";
     }
     /** save deck button */
     const deckInfoButtonSave = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target: DECK_INTERACTION_TYPE.SAVE,
         displayText: "SAVE",
-        modelInteraction:"models/tcg-framework/menu-displays/button-rect-medium.glb",
+        modelInteraction:"models/tcg-framework/menu-buttons/button-rect-medium.glb",
         interactionText: "SAVE DECK",
         textColour:Color4.White(),
         textScale: { x:0.35, y:0.35, z:1, },
@@ -733,7 +739,7 @@ export module DeckManager {
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target:DECK_INTERACTION_TYPE.LOAD,
         displayText:"LOAD",
-        modelInteraction:"models/tcg-framework/menu-displays/button-rect-medium.glb",
+        modelInteraction:"models/tcg-framework/menu-buttons/button-rect-medium.glb",
         interactionText:"LOAD DECK",
         textColour:Color4.White(),
         textScale: { x:0.35, y:0.35, z:1, },
@@ -893,7 +899,8 @@ export module DeckManager {
         position: { x:0.41, y:0.10, z:-0.1 },
         scale: { x:0.125, y:0.125, z:0.125, },
     });
-    cardInfoObject.SetCounterState(true, false);
+    //set counter state (disable all counters)
+    cardInfoObject.SetCounterState(false, false);
 
     /** generate selected card keyword display elements */
     const cardkeywordDescBackground:Entity[] = [];
@@ -1095,7 +1102,7 @@ export module DeckManager {
             //if effects exists, update display element
             if(cardEntry.DataDef.cardKeywordEffects.length - 1 >= i ) {   
                 //get keyword's def
-                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardKeywordEffects[i].type);
+                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardKeywordEffects[i].id);
                 //update name text
                 TextShape.getMutable(cardKeywordNameText[i]).text = keywordDef.displayName;  
                 let effectString:string = keywordDef.displayDesc;

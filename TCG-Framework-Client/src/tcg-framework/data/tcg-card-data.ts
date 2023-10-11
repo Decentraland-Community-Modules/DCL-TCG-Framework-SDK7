@@ -82,12 +82,12 @@ export interface CardSheetDataObject {
 /** defines an effect tied to a card */
 export interface CardKeywordEffectsDataObject {
     //effect type
-    type:CARD_KEYWORD_ID; 
+    id:CARD_KEYWORD_ID; 
     //power of effect (ex: how much damage/how many stacks to be applied to target)
     strength:number;
     //how long effect will last (only checked for specific keywords that happen over time like burn/poison)
-    //  set '-1' to make effect forever
-    duration?:number;
+    //  this is ignored if the timing is instant or forever
+    duration:number;
 }
 
 /** character attribute portions */
@@ -144,6 +144,7 @@ export enum CARD_DATA_ID {
     SPELL_HEAL,
     //## FIRE SPELLS
     SPELL_FIREBOLT,
+    SPELL_HEALING_FLAME,
     //## ICE SPELLS
     SPELL_ICEBOLT,
     //## ELECTRIC SPELLS
@@ -196,7 +197,7 @@ export const CardData:CardDataObject[] = [
         cardCost:1,
         //effects
         cardKeywordEffects:[
-            { type:CARD_KEYWORD_ID.HEALTH_HEAL, strength:4 }
+            { id:CARD_KEYWORD_ID.HEALTH_HEAL, strength:3, duration:0 }
         ],
         //type-specific cards
         cardAttributes:{
@@ -225,8 +226,37 @@ export const CardData:CardDataObject[] = [
         cardCost:1,
         //effects
         cardKeywordEffects:[
-            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
-            { type:CARD_KEYWORD_ID.HEALTH_IGNITE, strength:2, duration:3 }
+            { id:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2, duration:0 },
+            { id:CARD_KEYWORD_ID.HEALTH_IGNITE, strength:2, duration:3 }
+        ],
+        //type-specific cards
+        cardAttributes:{
+            //type
+            type:CARD_TYPE.SPELL,
+            //targeting
+            targetOwner:CARD_TARGETING_OWNER.ENEMY,
+            targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
+            targetCount:1,
+        }
+    },
+    {   //heals target unit, but also applies burning
+        //indexing
+        type:CARD_TYPE.SPELL,
+        faction:CARD_FACTION_TYPE.FIRE,
+        id:CARD_DATA_ID.SPELL_HEALING_FLAME,
+        //display text 
+        name: "Healing Flame",
+        desc: "Heals the unit, but also applies burning.",
+        //display 2D
+        sheetData: { id:TEXTURE_SHEET_CARDS.SHEET_SPELLS, posX: 1, posY: 0 },
+        //display 3D
+        objPath: "models/tcg-framework/card-spells/spell-firebolt.glb",
+        //cost of playing card
+        cardCost:1,
+        //effects
+        cardKeywordEffects:[
+            { id:CARD_KEYWORD_ID.HEALTH_HEAL, strength:4, duration:0 },
+            { id:CARD_KEYWORD_ID.HEALTH_IGNITE, strength:1, duration:3 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -255,8 +285,8 @@ export const CardData:CardDataObject[] = [
         cardCost:1,
         //effects
         cardKeywordEffects:[
-            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
-            { type:CARD_KEYWORD_ID.HEALTH_BLEED, strength:2, duration:3 }
+            { id:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2, duration:0 },
+            { id:CARD_KEYWORD_ID.HEALTH_BLEED, strength:2, duration:3 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -285,8 +315,8 @@ export const CardData:CardDataObject[] = [
         cardCost:1,
         //effects
         cardKeywordEffects:[
-            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
-            { type:CARD_KEYWORD_ID.ACTIVITY_MOD_EXHAUST, strength:1, duration:0 }
+            { id:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2, duration:0 },
+            { id:CARD_KEYWORD_ID.ACTIVITY_MOD_EXHAUST, strength:1, duration:0 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -315,8 +345,8 @@ export const CardData:CardDataObject[] = [
         cardCost:1,
         //effects
         cardKeywordEffects:[
-            { type:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2 },
-            { type:CARD_KEYWORD_ID.DEATH_MOD_DESTROY, strength:1, duration:-1 }
+            { id:CARD_KEYWORD_ID.DAMAGE_STRIKE, strength:2, duration:0 },
+            { id:CARD_KEYWORD_ID.DEATH_MOD_DESTROY, strength:1, duration:-1 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -377,7 +407,8 @@ export const CardData:CardDataObject[] = [
         cardCost:2,
         //effects
         cardKeywordEffects:[
-
+            { id:CARD_KEYWORD_ID.HEALTH_ENFLAME, strength:1, duration:2 },
+            { id:CARD_KEYWORD_ID.HEALTH_FLAME_WARD, strength:1, duration:2 },
         ],
         //type-specific cards
         cardAttributes:{

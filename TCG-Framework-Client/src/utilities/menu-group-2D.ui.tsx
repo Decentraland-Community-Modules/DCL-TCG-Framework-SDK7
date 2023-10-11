@@ -1,16 +1,7 @@
 import { Color4 } from "@dcl/sdk/math";
 import { List, Dictionary } from "./collections";
-import { AlignType, Button, Callback, JSX, JustifyType, Label, PositionShorthand, PositionUnit, ReactEcs, ReactEcsRenderer, TextAlignType, UiComponent, UiEntity } from '@dcl/sdk/react-ecs'
+import { AlignType, Button, JSX, JustifyType, PositionType, PositionUnit, ReactEcs, ReactEcsRenderer, TextAlignType, UiEntity } from '@dcl/sdk/react-ecs'
 
-const isMenuDebugging:Boolean = true;
-
-/** menu object transform adjustment types */
-export enum Menu2DTransformAdjustmentTypes
-{
-    POSITION,
-    ROTATION,
-    SCALE,
-}
 
 /*      MENU GROUP 2D
     used to dynamically create 2d ui in the game scene. menu objects can be defined
@@ -24,39 +15,62 @@ export enum Menu2DTransformAdjustmentTypes
     Author: TheCryptoTrader69 (Alex Pazder)
     Contact: TheCryptoTrader69@gmail.com
 */
-export class MenuGroup2D {
-    /** ensures ui render call can only be called once */
-    private static hasRendered:boolean = false;
+export module MenuElementManager2D {
+    /** when true debug logs will be generated */
+    const isMenuDebugging:Boolean = false;
+    /** hard-coded tag for module, helps log search functionality */
+    const debugTag:string = "2D Menu Element Manager: ";
 
-    //access pocketing
-    private static instance:undefined|MenuGroup2D;
-    public static get Instance():MenuGroup2D {
-        //ensure instance is set
-        if(MenuGroup2D.instance === undefined) {
-            MenuGroup2D.instance = new MenuGroup2D();
-        }
-  
-        return MenuGroup2D.instance;
+    /** menu element types */
+    export enum MENU_ELEMENT_TYPE {
+        MENU_ENTITY,
+        MENU_BUTTON,
+        MENU_IMAGE
     }
 
-    /** current state of the entire scene ui */
-    private menuVisible:boolean = true;
+    /** menu element transform adjustment types */
+    export enum MENU_ELEMENT_ADJUSTMENT_TYPE {
+        POSITION,
+        ROTATION,
+        SCALE,
+    }
 
-    /** list of all attached menu objects */
-    private menuList:List<MenuObject2D>;
-    /** dict of all attached menu objects, key is object's name */
-    private menuDict:Dictionary<MenuObject2D>;
+    /** current state of the entire ui system, when set to false everything is hidden */
+    var menuVisibility:boolean = true;
+    /** gets the current menu visibility state */
+    export function GetMenuVisibility():boolean {
+        return menuVisibility;
+    }
+    /** sets the current menu visibility state */
+    export function SetMenuVisibility(state:boolean) {
+        menuVisibility = state;
+    }
 
-    //constructor, takes in an entity that will be used when parenting
-    constructor() {
-        //initialize collections
-        this.menuList = new List<MenuObject2D>();
-        this.menuDict = new Dictionary<MenuObject2D>();
+    /** unique index for ui element pieces (each element requires a uid) */
+    var indexer:number = 0;
+    /** returns the next unique ui element index */
+    function getNextIndex():number {
+        return indexer++;
+    }
+
+    /** empty/nulled callback for defining defaults for menu elements */
+    export const MenuCallbackEmpty = function(){ null }; 
+
+    /** empty/nulled callback for defining defaults for menu elements */
+    export const MenuCallbackTest = function(value:any){ console.log(debugTag+" menu test call -> "+value.toString()); }; 
+
+    /** list of all active menu elements */
+    var menuElementsList:List<MenuElement2D> = new List<MenuElement2D>();
+    /** dict of all active menu elements, key is object's name */
+    var menuElementsDict:Dictionary<MenuElement2D> = new Dictionary<MenuElement2D>();
+
+    /** returns the menu element corresponding to the given id */
+    export function GetMenuElementByID(id:string):MenuElement2D {
+        return menuElementsDict.getItem(id);
     }
 
     //just for testing if identified bugs in SDK7 UI have been fixed, feel free to ignore this
-    public Example_CreateNestedElements()
-    {
+    function Example_CreateNestedElements() {
         ReactEcsRenderer.setUiRenderer(() => (
         <UiEntity key={0}
             uiTransform={{
@@ -103,9 +117,8 @@ export class MenuGroup2D {
     }
 
     //just for testing if identified bugs in SDK7 UI have been fixed, feel free to ignore this
-    public static MouseButtonDown(value:any)  {  console.log("CALLED : "+value) }
-    public Example_CreateNestedElementsWithMouseEvents()
-    {
+    function MouseButtonDown(value:any)  {  console.log("CALLED : "+value) }
+    function Example_CreateNestedElementsWithMouseEvents() {
         const val = 3;
         ReactEcsRenderer.setUiRenderer(() => (
         <UiEntity key={0}
@@ -137,7 +150,7 @@ export class MenuGroup2D {
                         positionType: 'absolute',
                     }}
                     value= "BUTTON"
-                    onMouseDown={() => { MenuGroup2D.MouseButtonDown(val) } }
+                    onMouseDown={() => { MenuElementManager2D.MenuCallbackTest(val) } }
                 />
                 <UiEntity key={2}
                     uiTransform={{
@@ -154,7 +167,7 @@ export class MenuGroup2D {
                             positionType: 'absolute',
                         }}
                         value= "BUTTON"
-                        onMouseDown={() => { MenuGroup2D.MouseButtonDown("2") } }
+                        onMouseDown={() => { MenuElementManager2D.MenuCallbackTest("2") } }
                     />
                     <UiEntity key={3}
                         uiTransform={{
@@ -170,7 +183,7 @@ export class MenuGroup2D {
     }
 
     //just for testing if identified bugs in SDK7 UI have been fixed, feel free to ignore this
-    public Test() {
+    function Test() {
         ReactEcsRenderer.setUiRenderer(() => (<UiEntity
             key={-1}
             uiTransform={{
@@ -190,12 +203,8 @@ export class MenuGroup2D {
         </UiEntity>));
     }//bottom:this.PosBottom, , right:this.PosRight
 
-    generateText() {
-        const array:Array<number> = [0, 1, 2];
-        return array.map((value) => this.TextPiece(value));//<this.TextViaComponent value={value} />)
-    }
-
-    TextPiece(value: number) {
+    /** */
+    function TextPiece(value: number) {
         return <UiEntity
             key={value}
             uiTransform={{ 
@@ -213,7 +222,8 @@ export class MenuGroup2D {
         />
     }
 
-    TextViaComponent(props: { value: number }) {
+    /** */
+    function TextViaComponent(props: { value: number }) {
         return <UiEntity
             key={props.value}
             uiTransform={{ width: 80, height: 20, 
@@ -231,67 +241,45 @@ export class MenuGroup2D {
         />
     }
 
-    /** */
-    public RenderUI() {
-        //ensure ui is only rendered once
-        if(MenuGroup2D.hasRendered) return;
-        MenuGroup2D.hasRendered = true;
-
-        if(isMenuDebugging) console.log("2D Menu: rendering ui");
-
-        //make render call
+    /** sends initial renderer call, beginning the ui draw for the system */
+    function StartRenderer() {
+        //set first renderer call (all pieces will exist below this one ui element)
         ReactEcsRenderer.setUiRenderer(() => (
             <UiEntity key={0}
                 uiTransform={{
                     //wide order
-                    width: '100%', height: 8,
-                    position: { top:'100%', bottom:'0%', left:'0%', right:'0%' },
+                    width: '100%', height: '1%',
+                    position: { top:'0%', bottom:'0%', left:'0%', right:'0%' },
                     //height order
-                    /*width: 1, height: '100%',
+                    /*width: '1%', height: '100%',
                     position: { top:'0%', bottom:'0%', left:'50%', right:'0%' },*/
-                    positionType: 'absolute',
+                    positionType: 'relative',//'absolute',
                     alignContent: 'center',
                     justifyContent: 'center',
-                    display: this.menuVisible ? 'flex': 'none'
+                    display: MenuElementManager2D.GetMenuVisibility() ? 'flex': 'none'
                 }}
-                uiBackground={{ 
-                    
-                    color: Color4.create(1.0, 1.0, 1.0, 0.5) 
+                uiBackground={{
+                    color: Color4.create(1.0, 0.0, 0.0, 0) 
                 }}
             >
-                {this.GetRenderPieces()}
+                {MenuElementManager2D.GetRenderPieces()}
             </UiEntity>
         ));
     }
 
-    /** 
-     * 
-    */
-    private GetRenderPieces() {
-        //ensure menu is visible
-        if(!this.menuVisible) return undefined;
+    /** returns all renderer peices that need to be displayed */
+    export function GetRenderPieces() {
+        //halt if menu is not visible
+        if(!MenuElementManager2D.GetMenuVisibility()) return undefined;
 
         //get all existing sub elements
         var array:Array<JSX.Element> = Array();
-        for (let i = 0; i < this.menuList.size(); i++) 
+        for (let i = 0; i < menuElementsList.size(); i++) 
         {
-            const result = this.menuList.getItem(i).GetRenderPiece();
+            const result = menuElementsList.getItem(i).GetRenderPiece();
             if(result != null) array.push(result);
         }
         return array;
-    }
-
-    /**
-     * sets display state of the scene menu
-     * @param state new display state for menu
-     */
-    public SetMenuState(state: boolean) {
-        this.menuVisible = state
-    }
-
-    //returns the requested menu object
-    public GetMenuObject(objName:string):MenuObject2D {
-        return this.menuDict.getItem(objName);
     }
 
     /**
@@ -299,224 +287,218 @@ export class MenuGroup2D {
      * @param name requested name for new menu object (if menu object of name already exists then function fails)
      * @param parent target parent, if no value is given object becomes a child of the core menu group parent (if menu object of index doesn't exists then function fails)
      */
-    public AddMenuObject(menuType:MENU2D_TYPE, name:string, parent:string[]=[]):MenuObject2D {
-        if(isMenuDebugging) console.log("2D Menu: adding ui element name="+name+", parent-access="+parent.toString()+"...");
+    export function AddMenuObject(type:MENU_ELEMENT_TYPE, name:string, parent:string[]=[]):MenuElement2D {
+        if(isMenuDebugging) console.log(debugTag+"adding ui element name="+name+", parent-access="+parent.toString()+"...");
 
         //invert array
-        MenuObject2D.parentNameArrayCur = Array.from(parent).reverse();
-        
+        MenuElement2D.parentNameArrayCur = Array.from(parent).reverse();
+
         //if menu object has parent, push processing down the line
-        const node = MenuObject2D.parentNameArrayCur.pop();
-        if(node != undefined)
-        {
-            return this.menuDict.getItem(node).AddMenu(menuType, name);
+        const node = MenuElement2D.parentNameArrayCur.pop();
+        if(node != undefined) {
+            MenuElement2D.parentNamePrev = node;
+            if(isMenuDebugging) console.log(debugTag+"found parent node="+node);
+            return menuElementsDict.getItem(node).AddMenu(type, name);
         }
 
         //create object
-        const menuObject:MenuObject2D = new MenuObject2D(menuType, name);
+        const menuObject:MenuElement2D = new MenuElement2D(type, name);
         //register object to collections
-        this.menuList.addItem(menuObject);
-        this.menuDict.addItem(name, menuObject);
+        menuElementsList.addItem(menuObject);
+        menuElementsDict.addItem(name, menuObject);
         
-        if(isMenuDebugging) console.log("2D Menu: added ui element name="+name);
+        if(isMenuDebugging) console.log(debugTag+"added base-element name="+name);
         return menuObject;
     }
-}
 
-/** defines menu types */
-export enum MENU2D_TYPE {
-    MENU_ENTITY,
-    MENU_BUTTON,
-    MENU_IMAGE
-}
-/** represents a single UI component */
-export class MenuObject2D
-{
-    //numeric keys system
-    private static numberKey:number = 0;
-    public static GetNumberKey():number { return ++this.numberKey; } //0 is reserved for the parent
-
-    /** */
-    public MenuType:MENU2D_TYPE;
-
-    /** element access name key */
-    public name:string;
-    private uiKey:number;
-
-    /** when true display is shown */
-    public IsVisible:boolean = true;
-
-    //ui transform
-    /** element width */
-    public Width:PositionUnit = '60px';
-    /** element height */
-    public Heigth:PositionUnit = '60px';
-    /** */
-    public PosTop:PositionUnit = '0px';
-    /** */
-    public PosBottom:PositionUnit = '0px';
-    /** */
-    public PosLeft:PositionUnit = '0px';
-    /** */
-    public PosRight:PositionUnit = '0px';
-    /** element content alignment */
-    public ContentAlignment:AlignType = 'center';
-    /** element content justification */
-    public ContentJustify:JustifyType = 'center';
-
-    //ui text
-    /** */
-    public TextValue:string = '';
-    /** */
-    public TextAlign:TextAlignType = 'middle-center';
-    /** */
-    public TextSize:number = 12;
-
-    //background
-    /** background colour */
-    public BackgroundColour:Color4 = Color4.Black();
-    /** background image */
-    public BackgroundImage:string = "";
-
-    //callbacks
-    /** mouse down events */
-    public MouseButtonEvent = function(){ null }
-
-    public MouseButtonDown(value:any) 
+    //TODO: break this down to suck up subcomponents
+    /** represents a single ui element */
+    export class MenuElement2D
     {
-        console.log("uiButton callback not set, uiKey="+value)
-    }
+        /** key for ensuring all renderer ids stay unique */
+        private keyDraw:number;
+        /** key used for accessing this element in the registry */
+        public keyAccess:string;
 
-    //collections of all text entities
-    menuList:List<MenuObject2D>;
-    menuDict:Dictionary<MenuObject2D>;
+        /** defines how this menu element is drawn */
+        public MenuType:MENU_ELEMENT_TYPE;
+        
+        /** defines this element's visibility state (imapcts the visibility of all lower elements) */
+        public IsVisible:boolean = true;
 
-    //minor instancing optimization (can break if we get into threading...)
-    public static parentNamePrev:string = '';
-    public static parentNameArrayCur:string[] = [''];
+        //ui element transform
+        /** element size, width */
+        public Width:PositionUnit = '60px';
+        /** element size, height */
+        public Heigth:PositionUnit = '60px';
+        /** element position, from top */
+        public PosTop:PositionUnit = '0px';
+        /** element position, from bottom */
+        public PosBottom:PositionUnit = '0px';
+        /** element position, from left */
+        public PosLeft:PositionUnit = '0px';
+        /** element position, from right */
+        public PosRight:PositionUnit = '0px';
+        /** element positioning */
+        public PosType:PositionType = 'relative';
+        /** element content alignment */
+        public ContentAlignment:AlignType = 'center';
+        /** element content justification */
+        public ContentJustify:JustifyType = 'center';
 
+        //ui element text
+        /** element display text */
+        public TextValue:string = '';
+        /** element text alignment */
+        public TextAlign:TextAlignType = 'middle-center';
+        /** element text size */
+        public TextSize:number = 12;
 
-    /** */
-    constructor(menuType:MENU2D_TYPE, name: string)
-    {
-        this.MenuType = menuType;
+        //ui element background
+        /** element background colour */
+        public BackgroundColour:Color4 = Color4.Black();
+        /** element background image */
+        public BackgroundImage:string = "";
 
-        this.name = name;
-        this.uiKey = MenuObject2D.GetNumberKey();
-
-        //collections
-        this.menuList = new List<MenuObject2D>();
-        this.menuDict = new Dictionary<MenuObject2D>();
-
-        if(isMenuDebugging) console.log("created new UI, key="+this.uiKey);
-    }
-
-    /** adds a new menu object, iterating down a chain of parents to find the target */
-    public AddMenu(menuType:MENU2D_TYPE,name:string): MenuObject2D
-    {
-        //attempt to get next node in the chain
-        const node = MenuObject2D.parentNameArrayCur.pop();
-
-        //if node is undefined, end of chain
-        if(node == undefined)
-        {
-            if(isMenuDebugging) console.log("2D Menu: added ui element name="+name+", parent="+MenuObject2D.parentNamePrev);
-            const menuObject:MenuObject2D = new MenuObject2D(menuType, name);
-
-            this.menuList.addItem(menuObject);
-            this.menuDict.addItem(name, menuObject);
-
-            return menuObject;
+        //ui elemnt callbacks
+        /** callback for mouse down events */
+        public MouseButtonEvent = MenuCallbackEmpty;
+        /** */
+        public MouseButtonDown(value:any) {
+            console.log("uiButton callback not set, uiKey="+value);
         }
-        //continue chain
-        if(isMenuDebugging) console.log("2D Menu: parsing chain curNode="+this.name+", nextNode="+node+", remaining="+MenuObject2D.parentNameArrayCur.length);
-        MenuObject2D.parentNamePrev = node;
-        return this.menuDict.getItem(node).AddMenu(menuType,name);
-    }
 
-    /** returns all render peices */
-    public GetRenderPieces()
-    {
-        //ensure piece is visible
-        if(!this.IsVisible) return null;
+        //TODO: can probs get them directly from the overhead manager
+        //collections of all sub entities
+        menuElementList:List<MenuElement2D>;
+        menuElementDict:Dictionary<MenuElement2D>;
 
-        //get all child ui elements
-        var ret = [];
-        for (let i = 0; i < this.menuList.size(); i++) 
-        {
-            const result = this.menuList.getItem(i).GetRenderPiece();
-            if(result != null) ret.push(result);
+        //minor instancing optimization (can break if we get into threading...)
+        public static parentNamePrev:string = "";
+        public static parentNameArrayCur:string[] = [];
+
+        /** used to initialize the element's data */
+        constructor(type:MENU_ELEMENT_TYPE, name: string) {
+            //set indexing
+            this.keyDraw = getNextIndex();
+            this.keyAccess = name;
+
+            //set type
+            this.MenuType = type;
+
+            //collections
+            this.menuElementList = new List<MenuElement2D>();
+            this.menuElementDict = new Dictionary<MenuElement2D>();
+
+            if(isMenuDebugging) console.log(debugTag+"created new element, key="+this.keyDraw);
         }
-        return ret;
-    }
 
-    /** */
-    public GetRenderPiece()
-    {
-        //ensure piece is visible
-        if(!this.IsVisible) return null;
-
-        //preocess return based on type
-        switch(this.MenuType)
+        /** adds a new menu object, iterating down a chain of parents to find the target */
+        public AddMenu(type:MENU_ELEMENT_TYPE,name:string):MenuElement2D
         {
-            //standard entity
-            case MENU2D_TYPE.MENU_ENTITY:
-                return <UiEntity key= {this.uiKey}
-                    uiTransform={{
-                        width: this.Width, height: this.Heigth,
-                        position: { top:this.PosTop, bottom:this.PosBottom, left:this.PosLeft, right:this.PosRight },
-                        alignContent: this.ContentAlignment,
-                        justifyContent: this.ContentJustify,
-                        positionType: 'absolute',
-                    }}
-                    uiText={{ 
-                        value: this.TextValue, 
-                        textAlign: this.TextAlign,
-                        fontSize: this.TextSize 
-                    }}
-                    uiBackground={{ 
-                        color: this.BackgroundColour,
-                    }}
-                >
-                    {this.GetRenderPieces()}
-                </UiEntity>
-            //button entity
-            case MENU2D_TYPE.MENU_BUTTON:
-                return <Button key= {this.uiKey}
-                    uiTransform={{
-                        width: this.Width, height: this.Heigth,
-                        position: { top:this.PosTop, bottom:this.PosBottom, left:this.PosLeft, right:this.PosRight },
-                        alignContent: this.ContentAlignment,
-                        justifyContent: this.ContentJustify,
-                    }}
-                    uiBackground={{ 
-                        color: this.BackgroundColour 
-                    }}
-                    value = ""
-                    onMouseDown={() => this.MouseButtonEvent()}//this.MouseButtonDown(this.uiKey) }
-                >
-                    {this.GetRenderPieces()}
-                </Button>
-            //image entity
-            case MENU2D_TYPE.MENU_IMAGE:
-                return <UiEntity key= {this.uiKey}
-                    uiTransform={{
-                        width: this.Width, height: this.Heigth,
-                        position: { top:this.PosTop, bottom:this.PosBottom, left:this.PosLeft, right:this.PosRight },
-                        alignContent: this.ContentAlignment,
-                        justifyContent: this.ContentJustify,
-                        positionType: 'absolute',
-                    }}
-                    uiBackground={{ 
-                        color: this.BackgroundColour,
-                        textureMode: "stretch",
-                        texture: { src: this.BackgroundImage, filterMode: "point", wrapMode:"repeat" }
-                    }}
-                >
-                    {this.GetRenderPieces()}
-                </UiEntity>
+            //attempt to get next node in the chain
+            const node = MenuElement2D.parentNameArrayCur.pop();
+
+            //if node is undefined, end of chain
+            if(node == undefined) {
+                if(isMenuDebugging) console.log(debugTag+"added sub-element name="+name+", parent="+MenuElement2D.parentNamePrev);
+                const menuObject:MenuElement2D = new MenuElement2D(type, name);
+
+                this.menuElementList.addItem(menuObject);
+                this.menuElementDict.addItem(name, menuObject);
+
+                return menuObject;
+            }
+            //continue chain
+            if(isMenuDebugging) console.log(debugTag+"parsing chain curNode="+this.keyAccess+", nextNode="+node+", remaining="+MenuElement2D.parentNameArrayCur.length);
+            MenuElement2D.parentNamePrev = node;
+            return this.menuElementDict.getItem(node).AddMenu(type,name);
+        }
+
+        /** returns all sub-elements tied to this element */
+        public GetRenderPieces() {
+            //halt if element is not visible
+            if(!this.IsVisible) return null;
+
+            //get all sub-elements
+            var ret = [];
+            for (let i = 0; i < this.menuElementList.size(); i++) 
+            {
+                const result = this.menuElementList.getItem(i).GetRenderPiece();
+                if(result != null) ret.push(result);
+            }
+            return ret;
+        }
+
+        /** returns the draw details for this element */
+        public GetRenderPiece() {
+            //halt if element is not visible
+            if(!this.IsVisible) return null;
+
+            //preocess draw output based on element's type (if I were actually smart there would be a better fix using inheritence here, but I just cant do it man ;-;)
+            switch(this.MenuType) {
+                //standard entity
+                case MENU_ELEMENT_TYPE.MENU_ENTITY:
+                    return <UiEntity key= {this.keyDraw}
+                        uiTransform={{
+                            width: this.Width, height: this.Heigth,
+                            position: { top:this.PosTop, bottom:this.PosBottom, left:this.PosLeft, right:this.PosRight },
+                            alignContent: this.ContentAlignment,
+                            justifyContent: this.ContentJustify,
+                            positionType: this.PosType,
+                        }}
+                        uiText={{ 
+                            value: this.TextValue, 
+                            textAlign: this.TextAlign,
+                            fontSize: this.TextSize 
+                        }}
+                        uiBackground={{ 
+                            color: this.BackgroundColour,
+                        }}
+                    >
+                        {this.GetRenderPieces()}
+                    </UiEntity>
+                //button entity
+                case MENU_ELEMENT_TYPE.MENU_BUTTON:
+                    return <Button key= {this.keyDraw}
+                        uiTransform={{
+                            width: this.Width, height: this.Heigth,
+                            position: { top:this.PosTop, bottom:this.PosBottom, left:this.PosLeft, right:this.PosRight },
+                            alignContent: this.ContentAlignment,
+                            justifyContent: this.ContentJustify,
+                        }}
+                        uiBackground={{ 
+                            color: this.BackgroundColour 
+                        }}
+                        value = ""
+                        onMouseDown={() => this.MouseButtonEvent()}//this.MouseButtonDown(this.uiKey) }
+                    >
+                        {this.GetRenderPieces()}
+                    </Button>
+                //image entity
+                case MENU_ELEMENT_TYPE.MENU_IMAGE:
+                    return <UiEntity key= {this.keyDraw}
+                        uiTransform={{
+                            width: this.Width, height: this.Heigth,
+                            position: { top:this.PosTop, bottom:this.PosBottom, left:this.PosLeft, right:this.PosRight },
+                            alignContent: this.ContentAlignment,
+                            justifyContent: this.ContentJustify,
+                            positionType: this.PosType,
+                        }}
+                        uiBackground={{ 
+                            color: this.BackgroundColour,
+                            textureMode: "stretch",
+                            texture: { src: this.BackgroundImage, filterMode: "point", wrapMode:"repeat" }
+                        }}
+                    >
+                        {this.GetRenderPieces()}
+                    </UiEntity>
+            }
         }
     }
+
+    //begin serving ui
+    StartRenderer();
 }
 
 //reference for splice sheet pieces

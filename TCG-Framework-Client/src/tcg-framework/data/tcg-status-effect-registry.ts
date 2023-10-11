@@ -1,6 +1,4 @@
 import Dictionary, { List } from "../../utilities/collections";
-import { CARD_KEYWORD_ID, CardKeywordData, CardKeywordDataObject } from "./tcg-keyword-data";
-import { CardKeywordTextureData, CardKeywordTextureDataObject } from "./tcg-keyword-texture-data";
 import { STATUS_EFFECT_ID, StatusEffectData, StatusEffectDataObject } from "./tcg-status-effect-data";
 
 /*      TRADING CARD GAME - CARD STATUS EFFECTS REGISTRY
@@ -31,7 +29,7 @@ export class SatusEffectRegistry {
     /** when true debugging logs will be generated (ensure is false when deploying to remove overhead) */
     private static IsDebugging: boolean = false;
     /** hard-coded tag for module, helps log search functionality */
-    private static debugTag:string = "Card Effect Entry: ";
+    private static debugTag:string = "Card Effect Registry: ";
 
     //access pocketing
     private static instance: undefined | SatusEffectRegistry;
