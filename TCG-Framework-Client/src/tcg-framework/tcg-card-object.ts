@@ -3,7 +3,7 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
-import { CARD_TYPE, CardData, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
 import { CardFactionDataObject } from "./data/tcg-faction-data";
 import { CardFactionTextureDataObject } from "./data/tcg-faction-texture-data";
 import { CardTextureDataObject } from "./data/tcg-card-texture-data";
@@ -500,17 +500,17 @@ export module CardDisplayObject
 
             //update keyword display
             //  ensure correct number of objects
-            while(this.keywordObjects.length > def.cardKeywordEffects.length) {
+            while(this.keywordObjects.length > def.cardEffects.length) {
                 const keyword = this.keywordObjects.pop();
                 if(keyword) CardKeywordDisplayObject.Disable(keyword);
             }
             //  process all required keywords
-            for(let i:number=0; i<def.cardKeywordEffects.length; i++) {
+            for(let i:number=0; i<def.cardEffects.length; i++) {
                 //if new keyword object needs to be claimed, create new keyword object
                 if(i > this.keywordObjects.length-1) {
                     this.keywordObjects.push(CardKeywordDisplayObject.Create({
                         ownerType:CARD_OBJECT_OWNER_TYPE.SHOWCASE,
-                        def:def.cardKeywordEffects[i],
+                        def:def.cardEffects[i],
                         tableID:this.TableID,
                         teamID:this.TeamID,
                         slotID:this.SlotID,
@@ -523,7 +523,7 @@ export module CardDisplayObject
                 } 
                 //if keyword object already exists, repopulate keyword object
                 else {
-                    this.keywordObjects[i].SetKeyword(def.cardKeywordEffects[i]);
+                    this.keywordObjects[i].SetKeyword(def.cardEffects[i]);
                 }
             }
 

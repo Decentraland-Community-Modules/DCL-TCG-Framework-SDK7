@@ -5,8 +5,11 @@
     think of the keywords as the visual representation/on-card view of what a card does,
     card status effects as what is being done to a unit/card in the game
 
+    an advanced use of this system is the keyword cauterize (applies an instant heal to the target, but also an over time burn), 
+    it makes use of 2 status effects while the concept only requires a single keyword to convay what is happening
+
     keywords are used to define how status effects can be applied to cards, ex:
-        when a spell with the 'ignite' keyword will apply the 'burning' effect to the target
+        when played against a target, a spell card with the 'ignite' keyword will apply the 'burning' effect to the target
         when a unit with the 'enflame' keyword attacks a target it will apply the 'burning' effect to the defending unit
         when a unit with the 'flame ward' keyword defends against an attack from a target it will apply the 'burning' effect to the attacking unit
     in this example there are 3 different keywords in use, but each makes use of the same status effect
@@ -17,44 +20,19 @@ import { TEXTURE_SHEET_CARD_KEYWORD } from "./tcg-keyword-texture-data";
 import { STATUS_EFFECT_ID } from "./tcg-status-effect-data";
 
 /** defines all possible timing types for status effects tied to a keyword
- *      this defines how long a keyword effect is processed on a card
+ *      this defines when a keyword effect is processed against a card
  *  are you damaging the enemy once or every round?
  */
 export enum CARD_KEYWORD_EFFECT_TIMING {
     //applied 1 time, instantly after being played
     //  ex: healing a unit increases their current health (effect does not need tracking)
-    INSTANT = 0,
+    INSTANT,
     //applied 1 time, but effect is tracked (so can be purged/modified)
     //  ex: giving a unit a sword that increases attack (sword can be taken away)
-    CONSTANT = 1,
-    //applied n times, once per round after being played 
-    //  ex: providing the unit with an increased strength per round (the buff providing further growth can be removed, but any power gained remain)
-    REPEATING = 2,
-}
-
-/** defines all possible execution types for status effects tied to a keyword
- *      this defines when a keyword effect is processed against a card
- *  is this effect being called when the card is played or when a unit attacks?
- */
-export enum CARD_KEYWORD_EFFECT_EXECUTION {
-    //effect is activated when card is played
-    //  ex: fireball spell that appling burning on targeted unit
-    PLAYED,
-    //effect is activated when unit attacks
-    //  ex: unit attacks an enemy applying burning on the defending unit
-    ATTACKED_SELF,
-    //effect is activated when unit attacks
-    //  ex: unit attacks an enemy applying burning on the defending unit
-    ATTACKED_OTHER,
-    //effect is activated when unit defends against an attack
-    //  ex: unit defending against an enemy's attack applies burning on the attacking unit
-    DEFENDED_SELF,
-    //effect is activated when unit defends against an attack
-    //  ex: unit defending against an enemy's attack applies burning on the attacking unit
-    DEFENDED_OTHER,
-    //effect is activated when unit is killed
-    //  ex: unit is killed and card is placed back into deck
-    KILLED,
+    CONSTANT,
+    //applied n times, once per round after being played
+    //  ex: healing a unit across multiple rounds (effect )
+    EXPIRES,
 }
 
 /** data interface for defining a card keyword's splice sheet draw details */
@@ -68,8 +46,8 @@ export interface CardKeywordSheetDataObject {
 export interface CardKeywordEffectDataObject
 {
     id:STATUS_EFFECT_ID;
-    activation:CARD_KEYWORD_EFFECT_EXECUTION; //defines how a keyword is activated
-    timing:CARD_KEYWORD_EFFECT_TIMING; //defines how long the effect will last/how purging will be processed
+    timing:CARD_KEYWORD_EFFECT_TIMING;
+    isPurgable:boolean; //defines whether an effect can be purged, this is irrelevent for certain 
 }
 
 /** data interface for defining a trigger type */
@@ -83,7 +61,7 @@ export interface CardKeywordDataObject
     iconColour:Color4,
     sheetData:CardKeywordSheetDataObject;
     //gameplay
-    playEffect:CardKeywordEffectDataObject;
+    playEffects:CardKeywordEffectDataObject[];
 }
 
 /** unique ids for every possible card keyword */
@@ -108,9 +86,8 @@ export enum CARD_KEYWORD_ID {
     HEALTH_DECAY, //instant
     HEALTH_IGNITE, //over time
     HEALTH_WITHER, //over time
-    //  character enhancements
-    HEALTH_ENFLAME, //applies damage over time to enemy attacked by this unit
-    HEALTH_FLAME_WARD, //applies damage over time to enemy attacking this unit
+    //  mixed
+    HEALTH_CAUTERIZE, //instant heal, over time burn
 
     //### ATTACK
     //  increases attack
@@ -164,9 +141,11 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Inflicts @P damage, reduced by armour",
         //display 2D
         iconColour: Color4.Red(),
-        sheetData: { id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.DAMAGE, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT }
+        playEffects: [
+            { id:STATUS_EFFECT_ID.DAMAGE, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:false }
+        ]
     },
     //deals damage to the unit using the standard process (reduced by armour, applied to health)
     //  applied n times, once per round
@@ -177,9 +156,11 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Inflicts @P damage for @T rounds, reduced by armour",
         //display 2D
         iconColour: Color4.Red(),
-        sheetData: { id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.DAMAGE_RECOILING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.DAMAGE_RECOILING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
 
 
@@ -193,9 +174,11 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Restores @P health",
         //display 2D
         iconColour: Color4.Green(),
-        sheetData: { id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_HEAL, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_HEAL, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //increases current health, up to the max
     //  applied n times, once per round
@@ -206,9 +189,11 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         displayDesc: "Restores @P health for @T rounds",
         //display 2D
         iconColour: Color4.Green(),
-        sheetData: { id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_MENDING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_MENDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     //decreases current health (skips armour calc)
     //  applied 1 time, instantly/on-use
@@ -221,7 +206,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 5, posY: 7 },
         //gameplay
-        playEffect:  { id:STATUS_EFFECT_ID.HEALTH_PUNCTURE, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_PUNCTURE, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //decreases current health (skips armour calc)
     //  applied n times, once per round
@@ -234,7 +221,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     //increases max health (current health also increases by amount)
     //  applied 1 time, instantly/on-use
@@ -247,7 +236,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_PUNCTURE, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_PUNCTURE, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //increases max health (current health also increases by amount)
     //  applied n times, once per round
@@ -260,7 +251,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_BLEEDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     //decreases max health (current health is not reduced by amount, but is leashed to max health)
     //  applied 1 time, instantly/on-use
@@ -273,7 +266,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Green(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_SHRINK, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_SHRINK, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //decreases max health (current health is not reduced by amount, but is leashed to max health)
     //  applied 1 time, instantly/on-use
@@ -286,7 +281,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Purple(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_DECAY, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_DECAY, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //decreases max health (current health is not reduced by amount, but is leashed to max health)
     //  applied n times, once per round
@@ -299,7 +296,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_BURNING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_BURNING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     //decreases max health (current health is not reduced by amount, but is leashed to max health)
     //  applied n times, once per round
@@ -312,33 +311,26 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Purple(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_WITHERING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_WITHERING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
-    //## CHARACTER BUFFS
-    //  when unit attacks, applies burn over time to target
+    //#COMPLEX => increases cur health, applies burn over time
     {
-        id: CARD_KEYWORD_ID.HEALTH_ENFLAME,
+        id: CARD_KEYWORD_ID.HEALTH_CAUTERIZE,
         //displays
-        displayName: "Igniting Attacks",
-        displayDesc: "When unit attacks, applies @P burning on defender for @T rounds",
+        displayName: "Cauterize",
+        displayDesc: "Restores @P health, but also inflicts burning on the target for @T rounds",
         //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
+        iconColour: Color4.Red(),
+        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_BURNING, activation:CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_OTHER, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.HEALTH_HEAL, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true },
+            { id:STATUS_EFFECT_ID.HEALTH_BURNING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
-    //  applied n times, once per round
-    {
-        id: CARD_KEYWORD_ID.HEALTH_FLAME_WARD,
-        //displays
-        displayName: "Flame Ward",
-        displayDesc: "When unit defends, applies @P burning on attacker for @T rounds",
-        //display 2D
-        iconColour: Color4.Yellow(),
-        sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 7 },
-        //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.HEALTH_BURNING, activation:CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_OTHER, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
-    },
+    
 
     //### ATTACK
     //increases attack
@@ -352,7 +344,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ATTACK_SHARPEN, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ATTACK_SHARPEN, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //increases attack
     //  applied n times, once per round
@@ -365,7 +359,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ATTACK_ASCENDING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ATTACK_ASCENDING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     //decreases attack
     //  applied 1 time, instantly/on-use
@@ -378,7 +374,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 7, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ATTACK_BLUNT, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ATTACK_BLUNT, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //decreases attack
     //  applied n times, once per round
@@ -391,7 +389,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ATTACK_WEAKENING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ATTACK_WEAKENING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
 
 
@@ -407,7 +407,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ARMOUR_REINFORCE, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ARMOUR_REINFORCE, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //increases armour
     //  applied n times, once per round
@@ -420,7 +422,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 1, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ARMOUR_FORTIFYING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ARMOUR_FORTIFYING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     //decreases armour
     //  applied 1 time, instantly/on-use
@@ -433,7 +437,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ARMOUR_SHEAR, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ARMOUR_SHEAR, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:true }
+        ]
     },
     //decreases armour
     //  applied n times, once per round
@@ -446,7 +452,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 4, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ARMOUR_MELTING, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.REPEATING } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ARMOUR_MELTING, timing:CARD_KEYWORD_EFFECT_TIMING.EXPIRES, isPurgable:true }
+        ]
     },
     
 
@@ -461,7 +469,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 0, posY: 5 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ACTIVITY_MOD_REFRESH, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ACTIVITY_MOD_REFRESH, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:false }
+        ]
     },
     //disables the action for the targeted unit (stops them from attacking)
     {
@@ -473,7 +483,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Yellow(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 5 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.ACTIVITY_MOD_EXHAUST, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.ACTIVITY_MOD_EXHAUST, timing:CARD_KEYWORD_EFFECT_TIMING.INSTANT, isPurgable:false }
+        ]
     },
     
 
@@ -488,7 +500,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 3, posY: 7 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.TARGETING_MOD_TAUNT, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.TARGETING_MOD_TAUNT, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT, isPurgable:false }
+        ]
     },
     //sets unit to lowest targeting layer (hides)
     {
@@ -500,7 +514,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.White(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 6, posY: 6 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.TARGETING_MOD_STEALTH, activation:CARD_KEYWORD_EFFECT_EXECUTION.PLAYED, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.TARGETING_MOD_STEALTH, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT, isPurgable:false }
+        ]
     },
 
 
@@ -515,7 +531,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 5 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.DEATH_MOD_TO_HAND, activation:CARD_KEYWORD_EFFECT_EXECUTION.KILLED, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.DEATH_MOD_TO_HAND, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT, isPurgable:false }
+        ]
     },
     //when the unit is defeated its card is added back to the player's deck
     {
@@ -527,7 +545,9 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 5 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.DEATH_MOD_TO_DECK, activation:CARD_KEYWORD_EFFECT_EXECUTION.KILLED, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.DEATH_MOD_TO_DECK, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT, isPurgable:false }
+        ]
     },
     //when the unit is defeated its card is removed from the game
     {
@@ -539,6 +559,8 @@ export const CardKeywordData: CardKeywordDataObject [] = [
         iconColour: Color4.Red(),
         sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX: 2, posY: 5 },
         //gameplay
-        playEffect: { id:STATUS_EFFECT_ID.DEATH_MOD_DESTROY, activation:CARD_KEYWORD_EFFECT_EXECUTION.KILLED, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT } 
+        playEffects: [
+            { id:STATUS_EFFECT_ID.DEATH_MOD_DESTROY, timing:CARD_KEYWORD_EFFECT_TIMING.CONSTANT, isPurgable:false }
+        ]
     },
 ];

@@ -7,7 +7,7 @@ import { CARD_KEYWORD_ID, CardKeywordDataObject } from "./data/tcg-keyword-data"
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
 import { CardKeywordTextureDataObject } from "./data/tcg-keyword-texture-data";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
-import { CardKeywordEffectsDataObject } from "./data/tcg-card-data";
+import { CardEffectDataObject } from "./data/tcg-card-data";
 
 
 /*      TRADING CARD GAME - CARD KEYWORD OBJECT
@@ -87,7 +87,7 @@ export module CardKeywordDisplayObject
 	export interface CardKeywordObjectCreationData {
         //display type
         ownerType:CARD_OBJECT_OWNER_TYPE,
-        def:CardKeywordEffectsDataObject,
+        def:CardEffectDataObject,
         //indexing
         tableID?:string,
         teamID?:string,
@@ -232,13 +232,13 @@ export module CardKeywordDisplayObject
         }
 
         /** */
-        public SetKeyword(data:CardKeywordEffectsDataObject, hasInteractions:boolean=true) {
-            this.defID = data.id;
+        public SetKeyword(data:CardEffectDataObject, hasInteractions:boolean=true) {
+            this.defID = data.type;
             //enable object
             Transform.getOrCreateMutable(this.entityParent).scale = PARENT_SCALE_ON;
             
             //get keyword definition
-            const defData:CardKeywordDataObject = CardKeywordRegistry.Instance.GetDefByID(data.id);
+            const defData:CardKeywordDataObject = CardKeywordRegistry.Instance.GetDefByID(data.type);
             //set keyword icon image
             //  get required def references
             const keywordSheet: CardKeywordTextureDataObject = CardKeywordRegistry.Instance.CallbackGetKeywordTexture(defData.id);
@@ -263,11 +263,10 @@ export module CardKeywordDisplayObject
             });
 
             //update text
-            var displayString:string = "";
-            if(data.strength != -1) displayString += "P:"+data.strength;
-            if(data.duration != undefined && data.duration != -1) displayString += "\nT:"+data.duration;
+            var str:string = "P:"+data.strength;
+            if(data.duration != undefined) str += "\nT:"+data.duration;
 
-            TextShape.getMutable(this.entityDisplayText).text = displayString;
+            TextShape.getMutable(this.entityDisplayText).text = str;
             
             //if card has interactions, add pointer event system
             if(hasInteractions) {

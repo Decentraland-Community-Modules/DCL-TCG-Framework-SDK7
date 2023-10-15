@@ -26,10 +26,10 @@ export enum PLAYER_ACCOUNT_TYPE {
     PREMIUM, //logged in and confirmed to own cards
 }
 export const PLAYER_ACCOUNT_TYPE_STRINGS:string[] = [
-    "Loading...",
-    "Guest",
-    "Standard",
-    "Premium",
+    "UNINITIALIZED",
+    "GUEST",
+    "STANDARD",
+    "PREMIUM",
 ];
 
 /** all connectivity types for the scene */

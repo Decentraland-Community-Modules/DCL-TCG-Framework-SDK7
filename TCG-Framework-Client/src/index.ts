@@ -14,6 +14,8 @@ import { CardSubjectDisplayPanel } from "./tcg-framework/tcg-card-subject-displa
 /**
 	TODO:
 	- clean-up team stats when a the game ends
+	- NFT ownership checks
+	- dynamic card count limiting
 	- modify ai to play spells
 	- friendly spells cause flinch atm, they should not
 	- timed/DOT effect processing (fire, acid, etc.)
@@ -37,6 +39,9 @@ async function tcgSetUp() {
 
 		//create info panel
 		InfoPanel.SetPosition({ x:24, y:2, z:8 });
+
+		//create card subject display panel
+		CardSubjectDisplayPanel.SetPosition({ x:30, y:2, z:24 });
 
 		//create deck managers
 		//	left
@@ -70,6 +75,21 @@ async function tcgSetUp() {
 			parent: undefined,
 			position: { x:34, y:0, z:24 },
 			rotation: { x:0, y:90, z:0 }
+		});
+
+		//create test character
+		//	test char
+		/** selected card details background */
+		const statDetails:Entity = engine.addEntity();
+		Transform.create(statDetails,{
+			parent:undefined,
+			position: { x:-0.32, y:0.10, z:-0.10 },
+			scale: { x:1, y:1, z:1, },
+		});
+		GltfContainer.create(statDetails, {
+			src: "models/tcg-framework/menu-displays/info-base-plate.glb",
+			visibleMeshesCollisionMask: undefined,
+			invisibleMeshesCollisionMask: undefined
 		});
 	
 		//enable processing

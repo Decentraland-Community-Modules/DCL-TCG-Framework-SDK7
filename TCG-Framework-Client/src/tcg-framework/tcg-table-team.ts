@@ -8,8 +8,6 @@ import { PlayCard } from "./tcg-play-card";
 import { InteractionObject } from "./tcg-interaction-object";
 import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { PlayerLocal } from "./config/tcg-player-local";
-import { STATUS_EFFECT_AFFINITY } from "./data/tcg-status-effect-data";
-import { CARD_KEYWORD_EFFECT_EXECUTION } from "./data/tcg-keyword-data";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
     represents team on a table
@@ -139,7 +137,7 @@ export module TableTeam {
             this.entityModel = engine.addEntity();
             Transform.create(this.entityModel, { parent: this.entityParent, scale: {x:1.2,y:1.2,z:1.2}, rotation: Quaternion.fromEulerDegrees(0,180,0) });
             GltfContainer.create(this.entityModel, {
-                src: 'models/tcg-framework/menu-displays/display-frame-wide.glb',
+                src: 'models/tcg-framework/menu-displays/display-wide.glb',
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
@@ -630,7 +628,7 @@ export module TableTeam {
                 rotation: Quaternion.fromEulerDegrees(0, 180, 0)
             });
             GltfContainer.create(this.handCardObject, {
-                src: 'models/tcg-framework/menu-displays/display-frame-wide.glb',
+                src: 'models/tcg-framework/menu-displays/display-wide.glb',
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
             });
@@ -753,7 +751,7 @@ export module TableTeam {
             }
 
             //if character is registered to table
-            if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer) {
+            if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
                 //disable team selector & display
                 Transform.getMutable(this.entityTeamTargetorInteraction).scale = PARENT_SCALE_OFF;
                 Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_OFF;
@@ -783,11 +781,11 @@ export module TableTeam {
                             if(this.RegisteredPlayer != undefined) {
                                 Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                                 //if registered player is local player, display leave button
-                                if(this.RegisteredPlayer == PlayerLocal.GetDisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
+                                if(this.RegisteredPlayer == PlayerLocal.DisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
                                 else Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
 
                                 //if local player owns table
-                                if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer) {
+                                if(PlayerLocal.DisplayName() == this.RegisteredPlayer) {
                                     //ready state toggling
                                     if(this.ReadyState) {
                                         Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
@@ -820,7 +818,7 @@ export module TableTeam {
                             Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             //if local player's turn
-                            if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
+                            if(PlayerLocal.DisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
                                 Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_SMALL; 
                                 Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_SMALL; 
                             } 
@@ -854,7 +852,7 @@ export module TableTeam {
             }
         }
 
-        /** called when a turn starts */
+        /**  */
         public TurnStart() {
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn started");
 
@@ -868,14 +866,13 @@ export module TableTeam {
                 const slot = this.cardSlotObjects[i];
                 if(slot.SlottedCard != undefined) {
                     //process card's start turn effects
-                    slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HELPFUL);
-                    //update display
+                    slot.SlottedCard.ProcessTurnStartEffects();
                     slot.UpdateStatDisplay();
                 }
             }
         }
 
-        /** called when a turn ends */
+        /** */
         public TurnEnd() { 
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn ended");
 
@@ -884,11 +881,8 @@ export module TableTeam {
                 //if there is a card tied to the slot
                 const slot = this.cardSlotObjects[i];
                 if(slot.SlottedCard != undefined) {
-                    //re-enable card's action (we do this at the end of the turn so enemy has a chance to stun the character)
-                    slot.SlottedCard.ActionRemaining = true;
                     //process card's end turn effects
-                    slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HARMFUL);
-                    //update display
+                    slot.SlottedCard.ProcessTurnEndEffects();
                     slot.UpdateStatDisplay();
                 }
             }

@@ -1,3 +1,5 @@
+import { GetUserDataResponse, getUserData } from '~system/UserIdentity';
+import { getRealm } from '~system/Runtime';
 import { CONTRACT_DATA_ID, ContractData, ContractDataObject, NFT_ACTIVATION_TYPE } from './tcg-nft-linkage-data';
 import Dictionary, { List } from '../../utilities/collections';
 import { CardData } from './tcg-card-data';
@@ -7,7 +9,6 @@ import { Entity, TextAlignMode, TextShape, Transform, engine } from '@dcl/sdk/ec
 import { Quaternion } from '@dcl/sdk/math';
 import { onProfileChanged } from '@dcl/sdk/observables';
 import * as utils from '@dcl-sdk/utils'
-import { getSceneInfo } from '~system/Scene';
     
 /*      TRADING CARD GAME - NFT LINKAGE REGISTRY
 
@@ -40,7 +41,7 @@ export class NFTLinkageEntry {
 */
 export class NFTLinkageRegistry {
     /** when true debug logs are generated (toggle off when you deploy) */
-    static IsDebugging:boolean = false;
+    static IsDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     static debugTag:string = "TCG NFT Link Registry: ";
     //debugging entity (b.c dcl sucks at displaying logs when deployed)
@@ -96,18 +97,14 @@ export class NFTLinkageRegistry {
         this.registryViaType = new Dictionary<List<NFTLinkageEntry>>();
 
         //populate registry collections
-        //  process every type
-        Object.keys(NFT_ACTIVATION_TYPE).forEach((key, value) => {
-            //add type listing
-            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"creating type {key=" + key+", value="+value+"}");
-            this.registryViaType.addItem(key.toString(), new List<NFTLinkageEntry>());
-        });
-        //  process every def
+        //  process every card def
         for (var i: number = 0; i < ContractData.length; i++) {
             //prepare entry
             const entry = new NFTLinkageEntry(i, ContractData[i].id);
-            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"creating entry {index=" + i + ", id=" + ContractData[i].id.toString()
-                +", type="+ContractData[i].type.toString()+"}");
+            if (NFTLinkageRegistry.IsDebugging) console.log(NFTLinkageRegistry.debugTag+"creating entry=" + i + ", id=" + ContractData[i].id.toString());
+            //ensure type registry exists
+            if(!this.registryViaType.containsKey(ContractData[i].type.toString()))
+                this.registryViaType.addItem(ContractData[i].type.toString(), new List<NFTLinkageEntry>());
             //add to registry
             this.registryAll.addItem(entry);
             this.registryViaID.addItem(ContractData[i].id.toString(), entry);

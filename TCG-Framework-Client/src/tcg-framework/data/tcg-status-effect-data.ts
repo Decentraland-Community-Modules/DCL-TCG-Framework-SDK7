@@ -27,11 +27,11 @@
         //an effect that benefits the unit it is attached to
         //processed at the start of a turn
         //  ex: heals a unit or increases unit's attack damage
-        HELPFUL = 0,    
+        HELPFUL,    
         //an effect that hinders the unit it is attached to
         //processed at the end of a turn
         //  ex: removes armour from the unit or causes damage
-        HARMFUL = 1,
+        HARMFUL,
     }
 
     /** defines how a status effect is processed by code when played/the actual thing that happens */
@@ -170,7 +170,7 @@
     }
     
     /** listing of all card keywords, official keywords are 'tcg' */
-    export const StatusEffectData:StatusEffectDataObject[] = [
+    export const CardKeywordData:StatusEffectDataObject[] = [
         //### CORE
         //  deals damage to the unit using the standard process (reduced by armour, applied to health)
         {   //instant damage
