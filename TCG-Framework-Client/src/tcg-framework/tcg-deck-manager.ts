@@ -1,9 +1,9 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, PBAnimationState, PBAnimator, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry, CardEntry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject, CardEffectDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
@@ -35,7 +35,7 @@ import { CardSubjectDisplayPanel } from "./tcg-card-subject-display";
 */
 export module DeckManager {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Deck Manager: ";
 
@@ -175,9 +175,9 @@ export module DeckManager {
             //  add animations
             Animator.create(this.entityCore, {
                 states:[
-                    { name: ANIM_KEYS_DECK_MANAGER[0], clip: ANIM_KEYS_DECK_MANAGER[0], playing: true, loop: false },
-                    { name: ANIM_KEYS_DECK_MANAGER[1], clip: ANIM_KEYS_DECK_MANAGER[1], playing: false, loop: false },
-                    { name: ANIM_KEYS_DECK_MANAGER[2], clip: ANIM_KEYS_DECK_MANAGER[2], playing: false, loop: false },
+                    { clip: ANIM_KEYS_DECK_MANAGER[0], playing: true, loop: false },
+                    { clip: ANIM_KEYS_DECK_MANAGER[1], playing: false, loop: false },
+                    { clip: ANIM_KEYS_DECK_MANAGER[2], playing: false, loop: false },
                 ]
             });
 
@@ -193,7 +193,7 @@ export module DeckManager {
             //  add animator
             Animator.create(this.entityPedistal, {
                 states:[
-                    { name: 'rotate', clip: 'rotate', playing: true, loop: true, speed:0.25 },
+                    { clip: 'rotate', playing: true, loop: true, speed:0.25 },
                 ]
             });
 
@@ -383,7 +383,13 @@ export module DeckManager {
                 function() {
                     //ensure player is still inside zone
                     if(!playerInZone) return;
+                    
+                    //update all deck selection text pieces (card counts might change when manager is hidden due to player's data loading)
+                    for(let i:number=0; i<CardFactionData.length; i++) {
+                        TextShape.getMutable(deckInfoButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i].CardsAll.size()+")";
+                    }
 
+                    //claim all required card objects
                     GenerateCardObjects();
                     //select and load the player's current deck
                     DeckInteractionSelect(PlayerLocal.GetPlayerDeckIndex());
@@ -470,7 +476,7 @@ export module DeckManager {
             interactionText:"toggle "+CardFactionData[i].name,
             modelInteraction: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
             animCount:3,
-            modelSecondary:"models/tcg-framework/menu-buttons/symbol-faction-"+CardFactionData[i].name+".glb",
+            modelSecondary:"models/tcg-framework/card-factions/symbol-faction-"+CardFactionData[i].name+".glb",
             parent: filterParent, 
             position: { x:-1.1, y:2.2-(i*0.2), z:-0.025 },
             scale: { x:0.07, y:0.07, z:0.04, }
@@ -490,7 +496,7 @@ export module DeckManager {
             interactionText:"toggle "+CARD_TYPE_STRINGS[i],
             modelInteraction: "models/tcg-framework/menu-buttons/button-oct-dynamic.glb",
             animCount:3,
-            modelSecondary:"models/tcg-framework/menu-buttons/symbol-type-"+CARD_TYPE_STRINGS[i]+".glb",
+            modelSecondary:"models/tcg-framework/card-core/symbol-type-"+CARD_TYPE_STRINGS[i]+".glb",
             parent: filterParent, 
             position: { x:-0.95, y:2-(i*0.2), z:-0.025 },
             scale: { x:0.07, y:0.07, z:0.04, }
@@ -586,11 +592,12 @@ export module DeckManager {
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
         target:"0", 
         displayText:"",
-        modelInteraction:"models/tcg-framework/menu-displays/page-up-plate.glb",
+        modelInteraction:"models/tcg-framework/menu-buttons/button-arrow.glb",
         interactionText:"Page Next",
         parent: cardPageParent, 
         position: { x:0.2, y:0, z:0 },
-        scale: { x:0.04, y:0.04, z:0.04, }
+        scale: { x:0.4, y:0.4, z:0.4, },
+        rotation: {x:0, y:0, z:-90}
     });
     Material.setPbrMaterial(buttonCardPageNext.entityInteraction, {
         albedoColor: Color4.Green(),
@@ -600,11 +607,12 @@ export module DeckManager {
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_PAGING,
         target:"1", 
         displayText:"",
-        modelInteraction:"models/tcg-framework/menu-displays/page-down-plate.glb",
+        modelInteraction:"models/tcg-framework/menu-buttons/button-arrow.glb",
         interactionText:"Page Back",
         parent: cardPageParent, 
         position: { x:-0.2, y:0, z:0 },
-        scale: { x:0.04, y:0.04, z:0.04, }
+        scale: { x:0.4, y:0.4, z:0.4, },
+        rotation: {x:0, y:0, z:90}
     });
     Material.setPbrMaterial(buttonCardPagePrev.entityInteraction, {
         albedoColor: Color4.Green(),
@@ -710,14 +718,14 @@ export module DeckManager {
             scale: { x:1.0, y:0.10, z:0.01 }
         }));
         Material.setPbrMaterial(deckInfoButtonSelectors[i].entityInteraction, { albedoColor: Color4.White(), });
-        TextShape.getMutable(deckInfoButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i]?.CardsAll.size()+")";
+        TextShape.getMutable(deckInfoButtonSelectors[i].entityText).text = "DECK "+i+" - ("+PlayerLocal.PlayerDecks[i].CardsAll.size()+")";
     }
     /** save deck button */
     const deckInfoButtonSave = InteractionObject.Create({
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target: DECK_INTERACTION_TYPE.SAVE,
         displayText: "SAVE",
-        modelInteraction:"models/tcg-framework/menu-displays/save-load-plate.glb",
+        modelInteraction:"models/tcg-framework/menu-buttons/button-rect-medium.glb",
         interactionText: "SAVE DECK",
         textColour:Color4.White(),
         textScale: { x:0.35, y:0.35, z:1, },
@@ -731,7 +739,7 @@ export module DeckManager {
         ownerType: InteractionObject.INTERACTION_TYPE.DECK_MANAGER_MODIFY,
         target:DECK_INTERACTION_TYPE.LOAD,
         displayText:"LOAD",
-        modelInteraction:"models/tcg-framework/menu-displays/save-load-plate.glb",
+        modelInteraction:"models/tcg-framework/menu-buttons/button-rect-medium.glb",
         interactionText:"LOAD DECK",
         textColour:Color4.White(),
         textScale: { x:0.35, y:0.35, z:1, },
@@ -804,7 +812,7 @@ export module DeckManager {
         scale: { x:0.315, y:0.25, z:0.1, },
     });
     GltfContainer.create(cardInfoHeaderBackground, {
-        src: "models/tcg-framework/menu-displays/title-base-plate.glb",
+        src: "models/tcg-framework/menu-displays/content-title-background.glb",
         visibleMeshesCollisionMask: undefined,
         invisibleMeshesCollisionMask: undefined
     });
@@ -836,7 +844,7 @@ export module DeckManager {
         scale: { x:0.25, y:0.19, z:0.01, },
     });
     GltfContainer.create(cardInfoDetailsBackground, {
-        src: "models/tcg-framework/menu-displays/info-base-plate.glb",
+        src: "models/tcg-framework/menu-displays/content-info-background.glb",
         visibleMeshesCollisionMask: undefined,
         invisibleMeshesCollisionMask: undefined
     });
@@ -861,7 +869,7 @@ export module DeckManager {
         scale: { x:0.35, y:0.30, z:0.01, },
     });        
     GltfContainer.create(cardInfoDescBackground, {
-        src: "models/tcg-framework/menu-displays/desc-base-plate.glb",
+        src: "models/tcg-framework/menu-displays/content-desc-background.glb",
         visibleMeshesCollisionMask: undefined,
         invisibleMeshesCollisionMask: undefined
     });
@@ -891,37 +899,52 @@ export module DeckManager {
         position: { x:0.41, y:0.10, z:-0.1 },
         scale: { x:0.125, y:0.125, z:0.125, },
     });
-    cardInfoObject.SetCounterState(true, false);
+    //set counter state (disable all counters)
+    cardInfoObject.SetCounterState(false, false);
 
-    /** generate selected card keyword desc */
+    /** generate selected card keyword display elements */
     const cardkeywordDescBackground:Entity[] = [];
+    const cardKeywordNameText:Entity[] = [];
     const cardKeywordDescText:Entity[] = [];
     for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
         cardkeywordDescBackground[i] = engine.addEntity();
         Transform.create(cardkeywordDescBackground[i],{
             parent:cardInfoParent,
-            position: { x:0.1, y:0.275 + (i*-0.116), z:-0.10 },
-            scale: { x:0.12, y:0.13, z:0.01, },
+            position: { x:0.09, y:0.255 + (i*-0.156), z:-0.10 },
+            scale: { x:0.125, y:0.125, z:0.01, },
         });        
         GltfContainer.create(cardkeywordDescBackground[i], {
-            src: "models/tcg-framework/menu-displays/keyword-base-plate.glb",
+            src: "models/tcg-framework/menu-displays/content-keyword-background.glb",
             visibleMeshesCollisionMask: undefined,
             invisibleMeshesCollisionMask: undefined
         });
-        /** selected keyword desc text */
+        /** selected card's keyword name text */
+        cardKeywordNameText[i] = engine.addEntity();
+        Transform.create(cardKeywordNameText[i],{
+        parent:cardkeywordDescBackground[i],
+        position: { x:0, y:-0.025, z:0.0 },
+        scale: { x:0.2, y:0.2, z:0.1, },
+        });
+        TextShape.create(cardKeywordNameText[i], { text: "<EFFECT NAME>", 
+            textColor: Color4.White(), 
+            textAlign:TextAlignMode.TAM_TOP_CENTER,
+            textWrapping:true,
+            fontSize: 8,
+            width: 8, height:5
+        });
+        /** selected card's keyword desc text */
         cardKeywordDescText[i] = engine.addEntity();
         Transform.create(cardKeywordDescText[i],{
         parent:cardkeywordDescBackground[i],
-        position: { x:0, y:0.0, z:-0.11 },
+        position: { x:0, y:-0.09, z:0 },
         scale: { x:0.2, y:0.2, z:0.1, },
         });
-        TextShape.create(cardKeywordDescText[i], { text: "Title:", 
+        TextShape.create(cardKeywordDescText[i], { text: "<EFFECT DESC>\n<EFFECT DESC>\n<EFFECT DESC>\n<EFFECT DESC>\n<EFFECT DESC>", 
             textColor: Color4.White(), 
             textAlign:TextAlignMode.TAM_MIDDLE_CENTER,
             textWrapping:true,
-            fontSize: 7,
-            width: 8, height:5
-            
+            fontSize: 6,
+            width: 9.5, height:5
         });
     }
     //## CARD DISPLAY GRID FUNCTIONALITY
@@ -1077,21 +1100,21 @@ export module DeckManager {
         //update keyword description
         for(let i = 0; i < KEYWORD_DISPLAY_SIZE; i++){
             //if effects exists, update display element
-            if(cardEntry.DataDef.cardEffects.length - 1 >= i )
-            {   
-                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardEffects[i].type);
+            if(cardEntry.DataDef.cardKeywordEffects.length - 1 >= i ) {   
+                //get keyword's def
+                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardEntry.DataDef.cardKeywordEffects[i].id);
+                //update name text
+                TextShape.getMutable(cardKeywordNameText[i]).text = keywordDef.displayName;  
                 let effectString:string = keywordDef.displayDesc;
-                //insert effect power
-                effectString = effectString.replace(/@P/g, cardEntry.DataDef.cardEffects[i].strength.toString());
-                //insert effect duration (can be non-existant)
-                const duration = cardEntry.DataDef.cardEffects[i].duration;
-                if(duration) effectString = effectString.replace(/@T/g, duration.toString());
-                //update text
+                //update desc text (replacing for power & duration)
+                effectString = effectString.replace(/@P/g, cardEntry.DataDef.cardKeywordEffects[i].strength.toString());
+                const duration = cardEntry.DataDef.cardKeywordEffects[i].duration;
+                if(duration && duration != -1) effectString = effectString.replace(/@T/g, duration.toString());
                 TextShape.getMutable(cardKeywordDescText[i]).text = effectString;  
             }
             //if no effect, clear element
-            else
-            {
+            else {
+                TextShape.getMutable(cardKeywordNameText[i]).text = "";  
                 TextShape.getMutable(cardKeywordDescText[i]).text = "";
             }
         }

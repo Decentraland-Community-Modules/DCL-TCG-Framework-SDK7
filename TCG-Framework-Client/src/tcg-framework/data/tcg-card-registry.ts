@@ -12,7 +12,7 @@
 
 import { Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, engine } from "@dcl/sdk/ecs";
 import Dictionary, { List } from "../../utilities/collections";
-import { CARD_DATA_ID, CardData, CardDataObject} from "./tcg-card-data";
+import { CARD_DATA_ID, CARD_TYPE, CardData, CardDataObject} from "./tcg-card-data";
 import { CardTextureData, CardTextureDataObject } from "./tcg-card-texture-data";
 import { CARD_FACTION_TYPE, CardFactionData, CardFactionDataObject } from "./tcg-faction-data";
 import { CardFactionTextureData, CardFactionTextureDataObject } from "./tcg-faction-texture-data";
@@ -65,6 +65,8 @@ export class CardEntry {
 */
 export class CardDataRegistry {
     static IsDebugging:boolean = false;
+    /** hard-coded tag for module, helps log search functionality */
+    static debugTag:string = "TCG Card Registry: ";
 
     /** when true system is fully loaded and ready for use */
     private isInitialized:boolean = false;
@@ -110,7 +112,7 @@ export class CardDataRegistry {
      * prepares the inventory for use, populating all inventory item and callback dictionaries. 
      */
     public constructor() {
-        if (CardDataRegistry.IsDebugging) console.log("Card Registry: initializing...");
+        if (CardDataRegistry.IsDebugging) console.log(CardDataRegistry.debugTag+"initializing...");
 
         //initialize texture collections
         //  factions
@@ -141,15 +143,18 @@ export class CardDataRegistry {
         }
 
         //populate registry collections
-        //  process every card def
+        //  process every type
+        Object.keys(CARD_TYPE).forEach((key, value) => {
+            //add type listing
+            if (CardDataRegistry.IsDebugging) console.log(CardDataRegistry.debugTag+"creating type {key=" + key+", value="+value+"}");
+            this.cardRegistryViaType.addItem(key.toString(), new List<CardEntry>());
+        });
+        //  process every def
         for (var i: number = 0; i < CardData.length; i++) {
             //prepare entry
             const entry = new CardEntry(i, CardData[i].id);
-            if (CardDataRegistry.IsDebugging) console.log("Card Registry: creating entry=" + i
+            if (CardDataRegistry.IsDebugging) console.log(CardDataRegistry.debugTag+"creating entry=" + i
                 + ", type=" + CardData[i].type.toString() + ", faction=" + CardData[i].faction.toString());
-            //ensure type registry exists
-            if(!this.cardRegistryViaType.containsKey(CardData[i].type.toString()))
-                this.cardRegistryViaType.addItem(CardData[i].type.toString(), new List<CardEntry>());
             //add to registry
             this.cardRegistryAll.addItem(entry);
             this.cardRegistryViaID.addItem(CardData[i].id.toString(), entry);
@@ -157,7 +162,7 @@ export class CardDataRegistry {
             this.cardRegistryViaFaction.getItem(CardData[i].faction.toString()).addItem(entry);
         }
 
-        if (CardDataRegistry.IsDebugging) console.log("Card Registry: initialized, total count=" + this.cardRegistryAll.size());
+        if (CardDataRegistry.IsDebugging) console.log(CardDataRegistry.debugTag+"initialized, total count=" + this.cardRegistryAll.size());
     }
 
     public PrewarmIndex:number = 0;

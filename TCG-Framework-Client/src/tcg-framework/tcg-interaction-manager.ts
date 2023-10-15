@@ -81,7 +81,7 @@ export module InteractionManager {
                             case TABLE_GAME_STATE.IDLE:
                                 switch(component.action) {
                                     case TableTeam.LOBBY_BUTTONS.TEAM_JOIN:
-                                        table.LocalAddPlayerToTeam(parseInt(split[1]), PlayerLocal.DisplayName());
+                                        table.LocalAddPlayerToTeam(parseInt(split[1]), PlayerLocal.GetDisplayName());
                                     break;
                                     case TableTeam.LOBBY_BUTTONS.TEAM_LEAVE:
                                         table.LocalRemovePlayerFromTeam(parseInt(split[1]));

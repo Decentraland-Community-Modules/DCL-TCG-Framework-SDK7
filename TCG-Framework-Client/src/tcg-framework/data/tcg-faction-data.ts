@@ -1,4 +1,4 @@
-/**     CARD FACTION DATA
+/**     TRADING CARD GAME - CARD FACTION DATA
  *  all definitions relavent to card factions that can be used by cards in the game. these usually
  *  mainly define card backgrounds and what cards can be used in the deck at the same time.
  * 

@@ -1,7 +1,9 @@
 import Dictionary, { List } from "../utilities/collections";
-import { CARD_TYPE, CardData, CardDataObject } from "./data/tcg-card-data";
-import { CARD_KEYWORD_ID, CardKeywordDataObject } from "./data/tcg-keyword-data";
+import { CARD_TYPE, CardData, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
+import { CARD_KEYWORD_EFFECT_EXECUTION, CARD_KEYWORD_EFFECT_TIMING, CARD_KEYWORD_ID } from "./data/tcg-keyword-data";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
+import { STATUS_EFFECT_AFFINITY, STATUS_EFFECT_ID, STATUS_EFFECT_PROCESSING_TYPE, StatusEffectDataObject } from "./data/tcg-status-effect-data";
+import { SatusEffectRegistry as StatusEffectRegistry } from "./data/tcg-status-effect-registry";
 
 /*      TRADING CARD GAME - PLAY CARD
     data representing a card that is currently in play & managed by a
@@ -18,7 +20,7 @@ import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
 export module PlayCard
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = false;
+    const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Play Data: ";
 
@@ -58,6 +60,22 @@ export module PlayCard
         //object does not exist, send undefined
         return undefined;
     }
+
+    export interface ActiveKeywordData {
+        ID:CARD_KEYWORD_ID
+        Effects:CardKeywordEffectsDataObject[];
+    }
+
+    /** represents a status effect that is active on the card */
+    export interface ActiveStatusEffectData {
+        /** id of active effect */
+        ID:STATUS_EFFECT_ID;
+        Timing:CARD_KEYWORD_EFFECT_TIMING;
+        /** strength of applied effect */
+        Strength:number;
+        /** duration/number of rounds an effect is applied for */
+        Duration:number;
+    }
     
     //TODO: migrate to creation data system (pass all details to create a card in a single data object)
 	/** object interface used to define all data required to create a new object */
@@ -71,22 +89,6 @@ export module PlayCard
         //target
         defIndex: number,
 	}
-
-    /** represents a keyword that is active on the card */
-    export class ActiveKeywordEffect {
-        /** id of active effect */
-        public ID:CARD_KEYWORD_ID;
-        /** how powerful effect is */
-        public Strength:number;
-        /** how long effect will be active */
-        public Duration:number;
-
-        constructor(id:CARD_KEYWORD_ID, strength:number, duration:number) {
-            this.ID = id;
-            this.Strength = strength;
-            this.Duration = duration;    
-        }
-    }
 
     /** contains all pieces that make up a card's playing data */
     export class PlayCardDataObject {
@@ -113,16 +115,13 @@ export module PlayCard
         private defIndex:number = -1;
         public get DefIndex():number { return this.defIndex; };
         public get DefData():CardDataObject { return CardData[this.defIndex]; }
-
-        //## DETAILS
-        /**  rarity of the card */
-        rarity:number = 0;
         
         //## GENERAL STATS
-        /** cost */
+        /** cost to play card */
         public Cost:number = 0;
 
         //## CHARACTER STATS
+        /** whether or not the character can attack */
         public ActionRemaining:boolean = false;
         /** health */
         public HealthCur:number = 0;
@@ -132,25 +131,18 @@ export module PlayCard
         /** armour */
         public Armour:number = 0;
 
-        //## KEYWORDS/EFFECTS
-        /** all effects that are active on this card */
-        public ActiveEffects:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
-        /** keywords that apply effects against cards interacted with by this card (ex: true damage/rend) */
-        public EffectsOffensive:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
-        /** keywords that modify incoming effects from other cards (ex: block/ward) */
-        public EffectsDefensive:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
-        /** effects to be processed at the start of a turn (ex: healing, growth, etc. ) */
-        public EffectsTurnStart:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
-        /** effects to be processed at the end of a turn (ex: poison, burn, etc.) */
-        public EffectsTurnEnd:List<ActiveKeywordEffect> = new List<ActiveKeywordEffect>();
+        //## IMPACT RESULTS
+        /** defines whether or not this card was damaged by the last impact */
+        public ImpactDamaged:boolean = false;
 
-        /** returns true if this card has the given effect */
-        public HasEffectActive(id:CARD_KEYWORD_ID):boolean {
-            for(let i:number=0; i<this.ActiveEffects.size(); i++) {
-                if(this.ActiveEffects.getItem(i).ID == id) return true; 
-            }
-            return false;
-        }
+        //## KEYWORDS
+        /** all keywords currently active on this card, sorted by activation type (applied onto other cards when an interaction occurs) */
+        public ActiveKeywordDict:Dictionary<List<CardKeywordEffectsDataObject>> = new Dictionary<List<CardKeywordEffectsDataObject>>();
+
+        //## EFFECTS
+        /** all effects currently active on this card (can assume this is a unit), indexed by status effect type (ex: burning/mending) */
+        public ActiveEffectList:List<ActiveStatusEffectData> = new List<ActiveStatusEffectData>();
+        public ActiveEffectDict:Dictionary<ActiveStatusEffectData> = new Dictionary<ActiveStatusEffectData>();
 
         /** initializes card play data with  */
         public Initialize(data:PlayCardDataCreationData) {
@@ -166,140 +158,6 @@ export module PlayCard
             }
         }
 
-        /** processes an interaction from a foriegn card */
-        //TODO: there are a lot of targeting assumptions being made atm (ex: if an enemy unit is interacting with a card we assume
-        //  the target card is a unit as well), we may want to flesh this out a bit with more restrictions/catches
-        public ProcessInteractionFromCard(card:PlayCard.PlayCardDataObject) {
-            if(isDebugging) console.log(debugTag+"processing card play between target="+this.Key+" source="+card.Key+"...");
-            
-            //if external card is a unit
-            if(card.DefData.type == CARD_TYPE.CHARACTER) {
-                //local card takes damage to health
-                const damage = card.Attack - this.Armour;
-                if(damage > 0) {
-                    this.HealthCur -= damage;
-                    //play flinch animation
-                    //play impact sound
-                } else {
-                    //play armour deflect animation
-                    //play deflect sound
-                }
-            }
-
-            //process all offensive effects from other card
-            for(let i:number=0; i<card.EffectsOffensive.size(); i++) {
-                this.ApplyEffect(card.EffectsOffensive.getItem(i));
-            }
-
-            if(isDebugging) console.log(debugTag+"processed card play between target="+this.Key+" source="+card.Key+"...");
-        }
-
-        /** processes an action against this card from an external effect */
-        public ApplyEffect(effect:ActiveKeywordEffect) {
-            //get keyword def
-            const keyword = CardKeywordRegistry.Instance.GetDefByID(effect.ID);
-            if(isDebugging) console.log(debugTag+"applying effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
-            
-            //deternime how keyword should be processed based on effect type (what keyword is being applied)
-            /*switch(effect.ID) {
-                //deals damage to character's health
-                case CARD_KEYWORD_ID.DAMAGE_STRIKE:
-                    const damage = effect.Strength - this.Armour;
-                    if(damage > 0) this.HealthCur -= damage;
-                break;
-                //over-time cur hp decrease, add perk to turn end
-                case CARD_KEYWORD_ID.BLEED:
-                break;
-                //over-time max hp decrease, add perk to turn end
-                case CARD_KEYWORD_ID.BURN:
-                break;
-                //one-time armor decrease, remove armor
-                case CARD_KEYWORD_ID.REND:
-                    this.Armour -= effect.Strength;
-                    //leash armour above 0
-                    if(this.Armour < 0) this.Armour = this.Armour;
-                break;
-                //over-time armor decrease, add perk to turn start
-                case CARD_KEYWORD_ID.MELT:
-                break;
-                //one-time cur hp increase, add cur hp
-                case CARD_KEYWORD_ID.HEAL:
-                    this.HealthCur += effect.Strength;
-                    //leash cur health below max
-                    if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
-                break;
-                //over-time cur hp increase, add perk to turn start
-                case CARD_KEYWORD_ID.MEND:
-                break;
-                //one-time max hp increase, add cur & max hP
-                case CARD_KEYWORD_ID.EXPAND:
-                    this.HealthCur += effect.Strength;
-                    this.HealthMax += effect.Strength;
-                    //leash cur health below max
-                    if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
-                break;
-                //over-time max hp increase, add perk to turn start 
-                case CARD_KEYWORD_ID.GROWTH:
-                break;
-                //one-time armour increase, add armour
-                case CARD_KEYWORD_ID.FORTIFY:
-                    this.Armour += effect.Strength;
-                break;
-                //one-time damage increase, add damage
-                case CARD_KEYWORD_ID.SHARPEN:
-                    this.Attack += effect.Strength;
-                break;
-                case CARD_KEYWORD_ID.EMPOWERED:
-                    break;
-                case CARD_KEYWORD_ID.GUARD:
-                    break;
-                case CARD_KEYWORD_ID.SHEILDED:
-                    break;
-                case CARD_KEYWORD_ID.STEALTH:
-                    break;
-                case CARD_KEYWORD_ID.DISABLE:
-                    break;
-                case CARD_KEYWORD_ID.REFRESH:
-                    break;
-                case CARD_KEYWORD_ID.DRAIN:
-                    break;
-                case CARD_KEYWORD_ID.ANNIHILATION:
-                    break;
-                //stun unit by removing action
-                case CARD_KEYWORD_ID.EXHAUST:
-                    this.ActionRemaining = false;
-                break;
-            }*/
-
-            if(isDebugging) console.log(debugTag+"applyed effect {keyword="+keyword.displayName+", str="+effect.Strength+", dur="+effect.Duration+"} on card="+this.Key+"...");
-        }
-
-        /** processes all effects that are applicable at the start of the owning player's turn */
-        public ProcessTurnStartEffects() {
-            //check for stun
-
-            //re-enable card's action
-            this.ActionRemaining = true;
-
-        }
-
-        /** processes all effects that are applicable at the end of the owning player's turn */
-        public ProcessTurnEndEffects() {
-
-
-        }
-
-        /** processes an effect provided by a keyword */
-        public ProcessEffect(keyword:CardKeywordDataObject, strength:number) {
-            
-            //
-
-
-            //process effects/keywords from foriegn card
-
-
-        }
-
         /** resets the card with the current data def */
         public ResetCard() {
             this.SetCard(this.defIndex);
@@ -307,44 +165,278 @@ export module PlayCard
 
         /** sets this card as the given data */
         public SetCard(index: number) {
-            const def = CardData[index];
+            const cardDef = CardData[index];
             //general stats
             this.defIndex = index
-            this.Cost = def.cardCost;
+            this.Cost = cardDef.cardCost;
             
-            //TODO: adding all effects to offensive list atm, split this later
-            //keywords/effects
-            this.ActiveEffects = new List<ActiveKeywordEffect>();
-            this.EffectsOffensive = new List<ActiveKeywordEffect>();
-            this.EffectsDefensive = new List<ActiveKeywordEffect>();
-            this.EffectsTurnStart = new List<ActiveKeywordEffect>();
-            this.EffectsTurnEnd = new List<ActiveKeywordEffect>();
-            //process all effects
-            for(let i=0; i<def.cardEffects.length; i++) {
-                const effect:ActiveKeywordEffect = {
-                    ID:def.cardEffects[i].type,
-                    Strength:def.cardEffects[i].strength,
-                    Duration:def.cardEffects[i].duration??0
-                };
-                //add to correct listing
-                this.ActiveEffects.addItem(effect);
-                this.EffectsOffensive.addItem(effect);
+            //reset keyword listing
+            this.ActiveKeywordDict = new Dictionary<List<CardKeywordEffectsDataObject>>();
+            Object.keys(CARD_KEYWORD_EFFECT_EXECUTION).forEach((key, value) => {
+                this.ActiveKeywordDict.addItem(key.toString(), new List<CardKeywordEffectsDataObject>());
+            });
+            //add each keyword to card
+            for(let i:number=0; i<cardDef.cardKeywordEffects.length; i++) {
+                //get keyword def
+                const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardDef.cardKeywordEffects[i].id);
+                //add to listing
+                this.ActiveKeywordDict.getItem(keywordDef.playEffect.activation.toString()).addItem({
+                    id:cardDef.cardKeywordEffects[i].id,
+                    strength:cardDef.cardKeywordEffects[i].strength,
+                    duration:cardDef.cardKeywordEffects[i].duration,
+                });
             }
 
+            //prepare effect listing
+            this.ActiveEffectList = new List<ActiveStatusEffectData>();
+            this.ActiveEffectDict = new Dictionary<ActiveStatusEffectData>();
+
             //process type specific effects
-            switch(def.cardAttributes.type) {
+            switch(cardDef.cardAttributes.type) {
                 case CARD_TYPE.SPELL:
 
                 break;
                 case CARD_TYPE.CHARACTER:
-                    this.HealthCur = def.cardAttributes.unitHealth;
-                    this.HealthMax = def.cardAttributes.unitHealth;
-                    this.Attack = def.cardAttributes.unitAttack;
-                    this.Armour = def.cardAttributes.unitArmour;
+                    this.HealthCur = cardDef.cardAttributes.unitHealth;
+                    this.HealthMax = cardDef.cardAttributes.unitHealth;
+                    this.Attack = cardDef.cardAttributes.unitAttack;
+                    this.Armour = cardDef.cardAttributes.unitArmour;
                 break;
                 case CARD_TYPE.TERRAIN:
 
                 break;
+            }
+        }
+
+        /** called when a unit is placed onto the field, processing all played-to-field effects (ex: unit gets health growth) */
+        public UnitPlayedToField() {
+            if(isDebugging) console.log(debugTag+"playing card {id="+this.Key+", name="+this.DefData.name+"} to field...");
+
+            //process every active keyword on card
+            for(let i:number=0; i<this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.PLAYED.toString()).size(); i++) {
+                //convert to effect
+                this.ProcessKeyword(this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.PLAYED.toString()).getItem(i));
+            }
+
+            if(isDebugging) console.log(debugTag+"played card {id="+this.Key+", name="+this.DefData.name+"} to field!");
+        }
+
+        /** called when this card (deployed as a unit) is being interacted with by another card (spell) */
+        public UnitImpactedBySpell(card:PlayCard.PlayCardDataObject) {
+            if(isDebugging) console.log(debugTag+"impacting card {id="+this.Key+", name="+this.DefData.name+"} with spell {name="+card.DefData.name+"}...");
+
+            //process all 'played' effects from spell card against this unit
+            let listing = card.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.PLAYED.toString());
+            for (let i = 0; i < listing.size(); i++) {
+                this.ProcessKeyword(listing.getItem(i));
+            }
+
+            if(isDebugging) console.log(debugTag+"impacted card {id="+this.Key+", name="+this.DefData.name+"} with spell {name="+card.DefData.name+"}!");
+        }
+
+        /** called when this card (deployed as a unit) is being attacked by another unit */
+        public UnitImpactedByUnit(attacker:PlayCard.PlayCardDataObject) {
+            //ensure attacking card is a unit
+            if(attacker.DefData.cardAttributes.type != CARD_TYPE.CHARACTER) return;
+            let listing;
+
+            if(isDebugging) console.log(debugTag+"impacting card {id="+this.Key+", name="+this.DefData.name+"} with unit {name="+attacker.DefData.name+"}...");
+            
+            //process all defense keywords targeted at attacker
+            listing = this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_OTHER.toString());
+            for (let i = 0; i < listing.size(); i++) {
+                attacker.ProcessKeyword(listing.getItem(i));
+            }
+            //process all defense keywords targeted at self
+            listing = this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_SELF.toString());
+            for (let i = 0; i < listing.size(); i++) {
+                this.ProcessKeyword(listing.getItem(i));
+            }
+
+            //process attack exchange between attacker and defender
+            const damage = attacker.Attack - this.Armour;
+            if(damage > 0) {
+                this.HealthCur -= damage;
+                this.ImpactDamaged = true;
+            } else {
+                this.ImpactDamaged = false;
+            }
+
+            //process all defense keywords targeted at attacker
+            listing = attacker.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_OTHER.toString());
+            for (let i = 0; i < listing.size(); i++) {
+                this.ProcessKeyword(listing.getItem(i));
+            }
+            //process all defense keywords targeted at self
+            listing = attacker.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_SELF.toString());
+            for (let i = 0; i < listing.size(); i++) {
+                attacker.ProcessKeyword(listing.getItem(i));
+            }
+
+            if(isDebugging) console.log(debugTag+"impacted card {id="+this.Key+", name="+this.DefData.name+"} with unit {name="+attacker.DefData.name+"}!");
+        }
+
+        /** processes a keyword against this card, applying any attached effects */
+        public ProcessKeyword(keyword:CardKeywordEffectsDataObject) {  
+            //get keyword def
+            const keywordDef = CardKeywordRegistry.Instance.GetDefByID(keyword.id);
+            if(isDebugging) console.log(debugTag+"processing keyword, effect={keyword="+keywordDef.displayName+", str="+keyword.strength+
+                ", dur="+(keyword.duration??0)+"} on card="+this.Key+"...");
+
+            //check for an existing instance of the given keyword's effect
+            const effectDef:StatusEffectDataObject = StatusEffectRegistry.Instance.GetDefByID(keywordDef.playEffect.id);
+            
+            let effect;
+            //if effect is instant
+            if(keywordDef.playEffect.timing == CARD_KEYWORD_EFFECT_TIMING.INSTANT) {
+                this.ProcessEffect(effectDef.type, keyword.strength);
+
+                if(isDebugging) console.log(debugTag+"processed keyword, effect={keyword="+keywordDef.displayName+", str="+keyword.strength+
+                ", dur="+(keyword.duration??0)+"} on card="+this.Key+"...");
+            }
+            //if effect is over time
+            else {
+                //if effect already exists
+                if(this.ActiveEffectDict.containsKey(keywordDef.playEffect.id.toString())) {
+                    //get existing effect data
+                    effect = this.ActiveEffectDict.getItem(keywordDef.playEffect.id.toString());
+                    //increase strength and reassert duration (if lower)
+                    effect.Strength += keyword.strength;
+                    if(effect.Duration < keyword.duration) effect.Duration = keyword.duration;
+                }
+                //if effect does not exist
+                else {
+                    //create new effect data
+                    effect = {
+                        ID:keywordDef.playEffect.id,
+                        Timing:keywordDef.playEffect.timing,
+                        Strength:keyword.strength,
+                        Duration:keyword.duration,
+                    };
+                    //adjust for timing types (fail catch for dummies)
+                    if(effect.Timing == CARD_KEYWORD_EFFECT_TIMING.CONSTANT) effect.Duration = -1;
+                    //add to listing
+                    this.ActiveEffectList.addItem(effect);
+                    this.ActiveEffectDict.addItem(keywordDef.playEffect.id.toString(), effect);
+                }
+
+                if(isDebugging) console.log(debugTag+"processed keyword, effect={keyword="+keywordDef.displayName+", str="+(effect.Strength)+
+                    ", dur="+(effect.Duration)+"} on card="+this.Key+"!");
+            }
+        }
+
+        /** processes an effect against this card */
+        public ProcessEffect(id:STATUS_EFFECT_PROCESSING_TYPE, power:number) {
+            if(isDebugging) console.log(debugTag+"processing effect {id="+id+", power="+power+"} on card="+this.Key+"...");
+
+            //deternime how keyword should be processed based on effect type (what keyword is being applied)
+            switch(id) {
+                //inflicts damage to character (reduced by armour)
+                case STATUS_EFFECT_PROCESSING_TYPE.DAMAGE:
+                    const damage = power - this.Armour;
+                    if(damage > 0) this.HealthCur -= damage;
+                break;
+                //restores current health to character
+                case STATUS_EFFECT_PROCESSING_TYPE.HEALTH_RECOVER:
+                    this.HealthCur += power;
+                    //leash cur health below max
+                    if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
+                break;
+                //inflicts direct damage to character (no reduced by armour)
+                case STATUS_EFFECT_PROCESSING_TYPE.HEALTH_DAMAGE:
+                    this.HealthMax -= power;
+                break;
+                //increases max & cur health of character
+                case STATUS_EFFECT_PROCESSING_TYPE.HEALTH_INCREASE:
+                    this.HealthCur += power;
+                    this.HealthMax += power;
+                break;
+                //decreases max health of character
+                case STATUS_EFFECT_PROCESSING_TYPE.HEALTH_DECREASE:
+                    this.HealthMax -= power;
+                    //leash cur health below max
+                    if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
+                break;
+                //increases attack damage of character
+                case STATUS_EFFECT_PROCESSING_TYPE.ATTACK_INCREASE:
+                    this.Attack += power;
+                break;
+                //reduces attack damage of character
+                case STATUS_EFFECT_PROCESSING_TYPE.ATTACK_DECREASE:
+                    this.Attack -= power;
+                    //leash armour above 0
+                    if(this.Attack < 0) this.Attack = this.Attack;
+                break;
+                //increases attack armour of character
+                case STATUS_EFFECT_PROCESSING_TYPE.ARMOUR_INCREASE:
+                    this.Armour += power;
+                break;
+                //reduces attack damamage of character
+                case STATUS_EFFECT_PROCESSING_TYPE.ARMOUR_DECREASE:
+                    this.Armour -= power;
+                    //leash armour above 0
+                    if(this.Armour < 0) this.Armour = this.Armour;
+                break;
+                //restores an action to character
+                case STATUS_EFFECT_PROCESSING_TYPE.ACTIVITY_MOD_ACTION_ENABLE:
+                    this.ActionRemaining = true;
+                break;
+                //removes an action from the character
+                case STATUS_EFFECT_PROCESSING_TYPE.ACTIVITY_MOD_ACTION_DISABLE:
+                    this.ActionRemaining = false;
+                break;
+                //sets this character to a higher targeting filter
+                case STATUS_EFFECT_PROCESSING_TYPE.TARGETING_MOD_HIGH:
+                    
+                break;
+                //sets this character to a lower targeting filter
+                case STATUS_EFFECT_PROCESSING_TYPE.TARGETING_MOD_LOW:
+                    
+                break;
+                //removes card from field and put into hand
+                //<only process on death>
+                case STATUS_EFFECT_PROCESSING_TYPE.DEATH_MOD_TO_HAND:
+                    
+                break;
+                //removes card from field and put into deck
+                //<only process on death>
+                case STATUS_EFFECT_PROCESSING_TYPE.DEATH_MOD_TO_DECK:
+                    
+                break;
+                //removes card from field and removes from deck
+                //<only process on death>
+                case STATUS_EFFECT_PROCESSING_TYPE.DEATH_MOD_DESTROY:
+                    
+                break;
+            }
+
+            if(isDebugging) console.log(debugTag+"processed effect {id="+id+", power="+power+"} on card="+this.Key+"!");
+        }
+
+        /** processes all effects that are applicable at the start of the owning player's turn */
+        public ProcessEffectsByAffinity(affinity:STATUS_EFFECT_AFFINITY) {
+            //process all timed effects
+            let index:number = 0;
+            while (index < this.ActiveEffectList.size()) {
+                //get effect
+                const effectData = this.ActiveEffectList.getItem(index);
+                const effectDef = StatusEffectRegistry.Instance.GetDefByID(effectData.ID);
+                //if effect is of targeted affinity
+                if(effectDef.affinity == affinity) {
+                    //process against card
+                    this.ProcessEffect(effectDef.type, effectData.Strength);
+                    //reduce duration
+                    effectData.Duration -= 1;
+                    //check for removal
+                    if(effectData.Duration == 0) {
+                        //remove from listings
+                        this.ActiveEffectList.removeItem(effectData);
+                        this.ActiveEffectDict.removeItem(effectData.ID.toString());
+                        //adjust for reduced listing size
+                        index--;
+                    }
+                }
+                index++;
             }
         }
     }

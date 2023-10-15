@@ -41,7 +41,7 @@ import * as utils from '@dcl-sdk/utils';
 */
 export module Table {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table: ";
 
@@ -443,7 +443,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<REMOTE> adding player="+player+" to team="+team+"...");
 
             //if local player already belongs to a table 
-            if(PlayerLocal.DisplayName() == player && PlayerLocal.CurTableID != undefined && PlayerLocal.CurTeamID != undefined) {
+            if(PlayerLocal.GetDisplayName() == player && PlayerLocal.CurTableID != undefined && PlayerLocal.CurTeamID != undefined) {
                 if(isDebugging) console.log(debugTag+"<REMOTE> player is already registered to table="+PlayerLocal.CurTableID+" to team="+PlayerLocal.CurTeamID);
                 //remove player from previous table/team
                 GetByKey(PlayerLocal.CurTableID.toString())?.LocalRemovePlayerFromTeam(PlayerLocal.CurTeamID);
@@ -460,7 +460,7 @@ export module Table {
             this.teamObjects[team].RegisteredPlayer = player;
             
             //if player is local player
-            if(PlayerLocal.DisplayName() == player) {
+            if(PlayerLocal.GetDisplayName() == player) {
                 //link this table to local player's data
                 PlayerLocal.CurTableID = this.tableID;
                 PlayerLocal.CurTeamID = team;
@@ -471,7 +471,7 @@ export module Table {
 
             //set team display object states
             //  player belongs to team 1
-            if(PlayerLocal.DisplayName() == this.teamObjects[0].RegisteredPlayer) {
+            if(PlayerLocal.GetDisplayName() == this.teamObjects[0].RegisteredPlayer) {
                 //hand displays
                 this.teamObjects[0].SetHandState(true);
                 this.teamObjects[1].SetHandState(false);
@@ -486,7 +486,7 @@ export module Table {
                 this.entityStateDisplays[1].SetRotation({x:0,y:340,z:0});
             }
             //  player belongs to team 2
-            else if(PlayerLocal.DisplayName() == this.teamObjects[1].RegisteredPlayer) {
+            else if(PlayerLocal.GetDisplayName() == this.teamObjects[1].RegisteredPlayer) {
                 //hand displays
                 this.teamObjects[1].SetHandState(true);
                 this.teamObjects[0].SetHandState(false);
@@ -531,7 +531,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<REMOTE> removing player from team="+team+"...");
 
             //if player is local player
-            if(PlayerLocal.DisplayName() == this.teamObjects[team].RegisteredPlayer) {
+            if(PlayerLocal.GetDisplayName() == this.teamObjects[team].RegisteredPlayer) {
                 //unlink table from local player
                 PlayerLocal.CurTableID = undefined;
                 PlayerLocal.CurTeamID = undefined;
@@ -571,7 +571,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<LOCAL> setting ready state table="+this.TableID+" team="+team+" to "+state+"...");
             
             //ensure local player has the authority to change ready state
-            if(PlayerLocal.DisplayName() != this.teamObjects[team].RegisteredPlayer) return;
+            if(PlayerLocal.GetDisplayName() != this.teamObjects[team].RegisteredPlayer) return;
             
             //if player is readying, send deck for master
             var serial = "";
@@ -598,7 +598,7 @@ export module Table {
             }
 
             //if local player is table owner
-            if(PlayerLocal.DisplayName() == this.TableOwner) {
+            if(PlayerLocal.GetDisplayName() == this.TableOwner) {
                 //if both of player are ready, start game
                 for(let i:number=0; i<this.teamObjects.length; i++) {
                     if(!this.teamObjects[i].ReadyState) return;
@@ -638,7 +638,7 @@ export module Table {
             }
 
             //if player is table owner
-            if(PlayerLocal.DisplayName() == this.TableOwner) {
+            if(PlayerLocal.GetDisplayName() == this.TableOwner) {
                 //start next turn
                 this.LocalNextTurn();
             }
@@ -652,7 +652,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<LOCAL> ending game on table="+this.TableID+"...");
 
             //ensure local player is current turn owner
-            if(PlayerLocal.DisplayName() != this.TableOwner) return;
+            if(PlayerLocal.GetDisplayName() != this.TableOwner) return;
             
             //send networking call
             EmitEndGame(this.TableID, defeated);
@@ -663,7 +663,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<LOCAL> ending game on table="+this.TableID+"...");
 
             //ensure local player is current turn owner
-            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer) return;
+            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer) return;
             
             //send networking call
             EmitEndGame(this.TableID, this.curTurn);
@@ -728,7 +728,7 @@ export module Table {
             TextShape.getMutable(this.entityLobbyTurn).text = this.teamObjects[this.curTurn].RegisteredPlayer +"'S TURN (ROUND: "+this.curRound+")";
 
             //if table owner and ai's turn, start processing
-            if(PlayerLocal.DisplayName() == this.TableOwner && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
+            if(PlayerLocal.GetDisplayName() == this.TableOwner && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
                 SetAIState(true, this);
             }
 
@@ -802,7 +802,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -905,7 +905,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -1074,7 +1074,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -1118,7 +1118,7 @@ export module Table {
             //preform localized team checks
             const team = this.teamObjects[this.curTurn];
             //  ensure local player is owner of the current team, excluding AI
-            if(PlayerLocal.DisplayName() != team.RegisteredPlayer && team.TeamType != TABLE_TEAM_TYPE.AI) {
+            if(PlayerLocal.GetDisplayName() != team.RegisteredPlayer && team.TeamType != TABLE_TEAM_TYPE.AI) {
                 if(isDebugging) console.log(debugTag+"<FAILED> local player is not the current player");
                 return;
             }
@@ -1231,6 +1231,7 @@ export module Table {
         }
         /** remote call from a connected player, executes a spell from one card to a unit */
         public RemoteActionSpell(cardKey:string, targets:TableSelectionTarget[]) {
+            const key = this.TableID;
             if(isDebugging) console.log(debugTag+"<REMOTE> playing spell card="+cardKey+" targetCount="+targets.length+"...");
             //get card
             const card = PlayCard.GetByKey(cardKey);
@@ -1247,6 +1248,7 @@ export module Table {
                 if(isDebugging) console.log(debugTag+"<FAILED> provided slot has no character");
                 return;
             }
+            const team = this.teamObjects[targets[0].team];
 
             //play spell object at location 
             this.spellViewObj = CardSubjectObject.Create({
@@ -1263,18 +1265,33 @@ export module Table {
             //this.spellViewObj.SetAnimation(CardSubjectObject.ANIM_KEY_SPELL.NONE);
             this.spellViewObj.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_SPELL.PLAY, true);
 
-            //process damage
-            targetSlot.SlottedCard.ProcessInteractionFromCard(card);
+            //process effect from card's spell
+            targetSlot.SlottedCard.UnitImpactedBySpell(card);
 
             //TODO: set up a real callbacks system when a unit has been killed, stop this stupid shit
             //if character was killed
             if(targetSlot.SlottedCard?.HealthCur <= 0) {
-                //move card to discard pile
-                this.teamObjects[targets[0].team].MoveCardBetweenCollections(targetSlot.SlottedCard, PlayCardDeck.DECK_CARD_STATES.FIELD, PlayCardDeck.DECK_CARD_STATES.DISCARD);
-                //clear card from slot 
-                targetSlot.ClearCard();
-                //redraw stats
-                this.RedrawTeamDisplays();
+
+                //play death animation
+                targetSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.DEATH, false);
+
+                //delay cleaning up unit until death animation has played
+                utils.timers.setTimeout(
+                    function() {
+                        //ensure defender and attacker slots are both occupied
+                        if(targetSlot.SlottedCard == undefined) {
+                            return;
+                        }
+
+                        //move card to discard pile
+                        team.MoveCardBetweenCollections(targetSlot.SlottedCard, PlayCardDeck.DECK_CARD_STATES.FIELD, PlayCardDeck.DECK_CARD_STATES.DISCARD);
+                        //clear card from slot 
+                        targetSlot.ClearCard();
+                        //redraw stats
+                        CalldownRedrawTeamDisplays(key);
+                    },
+                    1900
+                );
             } else {
                 //play flinch animation after time
                 utils.timers.setTimeout(
@@ -1330,7 +1347,7 @@ export module Table {
                 var defenderSlot = this.teamObjects[this.selectionTargets[1].team].cardSlotObjects[this.selectionTargets[1].id];
 
                 //ensure call is coming from player of the same team or an ai team 
-                if(PlayerLocal.DisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && 
+                if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && 
                     this.teamObjects[this.curTurn].TeamType != TABLE_TEAM_TYPE.AI) {
                     if(isDebugging) console.log(debugTag+"<FAILED> unit failed to attack on table="+PlayerLocal.CurTableID+
                         " b.c current player is on wrong team="+PlayerLocal.CurTeamID);
@@ -1405,7 +1422,7 @@ export module Table {
                 }
 
                 //process card character attacks
-                defenderSlot.SlottedCard.ProcessInteractionFromCard(attackerSlot.SlottedCard);
+                defenderSlot.SlottedCard.UnitImpactedByUnit(attackerSlot.SlottedCard);
 
                 //remove action from attacker
                 attackerSlot.SlottedCard.ActionRemaining = false;
@@ -1417,20 +1434,29 @@ export module Table {
                         if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) {
                             return;
                         }
+                        
                         //if character was killed
                         if(defenderSlot.SlottedCard.HealthCur <= 0) {
                             //play death animation
-                            defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
-                            //move card to discard pile
-                            defenderTeam.MoveCardBetweenCollections(
-                                defenderSlot.SlottedCard, 
-                                PlayCardDeck.DECK_CARD_STATES.FIELD, 
-                                PlayCardDeck.DECK_CARD_STATES.DISCARD
+                            defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.DEATH, false);
+
+                            //delay cleaning up unit until death animation has played
+                            utils.timers.setTimeout(
+                                function() {
+                                    //ensure defender and attacker slots are both occupied
+                                    if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) {
+                                        return;
+                                    }
+
+                                    //move card to discard pile
+                                    defenderTeam.MoveCardBetweenCollections(defenderSlot.SlottedCard,PlayCardDeck.DECK_CARD_STATES.FIELD,PlayCardDeck.DECK_CARD_STATES.DISCARD);
+                                    //clear card from slot 
+                                    defenderSlot.ClearCard();
+                                    //redraw stats
+                                    CalldownRedrawTeamDisplays(key);
+                                },
+                                1950
                             );
-                            //clear card from slot 
-                            defenderSlot.ClearCard();
-                            //redraw stats
-                            CalldownRedrawTeamDisplays(key);
                         } else {
                             //play death animation
                             defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);

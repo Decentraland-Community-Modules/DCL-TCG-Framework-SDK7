@@ -277,10 +277,7 @@ export module CardSubjectDisplayPanel {
                     scale: { x:0.37, y:0.37, z:0.3,},
                 });
                 MeshRenderer.setPlane(entityEffectIcons[i])
-                
-            }
-            
-
+            } 
         }
             
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
@@ -297,6 +294,52 @@ export module CardSubjectDisplayPanel {
             engine.removeEntity(this.entityParent);
         }
     }
+
+    /** provides a new stat display object (either pre-existing & un-used or entirely new)
+     * 
+     *  @param statData data def used to generate card
+     *  @param key unique id of card object, used for access
+     *  @returns: card object data 
+     */
+    export function Create(data:StatDisplayObjectCreationData):StatDisplayObject {
+        const key:string = GetKeyFromData(data);
+        var object:undefined|StatDisplayObject = undefined;
+        if(isDebugging) console.log(debugTag+"attempting to create new object, key="+key+"...");
+        
+        //if an object under the requested key is already active, hand that back
+        if(pooledObjectsRegistry.containsKey(key)) {
+            console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+key);
+            object = pooledObjectsRegistry.getItem(key);
+        } 
+        //  attempt to find an existing unused object
+        else if(pooledObjectsInactive.size() > 0) {
+            //grab entity from (grabbing from back is a slight opt)
+            object = pooledObjectsInactive.getItem(pooledObjectsInactive.size()-1);
+            //  remove from inactive listing
+            pooledObjectsInactive.removeItem(object);
+        }
+        //  if not recycling unused object
+        if(object == undefined) {
+            //  create data object (initializes all sub-components)
+            object = new StatDisplayObject();
+            //  add to overhead collection
+            pooledObjectsAll.addItem(object);
+        }
+
+        //initialize object
+        object.Initilize(data);
+
+        //add object to active collection (ensure only 1 entry)
+        var posX = pooledObjectsActive.getItemPos(object);
+        if(posX == -1) pooledObjectsActive.addItem(object);
+        //add to registry under given key
+        pooledObjectsRegistry.addItem(key, object);
+
+        if(isDebugging) console.log(debugTag+"created new object, key='"+key+"'!");
+        //provide entity reference
+        return object;
+    }
+
     
     /** disables all objects, hiding them from the scene but retaining them in data & pooling */
     export function DisableAll() {

@@ -1,4 +1,4 @@
-/**     CARD TEXTURE DATA
+/**     TRADING CARD GAME - CARD TEXTURE DATA
  *  desc pending
  */
 
