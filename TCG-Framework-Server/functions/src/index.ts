@@ -5,231 +5,132 @@
  *  - player exp/levels
  *  - player decks/card sets
  *  - game table management (join, leave, start, game processes)
- * 
+ *
  * note: file requires strict syntax
  */
 
 // ensure debug is off before deploy
-const isDebugging = false;
+// const isDebugging = false;
 
-// ### FUNCTIONS ###
+// ### REQUIRED IMPORTS ###
 import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import * as express from "express";
+import * as cors from "cors";
 
-// ### AUTHORIZATION ###
-import admin = require("firebase-admin");
+// import * as profile from "./api-profile";
 
 // ### ACCOUNT LOGGING ###
 // service account login details
-const serviceAccount = "./project-service-login.json";
-// initialize admin account details 
+// import * as serviceAccount from "../permissions.json";
+const serviceAccount = require("../permissions.json");
+// initialize admin account details
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://decentraland-tcg-server.firebaseio.com",
 });
-// initialize database interface object
+
+// create database instance
 const db = admin.firestore();
 
-// ### DATA PROCESSES ###
-// grab function interface
-// const functions = require('firebase-functions'); //legacy
-// server instance manager
-import express = require("express");
-// external interface for return data
-import cors = require("cors");
-// create server
+// create app instance
 const app = express();
-// set action
 app.use(cors({origin: true}));
-// finalize and set live
+
+// ### ROUTE - EXAMPLES ###
+// you can either keep these or remove them,
+// they are provided purely for reference/examples
+
+// get (requests a single information piece)
+// ping, returns a simple piece of text
+app.get("/hello-world", (req, res) => {
+  return res.status(200).send("Hello World UwU");
+});
+
+// post (send data that should be added to the database)
+// create, \
+app.post("/api/create", (req, res) => {
+  // interactions with the database are timed/can time-out, so async is required
+  (async () => {
+    // interactions calls can fail/throw errors, so try-catch is required
+    try {
+      // attempt to create new element in document
+      await db.collection("cards").doc("/"+req.body.id+"/").create({
+        name: req.body.name,
+        desc: req.body.desc,
+      });
+
+      // if nothing failed, we'll return a successful response
+      return res.status(200).send();
+    } catch (error) {
+      // if failure, record error and return fail status
+      console.log(error);
+      return res.status(500);
+    }
+  })();
+});
+
+// get
+// read
+
+// put
+// update
+
+// delete
+//
+
+// ### ROUTE - profile ###
+// returns the profile at the given id's location
+app.get("/api/get-profile/:id", (req, res) => {
+  (async () => {
+    try {
+      // ping decentraland to ensure player is actually in-game
+
+      // create return capsule
+      /* let playerData = {
+        // last time player was logged in
+        LastLogin: -1,
+        // progression
+        Experience: 0,
+        // decks
+        Deck0: "",
+        Deck1: "",
+        Deck2: "",
+        Deck3: "",
+        Deck4: "",
+      };*/
+
+      // get required document
+      const document = db.collection("player-profiles").doc(req.params.id);
+      //  process document to derive player's stats
+      let playerData = await document.get();
+      // load values into player data
+      let response = playerData.data();
+      
+      /* if (playerData) {
+
+        // update last login to current time
+        // document.update({ LastLogin: new Date() });
+      } else {
+        // write player defaults to store
+        // document.update(playerData);
+      }
+
+      // attempt to create new element in document
+      await db.collection("cards").doc("/"+req.body.id+"/").create({
+        name: req.body.name,
+        desc: req.body.desc,
+      });*/
+
+      // if nothing failed, we'll return a successful response
+      return res.status(200).send(response);
+    } catch (error) {
+      console.log(error);
+      return res.status(500);
+    }
+  })();
+});
+
+
+// export api to cloud functions, executes upon new request
 exports.app = functions.https.onRequest(app);
-
-
-// ### FUNCTIONAL PROCESSES ###
-//  a document's title is created as: userID + "-" + difficulty
-//  highscores use the player's DCL id (not username) as the collection title
-//  a player can only hold a single highscore in any given difficulty
-//  only 10 highscores are kept for each difficulty
-//  scores sent from static/undeployed scenes will not be accepted
-// get collections by difficulty
-const highscoresCollections =
-[
-  db.collection("Highscores-VeryEasy"),
-  db.collection("Highscores-Easy"),
-  db.collection("Highscores-Normal"),
-  db.collection("Highscores-Hard"),
-  db.collection("Highscores-VeryHard"),
-];
-
-// attempts to get highscores from collection
-//  returns all highscores recorded for each difficulty
-app.get("/get-highscores", async (req: any, res: any) => {
-  try {
-    if (isDebugging) {
-      console.log("attempting to return highscores...");
-    }
-    // get highscores for each difficulty, adding each result to the response
-    const response:any = [[], [], [], [], []];
-    let result;
-    for (let i = 0; i < highscoresCollections.length; i++) {
-      result = await highscoresCollections[i].get().then(
-          (queryResult: { docs: any }) => {
-            for (const doc of queryResult.docs) {
-              response[i].push(doc.data());
-            }
-          }
-      );
-      if (isDebugging) {
-        console.log("processed difficulty "+i.toString()+", result: "+result);
-      }
-    }
-    if (isDebugging) {
-      console.log("highscores returned!");
-    }
-    return res.status(200).send(response);
-  // error recieved
-  } catch (error) {
-    console.log(error);
-    return res.status(500).send(error);
-  }
-});
-
-// attempts to add a highscore to the collection
-app.post("/add-highscore", async (req: any, res: any) => {
-  const newHighscore = JSON.parse(req.body);
-  // let hs:string[] = req.body.split('"');
-  try {
-    const difficulty = newHighscore.difficulty;
-    if (isDebugging) {
-      console.log("writing new highscore for difficulty "+difficulty+"...");
-    }
-    const userID = newHighscore.userID;
-    if (isDebugging && userID == undefined) {
-      console.log("error: userID is undefined, possible corruption..."); return;
-    }
-    if (isDebugging) {
-      console.log("creating highscore for user: "+userID);
-    }
-
-    // grab collection pointer and get highscores
-    const highscoresCollection = highscoresCollections[difficulty];
-    const response:any = [];
-    await highscoresCollection.get().then(
-        (queryResult: { docs: any }) => {
-          for (const doc of queryResult.docs) {
-            response.push(doc);
-          }
-        }
-    );
-
-    // check for dupe player
-    let copyFound = false;
-    let updateRequired = true;
-    for (const doc of response) {
-      if (isDebugging) {
-        console.log("checking user: "+doc.id);
-      }
-      // if user already has a highscore
-      if (doc.id === userID) {
-        if (isDebugging) {
-          console.log("user already has a highscore: old="+
-          doc.data().score+", new="+newHighscore.score);
-        }
-        copyFound = true;
-
-        // compare scores, allowing better (faster time) result to exist
-        if (Number(doc.data().score) < Number(newHighscore.score)) {
-          updateRequired = false;
-        }
-
-        break;
-      }
-    }
-    // if player already has score
-    if (copyFound) {
-      // record score is better, finished
-      if (!updateRequired) {
-        if (isDebugging) {
-          console.log("user's previous highscore is better");
-        }
-        return res.status(200).send("new highscore accepted");
-      }
-
-      // delete old score
-      if (isDebugging) {
-        console.log("removing user's previous highscore");
-      }
-      await highscoresCollection.doc("/" + userID + "/").delete();
-    }
-
-    // create new record
-    const highscore = {
-      // date/time achieved
-      date: newHighscore.date,
-      // current display name for user (recorded here b.c this can change)
-      username: newHighscore.username,
-      // DCL location
-      location: newHighscore.location,
-      // score
-      score: newHighscore.score,
-    };
-    // add record to response
-    response.push(highscore);
-    // write new score to record
-    await highscoresCollection.doc("/" + userID + "/").create(highscore);
-    if (isDebugging) {
-      console.log("highscore written!");
-    }
-
-    // check highscore count for that difficulty
-    if (isDebugging) {
-      console.log("checked highscore count: "+response.length.toString());
-    }
-    // if too many highscores exist
-    while (response.length > 10) {
-      if (isDebugging) {
-        console.log("too many highscores found");
-      }
-      let target = 0;
-      // culling can occur when parsing list, leading to length changes
-      const size:number = response.length;
-      // process each highscore getting highest value (slowest time)
-      for (let i=size-1; i>=0; i--) {
-        if (isDebugging) {
-          console.log("checking user: "+response[i].id+
-            ", score: "+response[i].data().score);
-        }
-
-        // remove any garbage data
-        if (response[i].data().score == undefined) {
-          if (isDebugging) {
-            console.log("bad data found for user: "+ response[i].id);
-          }
-          await highscoresCollection.doc("/"+response[i].id+"/").delete();
-          continue;
-        }
-
-        // compare score to current target
-        if (response[i].data().score > response[target].data().score) {
-          target = i;
-        }
-      }
-      // remove score from database
-      if (isDebugging) {
-        console.log("user "+response[target].id+
-          " had lowest score, culling...");
-      }
-      await highscoresCollection.doc("/"+response[target].id+
-        "/").delete();
-      // clear score from local array
-      response[target] = response[response.length-1];
-      response.pop(target);
-    }
-
-    // send success confirmation
-    return res.status(200).send("new highscore accepted");
-  // error recieved
-  } catch (error) {
-    console.log(error);
-    return res.status(500).send(error);
-  }
-});

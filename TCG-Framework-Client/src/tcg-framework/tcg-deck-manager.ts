@@ -1,4 +1,4 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, PBAnimationState, PBAnimator, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry, CardEntry } from "./data/tcg-card-registry";
@@ -175,9 +175,9 @@ export module DeckManager {
             //  add animations
             Animator.create(this.entityCore, {
                 states:[
-                    { name: ANIM_KEYS_DECK_MANAGER[0], clip: ANIM_KEYS_DECK_MANAGER[0], playing: true, loop: false },
-                    { name: ANIM_KEYS_DECK_MANAGER[1], clip: ANIM_KEYS_DECK_MANAGER[1], playing: false, loop: false },
-                    { name: ANIM_KEYS_DECK_MANAGER[2], clip: ANIM_KEYS_DECK_MANAGER[2], playing: false, loop: false },
+                    { clip: ANIM_KEYS_DECK_MANAGER[0], playing: true, loop: false },
+                    { clip: ANIM_KEYS_DECK_MANAGER[1], playing: false, loop: false },
+                    { clip: ANIM_KEYS_DECK_MANAGER[2], playing: false, loop: false },
                 ]
             });
 
@@ -193,7 +193,7 @@ export module DeckManager {
             //  add animator
             Animator.create(this.entityPedistal, {
                 states:[
-                    { name: 'rotate', clip: 'rotate', playing: true, loop: true, speed:0.25 },
+                    { clip: 'rotate', playing: true, loop: true, speed:0.25 },
                 ]
             });
 

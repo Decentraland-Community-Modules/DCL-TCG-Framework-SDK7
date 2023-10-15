@@ -178,7 +178,7 @@ export module InteractionObject
                     //prepare keys
                     var keys:PBAnimationState[] = [];
                     for(let i:number=0; i<this.animCount; i++) {
-                        keys.push({ name:ANIM_KEY_PREFIX+i.toString(), clip:ANIM_KEY_PREFIX+i.toString(), playing:false, loop:false });
+                        keys.push({ clip:ANIM_KEY_PREFIX+i.toString(), playing:false, loop:false });
                     }
                     //add animator
                     Animator.createOrReplace(this.entityInteraction, { states:keys });
