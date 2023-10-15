@@ -116,19 +116,19 @@ export module CardSubjectObject
                 case CARD_TYPE.SPELL:
                     Animator.createOrReplace(this.entity, {
                         states:[
-                            {name:ANIM_KEYS_SPELL[0], clip:ANIM_KEYS_SPELL[0], playing:false, speed:data.animSpeed??1, loop:data.forceRepeat??false},
+                            {clip:ANIM_KEYS_SPELL[0], playing:false, speed:data.animSpeed??1, loop:data.forceRepeat??false},
                         ]
                     });
                 break;
                 case CARD_TYPE.CHARACTER:
                     Animator.createOrReplace(this.entity, {
                         states:[
-                            {name:ANIM_KEYS_CHARACTER[0], clip:ANIM_KEYS_CHARACTER[0], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
-                            {name:ANIM_KEYS_CHARACTER[1], clip:ANIM_KEYS_CHARACTER[1], playing:false, speed:data.animSpeed??1, shouldReset:false, loop:data.forceRepeat??true},
-                            {name:ANIM_KEYS_CHARACTER[2], clip:ANIM_KEYS_CHARACTER[2], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
-                            {name:ANIM_KEYS_CHARACTER[3], clip:ANIM_KEYS_CHARACTER[3], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
-                            {name:ANIM_KEYS_CHARACTER[4], clip:ANIM_KEYS_CHARACTER[4], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
-                            {name:ANIM_KEYS_CHARACTER[5], clip:ANIM_KEYS_CHARACTER[5], playing:false, speed:data.animSpeed??1, shouldReset:false, loop:data.forceRepeat??false},
+                            {clip:ANIM_KEYS_CHARACTER[0], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {clip:ANIM_KEYS_CHARACTER[1], playing:false, speed:data.animSpeed??1, shouldReset:false, loop:data.forceRepeat??true},
+                            {clip:ANIM_KEYS_CHARACTER[2], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {clip:ANIM_KEYS_CHARACTER[3], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {clip:ANIM_KEYS_CHARACTER[4], playing:false, speed:data.animSpeed??1, shouldReset:true, loop:data.forceRepeat??false},
+                            {clip:ANIM_KEYS_CHARACTER[5], playing:false, speed:data.animSpeed??1, shouldReset:false, loop:data.forceRepeat??false},
                         ]
                     });
                 break;

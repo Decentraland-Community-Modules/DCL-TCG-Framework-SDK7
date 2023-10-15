@@ -1041,7 +1041,6 @@ export module DeckManager {
         //get card entry
         const cardEntry = CardDataRegistry.Instance.GetEntryByPos(entityGridCards[Number.parseInt(slotID)].DefIndex);
 
-        CardSubjectDisplayPanel.DisplayCardStats(cardEntry.DataDef)
         //create character display model 
         curDisplayObject.SetSelection(cardEntry.DataDef);
         
