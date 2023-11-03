@@ -1,15 +1,3 @@
-/*      TRADING CARD GAME - CARD REGISTRY
-    contains access to all cards, with a variety of access methods. card entries
-    contain the max number of instances each card can have, as well as their 
-    available rarities.
-    
-    TODO:
-        -extend data for storing which NFT is enabling the card (for exp gain & rarity splits)
-
-    author: Alex Pazder
-    contact: TheCryptoTrader69@gmail.com 
-*/
-
 import { Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, engine } from "@dcl/sdk/ecs";
 import Dictionary, { List } from "../../utilities/collections";
 import { CARD_DATA_ID, CARD_TYPE, CardData, CardDataObject} from "./tcg-card-data";
@@ -17,21 +5,30 @@ import { CardTextureData, CardTextureDataObject } from "./tcg-card-texture-data"
 import { CARD_FACTION_TYPE, CardFactionData, CardFactionDataObject } from "./tcg-faction-data";
 import { CardFactionTextureData, CardFactionTextureDataObject } from "./tcg-faction-texture-data";
 
-/* linkage for a single card faction's data in the game */
+/*      TRADING CARD GAME - CARD REGISTRY
+    contains access to all cards, with a variety of access methods. card entries
+    contain the max number of instances each card can have, per source (level/contract).
+    
+    author: Alex Pazder
+    contact: TheCryptoTrader69@gmail.com 
+*/
+
+/** defines every unlock type */
+export enum CARD_UNLOCK_TYPE {
+    LEVEL,
+    CONTRACT
+}
+/** linkage for a single faction's data in the game */
 export class FactionEntry {
-    //card's uid
+    /** faction's uid */
     private id:CARD_FACTION_TYPE; 
     public get ID() { return this.id; }
-    //card's data position
+    /** faction's data position */
     private position:number;
-    public get Position(): number { return this.Position; }
-    //returns the card's data component
-    public get DataDef(): CardFactionDataObject { return CardFactionData[this.position]; }
+    public get Position():number { return this.Position; }
+    /** returns the faction's data component */
+    public get DataDef():CardFactionDataObject { return CardFactionData[this.position]; }
 
-    //max allowed number of this card in the player's deck
-    //  this will either be defined  by the card's tier or the player's NFT ownership
-    public Count: number = 0;
-    
     /** prepares card data entry for use */
     constructor(pos:number, id:CARD_FACTION_TYPE) {
         this.position = pos;
@@ -40,36 +37,51 @@ export class FactionEntry {
 }
 /* linkage for a single card's data in the game */
 export class CardEntry {
-    //card's uid
+    /** card's uid */
     private id:CARD_DATA_ID; 
     public get ID() { return this.id; }
-    //card's data position
+    /** card's data position */
     private position:number;
     public get Position(): number { return this.Position; }
-    //returns the card's data component
+    /** returns the card's data component */
     public get DataDef(): CardDataObject { return CardData[this.position]; }
 
-    //max allowed number of this card in the player's deck
-    //  this will either be defined  by the card's tier or the player's NFT ownership
-    public CountAllowed: number = 0;
+    /** array containing all counts per unlock type */
+    private count:number[] = [];
+    /** provides the total number of allowed cards for the player's deck */
+    public get CountAllowed():number {
+        //process all 
+        let value:number = 0;
+        for (var i:number = 0; i<this.count.length; i++) {
+            value += this.count[i];
+        }
+        return value;
+    }
     
     /** prepares card data entry for use */
     constructor(pos:number, id:CARD_DATA_ID) {
         this.position = pos;
         this.id = id;
+        //populate count array
+        Object.keys(CARD_UNLOCK_TYPE).forEach(() => { this.count.push(0); });
+    }
+    
+    /** clears all counts for the given type */
+    public ClearCount(type:CARD_UNLOCK_TYPE) {
+        this.count[type] = 0;
+    } 
+
+    /** increases the count of a given type */
+    public AddCount(type:CARD_UNLOCK_TYPE, value:number) {
+        this.count[type] += value;
     }
 }
-/*  manages all general card defs and the player's allowed cards per deck 
-    many functions within assume that the system has been initialized & loaded the player's data
-    from the correct source/setting (defined by network type)
-*/
+/* manages all entries for card, sorted per type and allowed counts per deck */
 export class CardDataRegistry {
+    /** when true debug logs are generated (toggle off when you deploy) */
     static IsDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     static debugTag:string = "TCG Card Registry: ";
-
-    /** when true system is fully loaded and ready for use */
-    private isInitialized:boolean = false;
 
     /** access pocketing */
     private static instance: undefined | CardDataRegistry;
@@ -78,7 +90,6 @@ export class CardDataRegistry {
         if (CardDataRegistry.instance === undefined) {
             CardDataRegistry.instance = new CardDataRegistry();
         }
-
         return CardDataRegistry.instance;
     }
 
@@ -108,9 +119,7 @@ export class CardDataRegistry {
     /** returns number of card factions */
     public static CardFactionCount() { return CardDataRegistry.Instance.factionRegistryAll.size(); }
     
-    /**
-     * prepares the inventory for use, populating all inventory item and callback dictionaries. 
-     */
+    /** prepares instanced registry for use */
     public constructor() {
         if (CardDataRegistry.IsDebugging) console.log(CardDataRegistry.debugTag+"initializing...");
 
@@ -214,6 +223,14 @@ export class CardDataRegistry {
             case LoadingState.UNKNOWN:
                 //console.log("<ERROR> failed to get load state (likely invalid model path)");
             break
+        }
+    }
+
+    /** resets all allowed card counts for a type */
+    public ResetAllowedCount(type:CARD_UNLOCK_TYPE) {
+        //process every entry
+        for (var i: number = 0; i < this.cardRegistryAll.size(); i++) {
+            this.cardRegistryAll.getItem(i).ClearCount(type);
         }
     }
 

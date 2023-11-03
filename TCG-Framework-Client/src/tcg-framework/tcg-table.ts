@@ -10,6 +10,8 @@ import { PlayCard } from "./tcg-play-card";
 import { TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { Networking } from "./config/tcg-networking";
 import * as utils from '@dcl-sdk/utils';
+import { signedFetch } from "~system/SignedFetch";
+import { STATUS_EFFECT_AFFINITY } from "./data/tcg-status-effect-data";
 
 
 /*      TRADING CARD GAME - CARD TABLE
@@ -41,7 +43,7 @@ import * as utils from '@dcl-sdk/utils';
 */
 export module Table {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = false;
+    const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Table: ";
 
@@ -123,14 +125,30 @@ export module Table {
         id:SLOT_SELECTION_TYPE;
     }
 
+    /** represents a table, packed to be passed over the network */
+    interface TableSerialData {
+        id:number;
+        //owner of table
+        owner:string;
+        //game state of table
+        state:number;
+        //current turn
+        turn:number;
+        round:number;
+        //current state of teams registered to table
+        teams:TableTeam.TeamSerialData[];
+    }
+
 	/** object interface used to define all data required to create a team */
 	export interface TableCreationData {
         //indexing
-        tableID: number;
+        tableID:number;
+        //
+        networkingType:Networking.TABLE_CONNECTIVITY_TYPE;
         //type
-        teamTypes: [TABLE_TEAM_TYPE, TABLE_TEAM_TYPE];
+        teamTypes:[TABLE_TEAM_TYPE, TABLE_TEAM_TYPE];
         //position
-        parent: undefined|Entity, //entity to parent object under 
+        parent:undefined|Entity, //entity to parent object under 
 		position: { x:number; y:number; z:number; }; //new position for object
 		rotation: { x:number; y:number; z:number; }; //new rotation for object
 	}
@@ -140,6 +158,14 @@ export module Table {
         /** when true this object is reserved in-scene */
         private isActive:boolean = true;
         public get IsActive():boolean { return this.isActive; };
+        
+        /** when true this object has been fully initialized, usually locked when sync is in-progress */
+        private isInitialized:boolean = false;
+        public get IsInitialized():boolean { return this.isInitialized; };
+
+        /** networking type */
+        private networkingType:Networking.TABLE_CONNECTIVITY_TYPE = Networking.TABLE_CONNECTIVITY_TYPE.LOCAL;
+        public get NetworkingType():Networking.TABLE_CONNECTIVITY_TYPE { return this.networkingType; };
 
         /** represents the unique index of this slot's table, req for networking */
         private tableID:number = -1;
@@ -155,6 +181,10 @@ export module Table {
 
         /** sets the lobby display state */
         public SetGameState(state:TABLE_GAME_STATE) {
+            //clear turn display
+            const textTurn = TextShape.getMutable(this.entityLobbyTurn);
+            textTurn.text = "";
+            //set state
             this.curState = state;
             const textShape = TextShape.getMutable(this.entityLobbyState);
             switch(state) {
@@ -168,26 +198,25 @@ export module Table {
                 case TABLE_GAME_STATE.ACTIVE:
                     //update text
                     textShape.text = "IN SESSION";
+                    textTurn.text = this.teamObjects[this.curTurn].RegisteredPlayerName +"'S TURN (ROUND: "+this.curRound+")";
                     //show team displays
                     this.entityStateDisplays[0].SetState(true);
                     this.entityStateDisplays[1].SetState(true);
                 break;
                 case TABLE_GAME_STATE.OVER:
                     //update text
-                    textShape.text = "<GAME_RESULT>";
+                    textShape.text = "GAME OVER";
                     //show team displays
                     this.entityStateDisplays[0].SetState(true);
                     this.entityStateDisplays[1].SetState(true);
                 break;
             }
-            //clear turn display
-            TextShape.getMutable(this.entityLobbyTurn).text = "";
             if(isDebugging) console.log(debugTag+"table="+this.TableID+" state set to state="+state);
         }
 
         /** table owner */
-        private tableOwner:string = "";
-        public get TableOwner():string { return this.tableOwner; }
+        private tableOwnerID:string = "";
+        public get TableOwnerID():string { return this.tableOwnerID; }
 
         /** current player's turn */
         private curTurn:number = -1;
@@ -216,6 +245,7 @@ export module Table {
         private targetingCount:number = 0;
         /** currently selected targets */
         private selectionTargets:TableSelectionTarget[] = [];
+        public get SelectionTargets():TableSelectionTarget[] { return this.selectionTargets; } 
 
         /** parental position */
         private entityParent:Entity;
@@ -247,21 +277,21 @@ export module Table {
         });
         
         //pve npc enemy entity
-        private characterNPC:CardSubjectObject.CardSubjectObject;
+        private characterNPC:undefined|CardSubjectObject.CardSubjectObject;
 
         /** all team objects */
         public teamObjects:TableTeam.TableTeamObject[] = [];
 
         /** returns the table's player state string */
         public GetPlayerString():string {
-            //TODO: fix for #v#
+            //TODO: fix for 2v2
             var str:string = "";
             //team 0
-            if(this.teamObjects[0].RegisteredPlayer) str += this.teamObjects[0].RegisteredPlayer;
+            if(this.teamObjects[0].RegisteredPlayerID) str += this.teamObjects[0].RegisteredPlayerName;
             else str += "<WAITING>";
             str += " VS ";
             //team 1
-            if(this.teamObjects[1].RegisteredPlayer) str += this.teamObjects[1].RegisteredPlayer;
+            if(this.teamObjects[1].RegisteredPlayerID) str += this.teamObjects[1].RegisteredPlayerName;
             else str += "<WAITING>";
         
             return str;
@@ -269,6 +299,57 @@ export module Table {
         /** updates the table's player state display */
         public UpdatePlayerDisplay() {
             TextShape.getMutable(this.entityLobbyPlayers).text = this.GetPlayerString();
+        }
+
+        /** redraws team display objects */
+        public RedrawTeamDisplays() {
+            for(let i:number=0; i<this.teamObjects.length; i++) {
+                //update team view
+                this.entityStateDisplays[i].UpdateView(this.teamObjects[i]);
+            }
+        }
+
+        /** repositions team display objects */
+        public RepositionTeamDisplays() {
+            //set team display object states
+            //  player belongs to team 1
+            if(this.teamObjects[0].RegisteredPlayerID == PlayerLocal.GetUserName()) {
+                //hand displays
+                this.teamObjects[0].SetHandState(true);
+                this.teamObjects[1].SetHandState(false);
+                //team displays
+                this.entityStateDisplays[0].SetState(true);
+                this.entityStateDisplays[0].ResetView(this.teamObjects[0]);
+                this.entityStateDisplays[0].SetPosition({x:5, y:2.5, z:-2.75});
+                this.entityStateDisplays[0].SetRotation({x:0,y:200,z:0});
+                this.entityStateDisplays[1].SetState(true);
+                this.entityStateDisplays[1].ResetView(this.teamObjects[1]);
+                this.entityStateDisplays[1].SetPosition({x:5, y:2.5, z:2.75});
+                this.entityStateDisplays[1].SetRotation({x:0,y:340,z:0});
+            }
+            //  player belongs to team 2
+            else if(this.teamObjects[1].RegisteredPlayerID == PlayerLocal.GetUserName()) {
+                //hand displays
+                this.teamObjects[1].SetHandState(true);
+                this.teamObjects[0].SetHandState(false);
+                //team displays
+                this.entityStateDisplays[0].SetState(true);
+                this.entityStateDisplays[0].SetPosition({x:-5, y:2.5, z:2.75});
+                this.entityStateDisplays[0].SetRotation({x:0,y:20,z:0});
+                this.entityStateDisplays[1].SetState(true);
+                this.entityStateDisplays[1].SetPosition({x:-5, y:2.5, z:-2.75});
+                this.entityStateDisplays[1].SetRotation({x:0,y:160,z:0});
+
+            }
+            //  player belongs to no team
+            else {
+                //hand displays
+                this.teamObjects[1].SetHandState(false);
+                this.teamObjects[0].SetHandState(false);
+                //team displays
+                this.entityStateDisplays[0].SetState(false);
+                this.entityStateDisplays[1].SetState(false);
+            }
         }
 
         /** prepares field team for use */
@@ -298,8 +379,8 @@ export module Table {
             this.entityLobbyState = engine.addEntity();
             Transform.create(this.entityLobbyState, {
                 parent: this.entityLobbyParent,
-                position: {x:0,y:1.25,z:0},
-                scale: {x:1,y:1,z:1},
+                position: {x:0,y:0.75,z:0},
+                scale: {x:0.5,y:0.5,z:0.5},
             });
             var textShape = TextShape.create(this.entityLobbyState);
             textShape.outlineColor = Color4.Black();
@@ -311,7 +392,7 @@ export module Table {
             Transform.create(this.entityLobbyPlayers, {
                 parent: this.entityLobbyParent,
                 position: {x:0,y:0,z:0},
-                scale: {x:1,y:1,z:1},
+                scale: {x:0.5,y:0.5,z:0.5},
             });
             textShape = TextShape.create(this.entityLobbyPlayers);
             textShape.outlineColor = Color4.Black();
@@ -322,8 +403,8 @@ export module Table {
             this.entityLobbyTurn = engine.addEntity();
             Transform.create(this.entityLobbyTurn, {
                 parent: this.entityLobbyParent,
-                position: {x:0,y:-0.75,z:0},
-                scale: {x:0.5,y:0.5,z:0.5},
+                position: {x:0,y:-0.55,z:0},
+                scale: {x:0.45,y:0.45,z:0.45},
             });
             textShape = TextShape.create(this.entityLobbyTurn);
             textShape.outlineColor = Color4.Black();
@@ -336,25 +417,13 @@ export module Table {
             for(let i:number=0; i<2; i++) {
                 this.entityStateDisplays.push(new TableTeam.TeamDisplayObject(this.entityParent));
             }
-
-            //(DEMO ONLY)add NPC for combat
-            this.characterNPC = CardSubjectObject.Create({
-                key: 'npc-'+this.TableID,
-                type: CARD_TYPE.CHARACTER,
-                model: "models/tcg-framework/card-characters/pve-golemancer.glb",
-                forceRepeat: true,
-                parent: this.entityParent, 
-                position: { x:-6.5, y:1.75, z:0 },
-                scale: { x:2, y:2, z:2 },
-                rotation: { x:0, y:90, z:0 }
-            });
-            this.characterNPC.SetAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.IDLE);
-            this.characterNPC.SetAnimationSpeed(CardSubjectObject.ANIM_KEY_CHARACTER.IDLE, 0.2);
         }
 
         /** prepares the card slot for use by a table team */
         public Initialize(data:TableCreationData) {
             this.isActive = true;
+            this.isInitialized = false;
+            this.networkingType = data.networkingType;
             //indexing
             this.tableID = data.tableID;
             //processing
@@ -377,7 +446,7 @@ export module Table {
                 const teamObject = this.teamObjects.pop();
                 if(teamObject) teamObject.Disable();
             }
-
+            
             //create team objects
             for(let i:number=0; i<2; i++) {
                 const teamObject:TableTeam.TableTeamObject = TableTeam.Create({
@@ -392,9 +461,24 @@ export module Table {
 
                 //if table is a PvE table, set ai 
                 if(data.teamTypes[i] == TABLE_TEAM_TYPE.AI) {
-                    this.teamObjects[i].RegisteredPlayer = "Golemancer (lvl 1)";
+                    //(DEMO ONLY)add NPC for combat
+                    this.characterNPC = CardSubjectObject.Create({
+                        key: 'npc-'+this.TableID,
+                        type: CARD_TYPE.CHARACTER,
+                        model: "models/tcg-framework/card-characters/pve-golemancer.glb",
+                        forceRepeat: true,
+                        parent: this.entityParent, 
+                        position: { x:-6.5, y:1.75, z:0 },
+                        scale: { x:2, y:2, z:2 },
+                        rotation: { x:0, y:90, z:0 }
+                    });
+                    this.characterNPC.SetAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.IDLE);
+                    this.characterNPC.SetAnimationSpeed(CardSubjectObject.ANIM_KEY_CHARACTER.IDLE, 0.2);
+
+                    this.teamObjects[i].RegisteredPlayerID = "[PVE]";
+                    this.teamObjects[i].RegisteredPlayerName = "Golemancer (lvl 1)";
                     this.teamObjects[i].TeamType = TABLE_TEAM_TYPE.AI;
-                    this.teamObjects[i].RegisteredDeck = PlayerLocal.DeckPVE;
+                    this.teamObjects[i].DeckRegistered = PlayerLocal.DeckPVE;
                 }
             }
 
@@ -420,118 +504,93 @@ export module Table {
             }
         }
 
-        /** redraws team display objects */
-        public RedrawTeamDisplays() {
-            for(let i:number=0; i<this.teamObjects.length; i++) {
-                //update team view
-                this.entityStateDisplays[i].UpdateView(this.teamObjects[i]);
-            }
-        }
-
         //## ADD PLAYER TO TABLE
+        public EmitAddPlayerToTeam:(table:string, team:number, playerID:string, playerName:string) => void = this.RemoteAddPlayerToTeam;
         /** local call from interaction made to all connected players, to add a player to this table */
-        public LocalAddPlayerToTeam(team:number, player:string) {
-            if(isDebugging) console.log(debugTag+"<LOCAL> adding player="+player+" to team="+team+"...");
-            //only allow changes if game is not in session
-            if(this.curState != TABLE_GAME_STATE.IDLE) return;
+        public LocalAddPlayerToTeam(team:number, playerID:string, playerName:string) {
+            if(isDebugging) console.log(debugTag+"<LOCAL> adding playerID="+playerID+" playerName="+playerName+" to team="+team+"...");
+
+            //halt if local player already belongs to a table 
+            /*if(PlayerLocal.CurTableID != undefined && PlayerLocal.CurTeamID != undefined) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> player is already registered to table="+PlayerLocal.CurTableID+" to team="+PlayerLocal.CurTeamID);
+                return;
+            }*/
+
+            //halt if team slot is already occupied by another player
+            if(this.teamObjects[team].RegisteredPlayerID != undefined) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> team is already occupied by player, playerID="+this.teamObjects[team].RegisteredPlayerID
+                    +", playerName="+this.teamObjects[team].RegisteredPlayerName);
+                return;
+            }
+
+            //halt if table is not in the idle state
+            if(this.curState != TABLE_GAME_STATE.IDLE) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> table is not in idle state, curState="+this.curState);
+                return;
+            }
 
             //send networking call
-            Table.EmitAddPlayerToTeam(this.TableID, team, player);
+            this.EmitAddPlayerToTeam(this.TableID, team, playerID, playerName);
         }
         /** remote call from a connected player, to add a player to this table */
-        public RemoteAddPlayerToTeam(team:number, player:string) {
-            if(isDebugging) console.log(debugTag+"<REMOTE> adding player="+player+" to team="+team+"...");
-
-            //if local player already belongs to a table 
-            if(PlayerLocal.GetDisplayName() == player && PlayerLocal.CurTableID != undefined && PlayerLocal.CurTeamID != undefined) {
-                if(isDebugging) console.log(debugTag+"<REMOTE> player is already registered to table="+PlayerLocal.CurTableID+" to team="+PlayerLocal.CurTeamID);
-                //remove player from previous table/team
-                GetByKey(PlayerLocal.CurTableID.toString())?.LocalRemovePlayerFromTeam(PlayerLocal.CurTeamID);
-            }
+        public RemoteAddPlayerToTeam(table:string, team:number, playerID:string, playerName:string) {
+            if(isDebugging) console.log(debugTag+"<REMOTE> adding playerID="+playerID+" playerName="+playerName+" to team="+team+"...");
             
-            //if both teams are unoccupied, give processing ownership to newly registered player 
-            if((this.teamObjects[0].RegisteredPlayer == undefined || this.teamObjects[0].TeamType == TABLE_TEAM_TYPE.AI) && 
-                (this.teamObjects[1].RegisteredPlayer == undefined || this.teamObjects[1].TeamType == TABLE_TEAM_TYPE.AI)) {
-                if(isDebugging) console.log(debugTag+"<REMOTE> setting owner for table="+this.TableID+" to player="+player);
-                this.tableOwner = player;
+            //if both teams are unoccupied, give processing ownership to newly registered player
+            if((this.teamObjects[0].RegisteredPlayerID == undefined || this.teamObjects[0].TeamType == TABLE_TEAM_TYPE.AI) && 
+                (this.teamObjects[1].RegisteredPlayerID == undefined || this.teamObjects[1].TeamType == TABLE_TEAM_TYPE.AI)) {
+                if(isDebugging) console.log(debugTag+"<REMOTE> setting owner for table="+this.TableID+" to playerID="+playerID);
+                this.tableOwnerID = playerID;
             }
 
             //add player to team
-            this.teamObjects[team].RegisteredPlayer = player;
+            this.teamObjects[team].RegisteredPlayerID = playerID;
+            this.teamObjects[team].RegisteredPlayerName = playerName;
             
             //if player is local player
-            if(PlayerLocal.GetDisplayName() == player) {
+            if(PlayerLocal.GetUserID() == playerID) {
                 //link this table to local player's data
                 PlayerLocal.CurTableID = this.tableID;
                 PlayerLocal.CurTeamID = team;
             } 
-            //if player is remote player
-            else {
-            }
 
-            //set team display object states
-            //  player belongs to team 1
-            if(PlayerLocal.GetDisplayName() == this.teamObjects[0].RegisteredPlayer) {
-                //hand displays
-                this.teamObjects[0].SetHandState(true);
-                this.teamObjects[1].SetHandState(false);
-                //team displays
-                this.entityStateDisplays[0].SetState(true);
-                this.entityStateDisplays[0].ResetView(this.teamObjects[0]);
-                this.entityStateDisplays[0].SetPosition({x:5, y:2.5, z:-2.75});
-                this.entityStateDisplays[0].SetRotation({x:0,y:200,z:0});
-                this.entityStateDisplays[1].SetState(true);
-                this.entityStateDisplays[1].ResetView(this.teamObjects[1]);
-                this.entityStateDisplays[1].SetPosition({x:5, y:2.5, z:2.75});
-                this.entityStateDisplays[1].SetRotation({x:0,y:340,z:0});
-            }
-            //  player belongs to team 2
-            else if(PlayerLocal.GetDisplayName() == this.teamObjects[1].RegisteredPlayer) {
-                //hand displays
-                this.teamObjects[1].SetHandState(true);
-                this.teamObjects[0].SetHandState(false);
-                //team displays
-                this.entityStateDisplays[0].SetState(true);
-                this.entityStateDisplays[0].SetPosition({x:-5, y:2.5, z:2.75});
-                this.entityStateDisplays[0].SetRotation({x:0,y:20,z:0});
-                this.entityStateDisplays[1].SetState(true);
-                this.entityStateDisplays[1].SetPosition({x:-5, y:2.5, z:-2.75});
-                this.entityStateDisplays[1].SetRotation({x:0,y:160,z:0});
-
-            }
-            //  player belongs to no team
-            else {
-                //hand displays
-                this.teamObjects[1].SetHandState(false);
-                this.teamObjects[0].SetHandState(false);
-                //team displays
-                this.entityStateDisplays[0].SetState(false);
-                this.entityStateDisplays[1].SetState(false);
-            }
-
-            //update team buttons
+            //update team display object's position
+            this.RepositionTeamDisplays();
+            //update team's buttons
             this.teamObjects[team].UpdateButtonStates();
             //update players tied to table
             this.UpdatePlayerDisplay();
-            if(isDebugging) console.log(debugTag+"<REMOTE> added player="+this.teamObjects[team].RegisteredPlayer+" to team="+team+"!");
+            if(isDebugging) console.log(debugTag+"<REMOTE> added player="+this.teamObjects[team].RegisteredPlayerID+" to team="+team+"!");
         }
 
         //## REMOVE PLAYER FROM TABLE
+        public EmitRemovePlayerFromTeam:(table:string, team:number) => void = this.RemoteRemovePlayerFromTeam;
         /** local call from interaction made to all connected players, removes a player from the game */
         public LocalRemovePlayerFromTeam(team:number) {
             if(isDebugging) console.log(debugTag+"<LOCAL> removing player from team="+team+"...");
-            //only allow changes if game is not in session
-            if(this.curState != TABLE_GAME_STATE.IDLE) return;
             
+            //halt if targeted team slot is not occupied by the local player
+            if(this.teamObjects[team].RegisteredPlayerID != PlayerLocal.GetUserID()) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> team is not occupied by local player, playerID="+this.teamObjects[team].RegisteredPlayerID
+                    +", playerName="+this.teamObjects[team].RegisteredPlayerName);
+                return;
+            }
+
+            //halt if table is not in the idle state
+            if(this.curState != TABLE_GAME_STATE.IDLE) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> table is not in idle state, curState="+this.curState);
+                return;
+            }
+
             //send networking call
-            Table.EmitRemovePlayerFromTeam(this.TableID, team);
+            this.EmitRemovePlayerFromTeam(this.TableID, team);
         }
         /**remote call from a connected player, removes a player from the game */
-        public RemoteRemovePlayerFromTeam(team:number) {
+        public RemoteRemovePlayerFromTeam(table:string, team:number) {
             if(isDebugging) console.log(debugTag+"<REMOTE> removing player from team="+team+"...");
 
             //if player is local player
-            if(PlayerLocal.GetDisplayName() == this.teamObjects[team].RegisteredPlayer) {
+            if(this.teamObjects[team].RegisteredPlayerID == PlayerLocal.GetUserID()) {
                 //unlink table from local player
                 PlayerLocal.CurTableID = undefined;
                 PlayerLocal.CurTeamID = undefined;
@@ -541,19 +600,16 @@ export module Table {
                 this.entityStateDisplays[1].SetState(false);
             }
 
-            //reset ready state
-            this.LocalSetPlayerReadyState(team, false);
-
             //remove player from team
-            this.teamObjects[team].RegisteredPlayer = undefined;
+            this.teamObjects[team].RegisteredPlayerID = undefined;
+            //reset team's ready state
+            this.teamObjects[team].ReadyState = false;
 
             //clear deck
-            const deck = this.teamObjects[team].RegisteredDeck;
-            if(deck != undefined) {
+            const deck = this.teamObjects[team].DeckRegistered;
+            if(deck) {
                 deck.Clean();
-            } else {
                 console.log("<ERROR>: table="+this.tableID+", team="+team+" does not have a valid deck, likely mismanaged table states");
-                return;
             }
 
             //update players tied to table
@@ -564,24 +620,35 @@ export module Table {
         }
 
         //## SET READY STATE OF TEAM ON TABLE
+        public EmitSetPlayerReadyState:(table:string, team:number, state:boolean, deckSerial:string) => void = this.RemoteSetPlayerReadyState;
         /** local call from interaction made to all connected players, sets the given team's ready state 
          *      when a player sets their ready state to true their deck is passed to the table
         */
         public LocalSetPlayerReadyState(team:number, state:boolean) {
             if(isDebugging) console.log(debugTag+"<LOCAL> setting ready state table="+this.TableID+" team="+team+" to "+state+"...");
             
-            //ensure local player has the authority to change ready state
-            if(PlayerLocal.GetDisplayName() != this.teamObjects[team].RegisteredPlayer) return;
+            //halt if targeted team slot is not occupied by the local player
+            if(this.teamObjects[team].RegisteredPlayerID != PlayerLocal.GetUserID()) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> team is not occupied by local player, playerID="+this.teamObjects[team].RegisteredPlayerID
+                    +", playerName="+this.teamObjects[team].RegisteredPlayerName);
+                return;
+            }
+
+            //halt if table is not in the idle state
+            if(this.curState != TABLE_GAME_STATE.IDLE) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> table is not in idle state, curState="+this.curState);
+                return;
+            }
             
-            //if player is readying, send deck for master
+            //if player is readying, send deck for master~
             var serial = "";
             if(state) serial = PlayerLocal.GetPlayerDeck().Serialize();
 
             //send networking call
-            Table.EmitSetPlayerReadyState(this.TableID, team, state, serial);
+            this.EmitSetPlayerReadyState(this.TableID, team, state, serial);
         }
         /** remote call from a connected player, sets the given team's ready state */
-        public RemoteSetPlayerReadyState(team:number, state:boolean, serial:string) {
+        public RemoteSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) {
             if(isDebugging) console.log(debugTag+"<REMOTE> setting ready state table="+this.TableID+" team="+team+" to "+state+"...");
             
             //update team's state
@@ -589,16 +656,15 @@ export module Table {
             this.teamObjects[team].UpdateButtonStates();
 
             //deserialize team's deck (if team is de-readying, deck will be cleared)
-            const deck = this.teamObjects[team].RegisteredDeck;
-            if(deck != undefined) {
-                deck.Deserial(serial);
-            } else {
+            const deck = this.teamObjects[team].DeckRegistered;
+            if(!deck) {
                 console.log("<ERROR>: table="+this.tableID+", team="+team+" does not have a valid deck, likely mismanaged table states");
                 return;
             }
+            deck.Deserial(deckSerial);
 
             //if local player is table owner
-            if(PlayerLocal.GetDisplayName() == this.TableOwner) {
+            if(this.TableOwnerID == PlayerLocal.GetUserID()) {
                 //if both of player are ready, start game
                 for(let i:number=0; i<this.teamObjects.length; i++) {
                     if(!this.teamObjects[i].ReadyState) return;
@@ -609,15 +675,22 @@ export module Table {
         }
 
         //## START GAME
+        public EmitStartGame:(table:string) => void = this.RemoteStartGame;
         /** local call from interaction made to all connected players, starts game */
         public LocalStartGame() {
             if(isDebugging) console.log(debugTag+"<LOCAL> starting game on table="+this.TableID+"...");
 
+            //halt if local player is not the table owner
+            if(this.TableOwnerID != PlayerLocal.GetUserID()) {
+                if(isDebugging) console.log(debugTag+"<LOCAL> local playerID="+PlayerLocal.GetUserID()+" is not tableOwnerID="+this.tableOwnerID);
+                return;
+            }
+
             //send networking call
-            Table.EmitStartGame(this.TableID);
+            this.EmitStartGame(this.TableID);
         }
         /** remote call from a connected player, starts game */
-        public RemoteStartGame() {
+        public RemoteStartGame(table:string) {
             if(isDebugging) console.log(debugTag+"<REMOTE> starting game on table="+this.TableID+"...");
 
             //set entry table state
@@ -638,7 +711,7 @@ export module Table {
             }
 
             //if player is table owner
-            if(PlayerLocal.GetDisplayName() == this.TableOwner) {
+            if(PlayerLocal.GetUserName() == this.TableOwnerID) {
                 //start next turn
                 this.LocalNextTurn();
             }
@@ -647,29 +720,29 @@ export module Table {
         }
         
         //## END GAME
+        public EmitEndGame:(table:string, defeated:number) => void = this.RemoteEndGame;
         /** local call from interaction made to all connected players, ends the game */
         public LocalEndGame(defeated:number) {
             if(isDebugging) console.log(debugTag+"<LOCAL> ending game on table="+this.TableID+"...");
 
             //ensure local player is current turn owner
-            if(PlayerLocal.GetDisplayName() != this.TableOwner) return;
+            if(PlayerLocal.GetUserName() != this.TableOwnerID) return;
             
             //send networking call
-            EmitEndGame(this.TableID, defeated);
-
+            this.EmitEndGame(this.TableID, defeated);
         }
         /** local call from interaction made to all connected players, forfeits the game making the local player lose */
         public LocalForfeitGame() {
             if(isDebugging) console.log(debugTag+"<LOCAL> ending game on table="+this.TableID+"...");
 
             //ensure local player is current turn owner
-            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer) return;
+            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID) return;
             
             //send networking call
-            EmitEndGame(this.TableID, this.curTurn);
+            this.EmitEndGame(this.TableID, this.curTurn);
         }
         /** remote call from a connected player, ends the game with the given loser */
-        public RemoteEndGame(defeated:number) {
+        public RemoteEndGame(table:string, defeated:number) {
             if(isDebugging) console.log(debugTag+"<REMOTE> ending game on table="+this.TableID+", loserTeam="+defeated+"...");
 
             //set game state
@@ -678,14 +751,14 @@ export module Table {
             //force any players out of teams
             for(let i:number = 0; i<this.teamObjects.length; i++) {
                 if(this.teamObjects[i].TeamType != TABLE_TEAM_TYPE.AI) {
-                    this.RemoteRemovePlayerFromTeam(i);
+                    this.RemoteRemovePlayerFromTeam(this.TableID, i);
                     this.teamObjects[i].ReleaseCards();
                 }
             }
 
             //update display text
-            if(defeated == 0) TextShape.getMutable(this.entityLobbyPlayers).text = this.teamObjects[1].RegisteredPlayer + " WAS VICTORIOUS!";
-            if(defeated == 1) TextShape.getMutable(this.entityLobbyPlayers).text = this.teamObjects[0].RegisteredPlayer + " WAS VICTORIOUS!";
+            if(defeated == 0) TextShape.getMutable(this.entityLobbyPlayers).text = this.teamObjects[1].RegisteredPlayerID + " WAS VICTORIOUS!";
+            if(defeated == 1) TextShape.getMutable(this.entityLobbyPlayers).text = this.teamObjects[0].RegisteredPlayerID + " WAS VICTORIOUS!";
 
             //update team buttons
             this.teamObjects[0].UpdateButtonStates();
@@ -697,15 +770,16 @@ export module Table {
         // peer-to-peer: card authority lies with the team's owner
         // server: card authority lies with server
         //TODO: server authority -> server call will define what card is drawn, create call for drawning specific card
+        public EmitNextTurn:(table:string) => void = this.RemoteNextTurn;
         /** local call from interaction made to all connected players, begins the next turn  */
         public LocalNextTurn() {
             if(isDebugging) console.log(debugTag+"<LOCAL> table="+this.TableID+" starting new turn...");
 
             //send networking call
-            Table.EmitNextTurn(this.TableID);
+            this.EmitNextTurn(this.TableID);
         }
         /** remote call from a connected player, begins the next turn */
-        public RemoteNextTurn() {
+        public RemoteNextTurn(table:string) {
             if(isDebugging) console.log(debugTag+"<REMOTE> table="+this.TableID+" starting new turn...");
             //process previous team's turn end
             if(this.CurRound != 0) this.teamObjects[this.curTurn].TurnEnd();
@@ -725,10 +799,10 @@ export module Table {
             //update team displays
             this.RedrawTeamDisplays();
             //update turn display
-            TextShape.getMutable(this.entityLobbyTurn).text = this.teamObjects[this.curTurn].RegisteredPlayer +"'S TURN (ROUND: "+this.curRound+")";
+            TextShape.getMutable(this.entityLobbyTurn).text = this.teamObjects[this.curTurn].RegisteredPlayerID +"'S TURN (ROUND: "+this.curRound+")";
 
             //if table owner and ai's turn, start processing
-            if(PlayerLocal.GetDisplayName() == this.TableOwner && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
+            if(PlayerLocal.GetUserName() == this.TableOwnerID && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
                 SetAIState(true, this);
             }
 
@@ -802,7 +876,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -905,7 +979,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -1074,7 +1148,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && !aiPVE) {
+            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -1109,6 +1183,7 @@ export module Table {
 
         //## PLAY CARD FROM HAND (SPELLS AND UNITS TO FIELD)
         //TODO: server authority -> server call will outsource local call to server
+        public EmitPlayCard:(table:string, cardKey:string, targets:TableSelectionTarget[]) => void = this.RemotePlayCard;
         /** local call from interaction made to all connected players, begins the next turn
          *  NOTE: currently it is assumed selections are correct, additional checks can be added later
          *      ex: when placing a character we only check the number of slots, not verifying quality
@@ -1118,7 +1193,7 @@ export module Table {
             //preform localized team checks
             const team = this.teamObjects[this.curTurn];
             //  ensure local player is owner of the current team, excluding AI
-            if(PlayerLocal.GetDisplayName() != team.RegisteredPlayer && team.TeamType != TABLE_TEAM_TYPE.AI) {
+            if(PlayerLocal.GetUserName() != team.RegisteredPlayerID && team.TeamType != TABLE_TEAM_TYPE.AI) {
                 if(isDebugging) console.log(debugTag+"<FAILED> local player is not the current player");
                 return;
             }
@@ -1164,14 +1239,14 @@ export module Table {
             }
 
             //send networking call
-            Table.EmitPlayCard(this.TableID, this.selectedCard.Key, data);
+            this.EmitPlayCard(this.TableID, this.selectedCard.Key, data);
 
             //deselect card cards and targets
             this.DeselectCard();
             this.DeselectAllTargets();
         }
         /** remote call from a connected player, plays card to the table */
-        public RemotePlayCard(cardKey:string, targets:TableSelectionTarget[]) {
+        public RemotePlayCard(table:string, cardKey:string, targets:TableSelectionTarget[]) {
             if(isDebugging) console.log(debugTag+"<REMOTE> playing card on table="+this.TableID+" playing card="+cardKey+", targets="+targets.length+"...");
             //attempt to get card
             const card = PlayCard.GetByKey(cardKey);
@@ -1310,6 +1385,7 @@ export module Table {
         }
 
         //## UNIT ON FIELD ATTACKS
+        public EmitUnitAttack:(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) => void = this.RemoteUnitAttack;
         /** local call from interaction made to all connected players, attempts an attack from one unit to another */
         public LocalUnitAttack() {
             //halt if the incorrect number of units are selected
@@ -1347,7 +1423,7 @@ export module Table {
                 var defenderSlot = this.teamObjects[this.selectionTargets[1].team].cardSlotObjects[this.selectionTargets[1].id];
 
                 //ensure call is coming from player of the same team or an ai team 
-                if(PlayerLocal.GetDisplayName() != this.teamObjects[this.curTurn].RegisteredPlayer && 
+                if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && 
                     this.teamObjects[this.curTurn].TeamType != TABLE_TEAM_TYPE.AI) {
                     if(isDebugging) console.log(debugTag+"<FAILED> unit failed to attack on table="+PlayerLocal.CurTableID+
                         " b.c current player is on wrong team="+PlayerLocal.CurTeamID);
@@ -1364,7 +1440,7 @@ export module Table {
             Table.EmitUnitAttack(this.TableID, this.selectionTargets[0], this.selectionTargets[1]);
         }
         /** remote call from a connected player, executes an attack from one unit to another */
-        public RemoteUnitAttack(attacker:TableSelectionTarget, defender:TableSelectionTarget) {
+        public RemoteUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) {
             const key = this.TableID;
             //get attacker team
             const attackerTeam = this.teamObjects[attacker.team];
@@ -1476,6 +1552,7 @@ export module Table {
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
             this.isActive = false;
+            if(this.characterNPC) CardSubjectObject.Disable(this.characterNPC);
             //disable all attached table teams
             while(this.teamObjects.length > 0) {
                 const teamObject = this.teamObjects.pop();
@@ -1489,6 +1566,7 @@ export module Table {
 
         /** removes objects from game scene and engine */
         public Destroy() {
+            if(this.characterNPC) CardSubjectObject.Disable(this.characterNPC);
             //destroy all attached table teams
             while(this.teamObjects.length > 0) {
                 const teamObject = this.teamObjects.pop();
@@ -1498,12 +1576,164 @@ export module Table {
             //destroy game object
             engine.removeEntity(this.entityParent);
         }
+
+        /** attempts to synce the table based on it's networking type */
+        public async RequestNetworkedSync() {
+            if(isDebugging) console.log(debugTag+"attempting to sync table="+this.tableID+", networking type="+this.networkingType);
+
+            //freeze table interactions
+            this.isInitialized = false;
+
+            TextShape.getMutable(this.entityLobbyState).text = "<ATTEMPTING SYNC>";
+            
+            //process based on networking type
+            switch(this.networkingType) {
+                case Networking.TABLE_CONNECTIVITY_TYPE.SERVER_STRICT:
+                    if(isDebugging) console.log(debugTag+"<SERVER> requesting table data from server...");
+                    try {
+                        //ensure scene is using server connection and player is logged in
+                        if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+                        
+                        //prepare url
+                        const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_GET;
+                        if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+                        //attempt to get response
+                        let response = await signedFetch({
+                            url: url, 
+                            init: {
+                                headers: { "Content-Type": "application/json" },
+                                method: "POST",
+                                body: JSON.stringify({
+                                    "realmID": "<TEST-REALM>",
+                                    "tableID": this.TableID,
+                                })
+                            }
+                        });
+                        if(!response) {
+                            if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                            TextShape.getMutable(this.entityLobbyState).text = "<SYNC FAILED: BAD RESPONSE>";
+                            return;
+                        }
+
+                        //attempt to convert url's data to json
+                        let responseText = await response.body;
+                        if(!responseText) {
+                            if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                            TextShape.getMutable(this.entityLobbyState).text = "<SYNC FAILED: BAD DATA TEXT>";
+                            return;
+                        }
+                        if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+                        //check result of response
+                        let responseJSON = JSON.parse(responseText);
+                        if(!responseJSON) {
+                            if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no JSON data");
+                            TextShape.getMutable(this.entityLobbyState).text = "<SYNC FAILED: BAD DATA JSON>";
+                            return;
+                        }
+
+                        //deserialize table
+                        this.DeserializeData(responseJSON as TableSerialData);
+                    } catch(error) {
+                        if(isDebugging) console.log(debugTag+"<SERVER> failed to get table data");
+                        console.log(error);
+                        TextShape.getMutable(this.entityLobbyState).text = "<SYNC FAILED>";
+                    }
+                break;
+                case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                    if(isDebugging) console.log(debugTag+"requesting table data from peers...");
+
+                    //send sync request
+                    Networking.MESSAGE_BUS.emit('txTableGetData', {"invoker":PlayerLocal.GetUserName(), "table":this.tableID});
+
+                    //delay timeout check function
+                    const tableKey = this.TableID;
+                    utils.timers.setTimeout(function() { Table.CalldownCompleteNetworkSync(tableKey) }, 5000)
+                break;
+                case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                    if(isDebugging) console.log(debugTag+"table authority is local, skipping sync request");
+                    //unlock table
+                    this.isInitialized = true;
+                    this.SetGameState(TABLE_GAME_STATE.IDLE);
+                break;
+            }
+        }
+
+        //delayed function for catching peer-to-peer network sync attempt (if no player owns a p2p table, then the user will never get a resposne)
+        public CompleteNetworkSync() {
+            if(this.tableOwnerID != "") return;
+            if(isDebugging) console.log(debugTag+"peer-to-peer request for table="+this.tableID+" timed out (likely no game in session, unlocking table)");
+
+            //unlock table
+            this.isInitialized = true;
+            this.SetGameState(TABLE_GAME_STATE.IDLE);
+            this.UpdatePlayerDisplay();
+        }
+
+        /** serializeds the table into transferable data */
+        public SerializeData():TableSerialData {
+            if(isDebugging) console.log(debugTag+"serializing table {tableID="+this.TableID+", owner="+this.TableOwnerID+"}");
+            let serial:TableSerialData = {
+                //indexing
+                id:this.tableID,
+                owner:this.tableOwnerID,
+                //live data
+                state:this.curState,
+                turn:this.curTurn,
+                round:this.curRound,
+                teams:[],
+            };
+
+            //process team serials
+            for (let i = 0; i < this.teamObjects.length; i++) {
+                const team = this.teamObjects[i].SerializeData();
+                serial.teams.push(team);
+            }
+
+            //provide serial
+            if(isDebugging) console.log(debugTag+"serialized table {tableID="+serial.id+", owner="+serial.owner+"}");
+            return serial;
+        }
+
+        /** initializes the team based on the provided serial string */
+        public DeserializeData(serial:TableSerialData) {
+            if(isDebugging) console.log(debugTag+"deserializing table {tableID="+serial.id+", owner="+serial.owner+"}");
+            //indexing
+            this.tableID = serial.id;
+            this.tableOwnerID = serial.owner;
+            //live data
+            this.curTurn = serial.turn;
+            this.curRound = serial.round;
+            
+            //populate all teams
+            for (let i = 0; i < serial.teams.length; i++) {
+                this.teamObjects[i].DeserializeData(serial.teams[i]);
+                this.teamObjects[i].UpdateButtonStates();
+            }
+
+            //set game state
+            this.SetGameState(serial.state);
+            
+            //update team display object's position
+            this.RepositionTeamDisplays();
+            //redraw display
+            this.RedrawTeamDisplays();
+            this.UpdatePlayerDisplay();
+            if(isDebugging) console.log(debugTag+"deserialized table {tableID="+this.TableID+", owner="+this.TableOwnerID+"}");
+        }
     }
 
     export function CalldownRedrawTeamDisplays(key:string) {
         const table = GetByKey(key);
         if(table != undefined) {
             table.RedrawTeamDisplays();
+        }
+    }
+    export function CalldownCompleteNetworkSync(key:string) {
+        const table = GetByKey(key);
+        if(table != undefined) {
+            table.CompleteNetworkSync();
         }
     }
     export function CalldownEndGame(key:string, defeated:number) {
@@ -1548,6 +1778,43 @@ export module Table {
         if(posX == -1) pooledObjectsActive.addItem(object);
         //add to registry under given key
         pooledObjectsRegistry.addItem(key, object);
+
+        //hook up processing callbacks based on table's networking type
+        switch(object.NetworkingType) {
+            case Networking.TABLE_CONNECTIVITY_TYPE.SERVER_STRICT:
+                object.EmitAddPlayerToTeam = Table.CallbackServerAddPlayerToTeam;
+                object.EmitRemovePlayerFromTeam = Table.CallbackServerRemovePlayerFromTeam;
+                object.EmitSetPlayerReadyState = Table.CallbackServerSetPlayerReadyState;
+                object.EmitStartGame = Table.CallbackServerStartGame;
+                object.EmitEndGame = Table.CallbackServerEndGame;
+                object.EmitNextTurn = Table.CallbackServerNextTurn;
+                object.EmitPlayCard = Table.CallbackServerPlayCard;
+                object.EmitUnitAttack = Table.CallbackServerUnitAttack;
+            break;
+            case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                object.EmitAddPlayerToTeam = Table.CallbackEmitAddPlayerToTeam;
+                object.EmitRemovePlayerFromTeam = Table.CallbackEmitRemovePlayerFromTeam;
+                object.EmitSetPlayerReadyState = Table.CallbackEmitSetPlayerReadyState;
+                object.EmitStartGame = Table.CallbackEmitStartGame;
+                object.EmitEndGame = Table.CallbackEmitEndGame;
+                object.EmitNextTurn = Table.CallbackEmitNextTurn;
+                object.EmitPlayCard = Table.CallbackEmitPlayCard;
+                object.EmitUnitAttack = Table.CallbackEmitUnitAttack;
+            break;
+            case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                object.EmitAddPlayerToTeam = object.RemoteAddPlayerToTeam;
+                object.EmitRemovePlayerFromTeam = object.RemoteRemovePlayerFromTeam;
+                object.EmitSetPlayerReadyState = object.RemoteSetPlayerReadyState;
+                object.EmitStartGame = object.RemoteStartGame;
+                object.EmitEndGame = object.RemoteEndGame;
+                object.EmitNextTurn = object.EmitNextTurn;
+                object.EmitPlayCard = object.RemotePlayCard;
+                object.EmitUnitAttack = object.RemoteUnitAttack;
+            break;
+        }
+
+        //attempt to sync table's data
+        object.RequestNetworkedSync();
 
         if(isDebugging) console.log(debugTag+"created new object, key='"+key+"'!");
         //provide entity reference
@@ -1609,114 +1876,383 @@ export module Table {
         //  object data is pooled, but we should look into how we can explicitly set data classes for removal
     }
     
-    //### NETWORKING PIPELINE
-    //## ADD PLAYER TO TABLE
-    //  send
-    export function EmitAddPlayerToTeam(table:string, team:number, player:string) {
-        if(isDebugging) console.log(debugTag+"<EMIT> adding player="+player+" to table="+table+", team="+team);
-        Networking.MESSAGE_BUS.emit('txTableAddPlayer', {table, team, player});
-    }
-    //  recieve 
-    Networking.MESSAGE_BUS.on('txTableAddPlayer', (data: {table:string, team:number, player:string}) => {
+    //### NETWORKING PIPELINE ###
+    //  all functions below are used to define processing for p2p/server networking. these functions are set during 
+    //  a table's initialization, setting callbacks based on the table's type.
+
+    //peer-to-peer recieve (table owner get sync request, sends serial to invoker)
+    Networking.MESSAGE_BUS.on('txTableGetData', (data: {invoker:string, table:string, team:number, player:string}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteAddPlayerToTeam(data.team, data.player);
+        const tableObject = GetByKey(data.table);
+        if(tableObject == undefined) return;
+
+        //halt if reciever does not own table
+        if(tableObject.TableOwnerID != PlayerLocal.GetUserName()) return;
+        if(isDebugging) console.log(debugTag+"<EMIT> table sync request recieved, sending table serial {invoker="+data.invoker+", tableID="+data.table+"}");
+
+        //send table serial
+        const tableSerial:TableSerialData = tableObject.SerializeData();
+        Networking.MESSAGE_BUS.emit('txTableSendData', {"invoker":data.invoker, "table":data.table, "serial":tableSerial});
     });
+    //peer-to-peer recieve (invoker gets table serial data from table owner)
+    Networking.MESSAGE_BUS.on('txTableSendData', (data: {invoker:string, table:string, serial:TableSerialData}) => {
+        //halt if local player is not player who requested sync
+        if(PlayerLocal.GetUserName() != data.invoker) return;
+
+        //get table
+        const tableObject = GetByKey(data.table);
+        if(tableObject == undefined) return;
+        if(isDebugging) console.log(debugTag+"<EMIT> table serial recieved, deserializing table");
+
+        //deserialize table
+        tableObject.DeserializeData(data.serial);
+    });
+
+    //## ADD PLAYER TO TABLE
+    //server routine
+    export function CallbackServerAddPlayerToTeam(table:string, team:number, playerID:string, playerName:string) { Table.ServerAddPlayerToTeam(table, team, playerID, playerName); }
+    export async function ServerAddPlayerToTeam(table:string, team:number, playerID:string, playerName:string) {
+        //create url
+        try {
+            if(isDebugging) console.log(debugTag+"<SERVER> adding playerID="+playerID+" playerName="+playerName+" to table="+table+", team="+team+"...");
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+            
+
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_JOIN;
+            if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url, 
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "realmID": "<TEST-REALM>",
+                        "tableID": table,
+                        "teamID": team,
+                        "playerID": playerID,
+                        "playerName": playerName
+                    })
+                }
+            });
+            if(!response) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let responseText = await response.body;
+            if(!responseText) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+            if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+            //check result of response
+            let responseJSON = JSON.parse(responseText);
+            if(responseJSON["result"]) {
+                if(isDebugging) console.log(debugTag+"<SERVER> added playerID="+playerID+" playerName="+playerName+" to table="+table+", team="+team+"!");
+                EmitAddPlayerToTeam(table, team, playerID, playerName);
+            } else {
+                if(isDebugging) console.log(debugTag+"<SERVER> failed to add player to table="+table+", team="+team);
+            }
+        } catch(error) {
+            console.log(error);
+        }
+    }
+    //peer-to-peer send
+    export function CallbackEmitAddPlayerToTeam(table:string, team:number, playerID:string, playerName:string) { Table.EmitAddPlayerToTeam(table, team, playerID, playerName); }
+    export function EmitAddPlayerToTeam(table:string, team:number, playerID:string, playerName:string) {
+        if(isDebugging) console.log(debugTag+"<EMIT> adding playerID="+playerID+" playerName="+playerName+" to table="+table+", team="+team);
+        Networking.MESSAGE_BUS.emit('txTableAddPlayer', {table, team, playerID, playerName});
+    }
+    //peer-to-peer recieve
+    Networking.MESSAGE_BUS.on('txTableAddPlayer', (data: {table:string, team:number, playerID:string, playerName:string}) => {
+        //get table
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteAddPlayerToTeam(data.table, data.team, data.playerID, data.playerName);
+    });
+
     //## REMOVE TABLE FROM PLAYER
-    //  send
+    //server routine
+    export function CallbackServerRemovePlayerFromTeam(table:string, team:number) { Table.ServerRemovePlayerFromTeam(table, team); }
+    export async function ServerRemovePlayerFromTeam(table:string, team:number) {
+        //create url
+        try {
+            if(isDebugging) console.log(debugTag+"<SERVER> removing player from table="+table+", team="+team+"...");
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+            
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_LEAVE;
+            if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url,
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "realmID": "<TEST-REALM>",
+                        "tableID": table,
+                        "teamID": team,
+                    })
+                }
+            });
+            if(!response) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let responseText = await response.body;
+            if(!responseText) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+            if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+            //check result of response
+            let responseJSON = JSON.parse(responseText);
+            if(responseJSON["result"]) {
+                if(isDebugging) console.log(debugTag+"<SERVER> removed player from table="+table+", team="+team+"!");
+                EmitRemovePlayerFromTeam(table, team);
+            } else {
+                if(isDebugging) console.log(debugTag+"<SERVER> failed to remove player from table="+table+", team="+team);
+            }
+
+        } catch(error) {
+            console.log(error);
+        }
+    }
+    //peer-to-peer send
+    export function CallbackEmitRemovePlayerFromTeam(table:string, team:number) { Table.EmitRemovePlayerFromTeam(table, team); }
     export function EmitRemovePlayerFromTeam(table:string, team:number) {
         if(isDebugging) console.log(debugTag+"<EMIT> removing player from table="+table+", team="+team);
         Networking.MESSAGE_BUS.emit('txTableRemovePlayer', {table, team});
     }
-    //  recieve 
+    //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txTableRemovePlayer', (data: {table:string, team:number}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteRemovePlayerFromTeam(data.team);
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteRemovePlayerFromTeam(data.table, data.team);
     });
-    //## SET READY STATE FOR TEAM
-    //  send
-    export function EmitSetPlayerReadyState(table:string, team:number, state:boolean, serial:string) {
-        if(isDebugging) console.log(debugTag+"<EMIT> setting player ready state for table="+table+", team="+team+" to state="+state);
-        Networking.MESSAGE_BUS.emit('txSetPlayerReadyState', {table, team, state, serial});
+
+    //## SET PLAYER READY STATE
+    //server routine
+    export function CallbackServerSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) { Table.ServerSetPlayerReadyState(table, team, state, deckSerial); }
+    export async function ServerSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) {
+        //create url
+        try {
+            if(isDebugging) console.log(debugTag+"<SERVER> setting player ready state="+state+" for table="+table+", team="+team+"...");
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+            
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_READY_STATE;
+            if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url,
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "realmID": "<TEST-REALM>",
+                        "tableID": table,
+                        "teamID": team,
+                        "state":state,
+                        "deckSerial":deckSerial
+                    })
+                }
+            });
+            if(!response) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let responseText = await response.body;
+            if(!responseText) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+            if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+            //check result of response
+            let responseJSON = JSON.parse(responseText);
+            if(responseJSON["result"]) {
+                if(isDebugging) console.log(debugTag+"<SERVER> set player ready state="+state+" for table="+table+", team="+team+"!");
+                EmitSetPlayerReadyState(table, team, state, deckSerial);
+            } else {
+                if(isDebugging) console.log(debugTag+"<SERVER> failed to set player ready state="+state+" for table="+table+", team="+team);
+            }
+
+        } catch(error) {
+            console.log(error);
+        }
     }
-    //  recieve
-    Networking.MESSAGE_BUS.on('txSetPlayerReadyState', (data: {table:string, team:number, state:boolean, serial:string}) => {
+    //peer-to-peer send
+    export function CallbackEmitSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) { Table.EmitSetPlayerReadyState(table, team, state, deckSerial); }
+    export function EmitSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) {
+        if(isDebugging) console.log(debugTag+"<EMIT> setting player ready state for table="+table+", team="+team+" to state="+state);
+        Networking.MESSAGE_BUS.emit('txSetPlayerReadyState', {table, team, state, serial: deckSerial});
+    }
+    //peer-to-peer recieve
+    Networking.MESSAGE_BUS.on('txSetPlayerReadyState', (data: {table:string, team:number, state:boolean, deckSerial:string}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteSetPlayerReadyState(data.team, data.state, data.serial);
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteSetPlayerReadyState(data.table, data.team, data.state, data.deckSerial);
     });
-    //## STARTS GAME FOR TABLE
-    //  send
+
+    //## START GAME ON TABLE
+    //server routine
+    export function CallbackServerStartGame(table:string) { Table.ServerStartGame(table); }
+    export async function ServerStartGame(table:string) {
+        //create url
+        try {
+            if(isDebugging) console.log(debugTag+"<SERVER> starting game on table="+table+"...");
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+            
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_READY_STATE;
+            if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url,
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "realmID": "<TEST-REALM>",
+                        "tableID": table,
+                    })
+                }
+            });
+            if(!response) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let responseText = await response.body;
+            if(!responseText) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+            if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+            //check result of response
+            let responseJSON = JSON.parse(responseText);
+            if(responseJSON["result"]) {
+                if(isDebugging) console.log(debugTag+"<SERVER> started game on table="+table+"!");
+                EmitStartGame(table);
+            } else {
+                if(isDebugging) console.log(debugTag+"<SERVER> failed to start game on table="+table);
+            }
+
+        } catch(error) {
+            console.log(error);
+        }
+    }
+    //peer-to-peer send
+    export function CallbackEmitStartGame(table:string) { Table.EmitStartGame(table); }
     export function EmitStartGame(table:string) {
         if(isDebugging) console.log(debugTag+"<EMIT> starting game for table="+table);
         Networking.MESSAGE_BUS.emit('txStartGame', {table});
     }
-    //  recieve
+    //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txStartGame', (data: {table:string}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteStartGame();
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteStartGame(data.table);
     });
-    //## ENDS GAME FOR TABLE
-    //  send
+
+    //## END GAME ON TABLE
+    //server routine
+    export function CallbackServerEndGame(table:string) { Table.ServerEndGame(table); }
+    export async function ServerEndGame(table:string) {
+
+    }
+    //peer-to-peer send
+    export function CallbackEmitEndGame(table:string, defeated:number) { Table.EmitEndGame(table, defeated); }
     export function EmitEndGame(table:string, defeated:number) {
         if(isDebugging) console.log(debugTag+"<EMIT> ending game for table="+table+", defeatedTeam="+defeated);
         Networking.MESSAGE_BUS.emit('txEndGame', {table, defeated});
     }
-    //  recieve
+    //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txEndGame', (data: {table:string, defeated:number}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteEndGame(data.defeated);
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteEndGame(data.table, data.defeated);
     });
-    //## STARTS NEXT TURN FOR TABLE
-    //  send
+
+    //## START NEXT TURN FOR TABLE
+    //server routine
+    export function CallbackServerNextTurn(table:string) { Table.ServerNextTurn(table); }
+    export async function ServerNextTurn(table:string) {
+
+    }
+    //peer-to-peer send
+    export function CallbackEmitNextTurn(table:string) { Table.EmitNextTurn(table); }
     export function EmitNextTurn(table:string) {
         if(isDebugging) console.log(debugTag+"<EMIT> starting next turn for table="+table);
         Networking.MESSAGE_BUS.emit('txNextTurn', {table});
     }
-    //  recieve
+    //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txNextTurn', (data: {table:string}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteNextTurn();
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteNextTurn(data.table);
     });
+
     //## PLAY CARD
-    //  send
+    //server routine
+    export function CallbackServerPlayCard(table:string) { Table.ServerPlayCard(table); }
+    export async function ServerPlayCard(table:string) {
+
+    }
+    //peer-to-peer send
+    export function CallbackEmitPlayCard(table:string, key:string, targets:TableSelectionTarget[]) { Table.EmitPlayCard(table, key, targets); }
     export function EmitPlayCard(table:string, key:string, targets:TableSelectionTarget[]) {
         if(isDebugging) console.log(debugTag+"<EMIT> starting next turn for table="+table+" playing card="+key+", targets="+targets.length);
         Networking.MESSAGE_BUS.emit('txPlayCard', {table, key, targets});
     }
-    //  recieve
+    //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txPlayCard', (data: {table:string, key:string, targets:TableSelectionTarget[]}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemotePlayCard(data.key, data.targets);
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemotePlayCard(data.table, data.key, data.targets);
     });
+
     //## UNIT ATTACK
-    //  send
-    export function EmitUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) {
+    //server routine
+    export function CallbackServerUnitAttack(table:string) { Table.ServerUnitAttack(table); }
+    export async function ServerUnitAttack(table:string) {
+
+    }
+    //peer-to-peer send
+    export function CallbackEmitUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) { Table.EmitUnitAttack(table, attacker, defender); }
+    export function EmitUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget){
         if(isDebugging) console.log(debugTag+"<EMIT> unit on table="+table+" attacking based on {attacker="+attacker.id+", defender="+defender.id+"}");
         Networking.MESSAGE_BUS.emit('txUnitAttack', {table, attacker, defender});
     }
-    //  recieve
+    //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txUnitAttack', (data: {table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget}) => {
         //get table
-        const table = GetByKey(data.table);
-        if(table == undefined) return;
-        table.RemoteUnitAttack(data.attacker, data.defender);
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteUnitAttack(data.table, data.attacker, data.defender);
     });
 
     //### AI CARD PLAYER (TODO: move into seperate namespace)
-    enum AI_PROCESSING_STATES { PLAY_CARD, USE_UNIT, END_TURN }
+    enum AI_PROCESSING_STATES { PLAY_CARD, UNIT_ATTACK, END_TURN }
     const isDebuggingAI = true;
     /** current display state of ai */
     var aiDisplayState:boolean = false;
@@ -1761,12 +2297,15 @@ export module Table {
             SetAIState(false);
             return;
         } 
+        //clear any previous target selections
+        aiTable.DeselectAllTargets();
+
         const teamIndexAI = aiTable.CurTurn;
         const teamAI = aiTable.teamObjects[teamIndexAI];
         const teamIndexOther = aiTable.CurTurn === 0 ? 1 : 0;
         const teamOther = aiTable.teamObjects[teamIndexOther];
         //ensure table has deck equipped
-        const aiDeck = teamAI.RegisteredDeck;
+        const aiDeck = teamAI.DeckSession;
         if(aiDeck == undefined) {
             if(isDebuggingAI) console.log(debugTag+"<ERROR> aiPlayer is processing but aiDeck is undefined");
             SetAIState(false);
@@ -1780,7 +2319,9 @@ export module Table {
                 if(isDebuggingAI) console.log(debugTag+"aiPlayer selecting card...");
                 //process all cards in NPC's hand to find next action
                 for(let i:number=0; i<aiDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND].size(); i++) {
+                    //select card
                     var card = aiDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND].getItem(i);
+                    aiTable.SelectCard(card.Key);
                     //if NPC does not have enough energy to play card, skip
                     if(teamAI.EnergyCur < card.Cost) continue;
                     //process card based on type
@@ -1791,11 +2332,19 @@ export module Table {
                                 //if slot is occupied, skip
                                 if(teamAI.IsCardSlotOccupied(j)) continue;
                                 if(isDebuggingAI) console.log(debugTag+"aiPlayer playing character card="+card.Key+" to slot="+j);
-                                //select card & play
-                                aiTable.SelectCard(card.Key);
+                                //select free field slot
                                 aiTable.SelectSlot(aiTable.CurTurn, j);
-                                //play card
-                                aiTable.LocalPlayCard();
+                                //play unit to field, process based on table's networking type
+                                switch(aiTable.NetworkingType) {
+                                    //push changes to all peers
+                                    case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                                        aiTable.LocalPlayCard();
+                                    break;
+                                    //keep all changes local
+                                    case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                                        aiTable.RemotePlayCard(aiTable.TableID, card.Key, aiTable.SelectionTargets);
+                                    break;
+                                }
                                 return;
                             }
                         break;
@@ -1803,19 +2352,27 @@ export module Table {
                             //if valid enemy unit is on field, cast at that unit
                         break;
                         case CARD_TYPE.TERRAIN:
-                            //select card & play
                             if(isDebuggingAI) console.log(debugTag+"aiPlayer playing field card="+card.Key);
-                            aiTable.SelectCard(card.Key);
-                            aiTable.LocalPlayCard();
+                            //play card, process based on table's networking type
+                            switch(aiTable.NetworkingType) {
+                                //push changes to all peers
+                                case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                                    aiTable.LocalPlayCard();
+                                break;
+                                //keep all changes local
+                                case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                                    aiTable.RemotePlayCard(aiTable.TableID, card.Key, aiTable.SelectionTargets);
+                                break;
+                            }
                         return;
                     }
                 }
                 //if no card was played, push state forward
                 if(isDebuggingAI) console.log(debugTag+"aiPlayer no viable cards remain");
-                aiProcessingState = AI_PROCESSING_STATES.USE_UNIT;
+                aiProcessingState = AI_PROCESSING_STATES.UNIT_ATTACK;
             break;
             //attempt to make unit attack
-            case AI_PROCESSING_STATES.USE_UNIT:
+            case AI_PROCESSING_STATES.UNIT_ATTACK:
                 //process all units in NCP's field
                 if(isDebuggingAI) console.log(debugTag+"aiPlayer selecting unit to use as attacker...");
                 //process all cards in NPC's field to find the next 
@@ -1829,18 +2386,40 @@ export module Table {
                     aiTable.InteractionSlotSelection(teamIndexAI, i, true);
                     //attempt attack on other units -> process all cards on the other team's field
                     for(let j:number=0; j<teamOther.cardSlotObjects.length; j++) {
-                        console.log("value; "+i)
                         //ensure an enemy unit exists in targeted slot
                         if(!teamOther.IsCardSlotOccupied(j)) continue;
-                        if(isDebuggingAI) console.log(debugTag+"aiPlayer unit in slot="+i+" is attacking unit in slot="+j);
-                        //select defender as enemy unit & begin attack
+                        //select enemy unit as defender & begin attack
                         aiTable.InteractionSlotSelection(teamIndexOther, j, true);
-                        aiTable.LocalUnitAttack();
+
+                        if(isDebuggingAI) console.log(debugTag+"aiPlayer unit in slot="+i+" is attacking unit in slot="+j);
+                        //call action based on table's networking type
+                        switch(aiTable.NetworkingType) {
+                            //push changes to all peers
+                            case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                                aiTable.LocalUnitAttack();
+                            break;
+                            //keep all changes local
+                            case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                                //select defender as enemy unit & begin attack
+                                aiTable.RemoteUnitAttack(aiTable.TableID, aiTable.SelectionTargets[0], aiTable.SelectionTargets[1]);
+                            break;
+                        }
                         return;
                     }
-                    //select defender as enemy unit & begin attack
+                    //select enemy team as defender & begin attack
                     aiTable.InteractionTeamSelection(teamIndexOther, true);
-                    aiTable.LocalUnitAttack();
+                    //call action based on table's networking type
+                    switch(aiTable.NetworkingType) {
+                        //push changes to all peers
+                        case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                            aiTable.LocalUnitAttack();
+                        break;
+                        //keep all changes local
+                        case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                            //select defender as enemy unit & begin attack
+                            aiTable.RemoteUnitAttack(aiTable.TableID, aiTable.SelectionTargets[0], aiTable.SelectionTargets[1]);
+                        break;
+                    }
                     return;
                 }
                 //if no unit was given an attack command, push state forward
@@ -1850,7 +2429,18 @@ export module Table {
             //end turn
             case AI_PROCESSING_STATES.END_TURN:
                 //end turn and remove system
-                aiTable.LocalNextTurn();
+                //call action based on table's networking type
+                switch(aiTable.NetworkingType) {
+                    //push changes to all peers
+                    case Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER:
+                        aiTable.LocalNextTurn();
+                    break;
+                    //keep all changes local
+                    case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
+                        //select defender as enemy unit & begin attack
+                        aiTable.RemoteNextTurn(aiTable.TableID);
+                    break;
+                }
                 SetAIState(false);
             break;
         }

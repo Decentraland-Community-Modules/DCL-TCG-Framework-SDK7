@@ -1,3 +1,4 @@
+/* eslint-disable */ 
 /**     TRADING CARD GAME - PLAYER PROFILE
  * contains all apis for interacting with player accounts, including
  * - getting a player's profile details

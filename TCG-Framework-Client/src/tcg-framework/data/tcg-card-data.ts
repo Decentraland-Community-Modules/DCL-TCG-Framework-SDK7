@@ -1,3 +1,7 @@
+import { TEXTURE_SHEET_CARDS } from "./tcg-card-texture-data";
+import { CARD_FACTION_TYPE } from "./tcg-faction-data";
+import { CARD_KEYWORD_ID } from "./tcg-keyword-data";
+
 /**     TRADING CARD GAME - CARD DATA
     all definitions relavent to cards playable in the game; this includes a card's id,
     display details, and keywords.
@@ -12,11 +16,13 @@
         (prefix)    (faction ID)    (type)      (card index)    
         'tcg-'      '0'             '0'         '00'
     this effectively gives us 99 card ids per type per factions
- */
+*/
 
-import { TEXTURE_SHEET_CARDS } from "./tcg-card-texture-data";
-import { CARD_FACTION_TYPE } from "./tcg-faction-data";
-import { CARD_KEYWORD_ID } from "./tcg-keyword-data";
+/** data interface for defining how many instances of a card can be unlocked */
+export interface CardProvisionDataObject {
+    id:CARD_DATA_ID; //targeted card
+    count:number; //number of instances provided
+}
 
 /** defines what play type a card is  */
 export enum CARD_TYPE {

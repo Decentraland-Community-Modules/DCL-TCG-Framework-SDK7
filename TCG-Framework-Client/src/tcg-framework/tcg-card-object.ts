@@ -3,13 +3,12 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { CardDataRegistry } from "./data/tcg-card-registry";
 import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
-import { CARD_TYPE, CardData, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CardData, CardDataObject } from "./data/tcg-card-data";
 import { CardFactionDataObject } from "./data/tcg-faction-data";
 import { CardFactionTextureDataObject } from "./data/tcg-faction-texture-data";
 import { CardTextureDataObject } from "./data/tcg-card-texture-data";
 import { CARD_OBJECT_OWNER_TYPE } from "./config/tcg-config";
 import { CardKeywordDisplayObject } from "./tcg-card-keyword-object";
-import { CardKeywordData } from "./data/tcg-keyword-data";
 
 /*      TRADING CARD GAME - CARD OBJECT
     contains all the functionality for the framework's card objects. these are simply display
@@ -619,7 +618,7 @@ export module CardDisplayObject
         
         //if an object under the requested key is already active, hand that back
         if(pooledObjectsRegistry.containsKey(key)) {
-            console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+key);
+            //console.log(debugTag+"<WARNING> requesting pre-existing object (use get instead), key="+key);
             object = pooledObjectsRegistry.getItem(key);
         } 
         //  attempt to find an existing unused object

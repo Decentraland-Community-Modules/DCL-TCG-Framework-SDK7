@@ -20,7 +20,7 @@ import { SatusEffectRegistry as StatusEffectRegistry } from "./data/tcg-status-e
 export module PlayCard
 {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG Card Play Data: ";
 
@@ -89,6 +89,21 @@ export module PlayCard
         //target
         defIndex: number,
 	}
+    
+    /** represents a card, packed to be passed over the network */
+    export interface CardSerialData {
+        //indexing
+        index:number;
+        defIndex:number;
+        //live data
+        cost:number;
+        healthCur:number;
+        healthMax:number;
+        attack:number;
+        armour:number;
+        keywords:CardKeywordEffectsDataObject[][];
+        effects:ActiveStatusEffectData[];
+    }
 
     /** contains all pieces that make up a card's playing data */
     export class PlayCardDataObject {
@@ -137,7 +152,7 @@ export module PlayCard
 
         //## KEYWORDS
         /** all keywords currently active on this card, sorted by activation type (applied onto other cards when an interaction occurs) */
-        public ActiveKeywordDict:Dictionary<List<CardKeywordEffectsDataObject>> = new Dictionary<List<CardKeywordEffectsDataObject>>();
+        public ActiveKeywords:List<CardKeywordEffectsDataObject>[] = [];
 
         //## EFFECTS
         /** all effects currently active on this card (can assume this is a unit), indexed by status effect type (ex: burning/mending) */
@@ -171,16 +186,16 @@ export module PlayCard
             this.Cost = cardDef.cardCost;
             
             //reset keyword listing
-            this.ActiveKeywordDict = new Dictionary<List<CardKeywordEffectsDataObject>>();
-            Object.keys(CARD_KEYWORD_EFFECT_EXECUTION).forEach((key, value) => {
-                this.ActiveKeywordDict.addItem(key.toString(), new List<CardKeywordEffectsDataObject>());
+            this.ActiveKeywords = [];
+            Object.keys(CARD_KEYWORD_EFFECT_EXECUTION).forEach(() => {
+                this.ActiveKeywords.push(new List<CardKeywordEffectsDataObject>());
             });
             //add each keyword to card
             for(let i:number=0; i<cardDef.cardKeywordEffects.length; i++) {
                 //get keyword def
                 const keywordDef = CardKeywordRegistry.Instance.GetDefByID(cardDef.cardKeywordEffects[i].id);
-                //add to listing
-                this.ActiveKeywordDict.getItem(keywordDef.playEffect.activation.toString()).addItem({
+                //add keyword to listing
+                this.ActiveKeywords[keywordDef.playEffect.activation].addItem({
                     id:cardDef.cardKeywordEffects[i].id,
                     strength:cardDef.cardKeywordEffects[i].strength,
                     duration:cardDef.cardKeywordEffects[i].duration,
@@ -213,9 +228,9 @@ export module PlayCard
             if(isDebugging) console.log(debugTag+"playing card {id="+this.Key+", name="+this.DefData.name+"} to field...");
 
             //process every active keyword on card
-            for(let i:number=0; i<this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.PLAYED.toString()).size(); i++) {
+            for(let i:number=0; i<this.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.PLAYED].size(); i++) {
                 //convert to effect
-                this.ProcessKeyword(this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.PLAYED.toString()).getItem(i));
+                this.ProcessKeyword(this.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.PLAYED].getItem(i));
             }
 
             if(isDebugging) console.log(debugTag+"played card {id="+this.Key+", name="+this.DefData.name+"} to field!");
@@ -226,7 +241,7 @@ export module PlayCard
             if(isDebugging) console.log(debugTag+"impacting card {id="+this.Key+", name="+this.DefData.name+"} with spell {name="+card.DefData.name+"}...");
 
             //process all 'played' effects from spell card against this unit
-            let listing = card.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.PLAYED.toString());
+            let listing = card.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.PLAYED];
             for (let i = 0; i < listing.size(); i++) {
                 this.ProcessKeyword(listing.getItem(i));
             }
@@ -243,12 +258,12 @@ export module PlayCard
             if(isDebugging) console.log(debugTag+"impacting card {id="+this.Key+", name="+this.DefData.name+"} with unit {name="+attacker.DefData.name+"}...");
             
             //process all defense keywords targeted at attacker
-            listing = this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_OTHER.toString());
+            listing = this.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_OTHER];
             for (let i = 0; i < listing.size(); i++) {
                 attacker.ProcessKeyword(listing.getItem(i));
             }
             //process all defense keywords targeted at self
-            listing = this.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_SELF.toString());
+            listing = this.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.DEFENDED_SELF];
             for (let i = 0; i < listing.size(); i++) {
                 this.ProcessKeyword(listing.getItem(i));
             }
@@ -263,12 +278,12 @@ export module PlayCard
             }
 
             //process all defense keywords targeted at attacker
-            listing = attacker.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_OTHER.toString());
+            listing = attacker.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_OTHER];
             for (let i = 0; i < listing.size(); i++) {
                 this.ProcessKeyword(listing.getItem(i));
             }
             //process all defense keywords targeted at self
-            listing = attacker.ActiveKeywordDict.getItem(CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_SELF.toString());
+            listing = attacker.ActiveKeywords[CARD_KEYWORD_EFFECT_EXECUTION.ATTACKED_SELF];
             for (let i = 0; i < listing.size(); i++) {
                 attacker.ProcessKeyword(listing.getItem(i));
             }
@@ -437,6 +452,90 @@ export module PlayCard
                     }
                 }
                 index++;
+            }
+        }
+
+        /** initializes the card based on the provided serial data */
+        public SerializeData():CardSerialData {
+            let serial:CardSerialData = {
+                //indexing
+                index:this.index,
+                defIndex:this.defIndex,
+                //live data
+                cost:this.Cost,
+                healthCur:this.HealthCur,
+                healthMax:this.HealthMax,
+                attack:this.Attack,
+                armour:this.Armour,
+                keywords:[],
+                effects:[],
+            };
+            //add keywords
+            for (let i = 0; i < this.ActiveKeywords.length; i++) {
+                const keywords = [];
+                for (let j = 0; j < this.ActiveKeywords[i].size(); j++) {
+                    const keywordRef = this.ActiveKeywords[i].getItem(j);
+                    const keywordData = {
+                        id:keywordRef.id,
+                        strength:keywordRef.strength,
+                        duration:keywordRef.duration,
+                    }; 
+                    keywords.push(keywordData);
+                }
+                serial.keywords.push(keywords);
+            }
+            //add effects
+            for (let i = 0; i < this.ActiveEffectList.size(); i++) {
+                const effectRef = this.ActiveEffectList.getItem(i);
+                serial.effects.push({
+                    ID:effectRef.ID,
+                    Timing:effectRef.Timing,
+                    Strength:effectRef.Strength,
+                    Duration:effectRef.Duration,
+                });
+            }
+            //provide serial
+            return serial;
+        }
+
+        /** initializes the card based on the provided serial data */
+        public DeserializeData(serial:CardSerialData) {
+            //indexing
+            this.index = serial.index;
+            this.defIndex = serial.defIndex;
+            //live data
+            this.Cost = serial.cost;
+            this.HealthCur = serial.healthCur;
+            this.HealthMax = serial.healthMax;
+            this.Attack = serial.attack;
+            this.Armour = serial.armour;
+
+            //add keywords
+            this.ActiveKeywords = [];
+            for (let i = 0; i < serial.keywords.length; i++) {
+                this.ActiveKeywords.push(new List<CardKeywordEffectsDataObject>());
+                for (let j = 0; j < this.ActiveKeywords[i].size(); j++) {
+                    const keywordRef = serial.keywords[i][j];
+                    const keywordData = {
+                        id:keywordRef.id,
+                        strength:keywordRef.strength,
+                        duration:keywordRef.duration,
+                    };
+                    this.ActiveKeywords[i].addItem(keywordData);
+                }
+            }
+            //add effects
+            this.ActiveEffectList = new List<ActiveStatusEffectData>();
+            this.ActiveEffectDict = new Dictionary<ActiveStatusEffectData>();
+            for (let i = 0; i < serial.effects.length; i++) {
+                const effect = {
+                    ID:serial.effects[i].ID,
+                    Timing:serial.effects[i].Timing,
+                    Strength:serial.effects[i].Strength,
+                    Duration:serial.effects[i].Duration,
+                }
+                this.ActiveEffectList.addItem(effect);
+                this.ActiveEffectDict.addItem(effect.ID.toString(), effect);
             }
         }
     }

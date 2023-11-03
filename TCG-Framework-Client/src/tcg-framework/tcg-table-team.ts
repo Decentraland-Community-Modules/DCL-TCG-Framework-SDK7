@@ -118,6 +118,23 @@ export module TableTeam {
 		rotation: { x:number; y:number; z:number; }; //new rotation for object
 	}
 
+    /** represents a team, packed to be passed over the network */
+    export interface TeamSerialData {
+        //state
+        playerID:string;
+        playerName:string;
+        readyState:boolean;
+        healthCur:number;
+        energyCur:number;
+        energyGain:number;
+        //defines starting deck state
+        deckRegistered:string;
+        //defines the location of all cards owned by this team
+        deckSession:PlayCard.CardSerialData[][];
+        slotCards:string[];
+        terrainCard:string;
+    }
+
     /** contains all 3D objects required to display a team's current state (name,hp,etc.) */
     export class TeamDisplayObject {
         //parent/pivot
@@ -202,7 +219,7 @@ export module TableTeam {
 
         /** updates the display view based on the given team */
         public ResetView(team:TableTeamObject) {
-            TextShape.getMutable(this.entityName).text = team.RegisteredPlayer??"<ERROR: NO PLAYER>";
+            TextShape.getMutable(this.entityName).text = team.RegisteredPlayerName??"<ERROR: NO PLAYER>";
             TextShape.getMutable(this.entityHealth).text = "HEALTH: --";
             TextShape.getMutable(this.entityEnergy).text = "ENERGY: --";
             TextShape.getMutable(this.entityDeck).text = "DECK: --";
@@ -212,7 +229,7 @@ export module TableTeam {
 
         /** updates the display view based on the given team */
         public UpdateView(team:TableTeamObject) {
-            TextShape.getMutable(this.entityName).text = team.RegisteredPlayer??"<ERROR: NO PLAYER>";
+            TextShape.getMutable(this.entityName).text = team.RegisteredPlayerName??"<ERROR: NO PLAYER>";
             TextShape.getMutable(this.entityHealth).text = "HEALTH: "+team.HealthCur;
             TextShape.getMutable(this.entityEnergy).text = "ENERGY: "+team.EnergyCur+" ("+team.EnergyGain+")";
             TextShape.getMutable(this.entityDeck).text = "DECK: "+team.GetCardCount(PlayCardDeck.DECK_CARD_STATES.DECK);
@@ -257,18 +274,34 @@ export module TableTeam {
         /** this team's current game state */
         public TurnState:TABLE_TURN_TYPE = TABLE_TURN_TYPE.INACTIVE;
 
-        /** current player's display name */
-        public RegisteredPlayer:undefined|string;
-        /** player's currently selected deck (where cards are pulled from) */
-        public RegisteredDeck:undefined|PlayCardDeck.PlayCardDeckObject;
+        /** current player's ID */
+        public RegisteredPlayerID:undefined|string;
+        /** current player's name */
+        public RegisteredPlayerName:undefined|string;
+        
+        /** initial set of cards (on start) */
+        public DeckRegistered:undefined|PlayCardDeck.PlayCardDeckObject;
+        /** set of cards currently actively being used */
+        public DeckSession:undefined|PlayCardDeck.PlayCardDeckObject;
+        /** prepares session deck */
+        public PrepareSessionDeck() {
+            //ensure both required deck instances exist
+            if(this.DeckRegistered && this.DeckSession) {
+                //repopulate session deck
+                this.DeckSession.Clone(this.DeckRegistered);
+                //shuffle decks
+                this.DeckSession.ShuffleCards();
+            }
+        }
+
         /** returns card count per targeted collection */
         public GetCardCount(target:PlayCardDeck.DECK_CARD_STATES) {
-            if(!this.RegisteredDeck) return 0;
-            return this.RegisteredDeck.CardsPerState[target].size();
+            if(!this.DeckSession) return 0;
+            return this.DeckSession.CardsPerState[target].size();
         }
         /** returns card's play data based on given index */
         public GetCardData(target:PlayCardDeck.DECK_CARD_STATES, index:number) {
-            return this.RegisteredDeck?.CardsPerState[target].getItem(index);
+            return this.DeckSession?.CardsPerState[target].getItem(index);
         }
 
         /** when true, this team is ready to start the game */
@@ -362,11 +395,17 @@ export module TableTeam {
         }
 
         /** current terrain card */
-        public TerrainCard:undefined|string = undefined;
+        public TerrainCard:string = "";
         public SetTerrainCard(card:undefined|PlayCard.PlayCardDataObject) {
+            //determine model string
             var terrainModel:string = "";
-            if(card != undefined) { terrainModel = card.DefData.objPath; }
-            else { terrainModel = MODEL_DEFAULT_TERRAIN; }
+            if(card != undefined) { 
+                this.TerrainCard = card.Key;
+                terrainModel = card.DefData.objPath; 
+            } else { 
+                this.TerrainCard = "";
+                terrainModel = MODEL_DEFAULT_TERRAIN; 
+            }
             
             //set custom model
             GltfContainer.createOrReplace(this.entityTerrain, {
@@ -645,9 +684,15 @@ export module TableTeam {
             //player details
             if(data.callbackTable != undefined) this.callbackGetGameState = data.callbackTable;
             this.readyState = false;
-            this.RegisteredPlayer = undefined;
-            this.RegisteredDeck = PlayCardDeck.Create({
-                key: this.Key,
+            this.RegisteredPlayerID = undefined;
+            this.RegisteredPlayerName = undefined;
+            //prepare required decks
+            this.DeckRegistered = PlayCardDeck.Create({
+                key: this.Key+"-r",
+                type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL
+            });
+            this.DeckSession = PlayCardDeck.Create({
+                key: this.Key+"-s",
                 type: PlayCardDeck.DECK_TYPE.PLAYER_LOCAL
             });
             //hand displays
@@ -704,8 +749,6 @@ export module TableTeam {
                 action: LOBBY_BUTTONS.GAME_LEAVE,
             });
 
-            //clear previous terrain card
-            this.TerrainCard = undefined;
             //reset terrain card
             this.SetTerrainCard(undefined);
             
@@ -744,16 +787,18 @@ export module TableTeam {
                 this.handCards.removeItem(card);
                 CardDisplayObject.Disable(card);
             }
-            //shuffle decks
-            this.RegisteredDeck?.ShuffleCards();
+
+            //prepare session deck
+            this.PrepareSessionDeck();
+
             //reset all card slots
             for(let i:number=0; i<this.cardSlotObjects.length; i++) {
                 this.cardSlotObjects[i].SetSelectionState(false);
                 this.cardSlotObjects[i].ClearCard();
             }
 
-            //if character is registered to table
-            if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer) {
+            //if player is registered to table
+            if(PlayerLocal.GetUserID() == this.RegisteredPlayerID) {
                 //disable team selector & display
                 Transform.getMutable(this.entityTeamTargetorInteraction).scale = PARENT_SCALE_OFF;
                 Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_OFF;
@@ -763,8 +808,6 @@ export module TableTeam {
                 Transform.getMutable(this.entityDisplayParent).scale = PARENT_SCALE_ON;
             }
 
-            //clear previous terrain card
-            this.TerrainCard = undefined;
             //reset terrain card
             this.SetTerrainCard(undefined);
         }
@@ -780,14 +823,14 @@ export module TableTeam {
                         //game is not started
                         case TABLE_GAME_STATE.IDLE:
                             //if a player is registered to this team
-                            if(this.RegisteredPlayer != undefined) {
+                            if(this.RegisteredPlayerID != undefined) {
+                                //hide join button
                                 Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
-                                //if registered player is local player, display leave button
-                                if(this.RegisteredPlayer == PlayerLocal.GetDisplayName()) Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
-                                else Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
-
+                                
                                 //if local player owns table
-                                if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer) {
+                                if(this.RegisteredPlayerID == PlayerLocal.GetUserID()) {
+                                    //enable leave button
+                                    Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_SMALL;
                                     //ready state toggling
                                     if(this.ReadyState) {
                                         Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
@@ -798,6 +841,8 @@ export module TableTeam {
                                     }
                                 }
                                 else {
+                                    //disable team's buttons
+                                    Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
                                     Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                                     Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                                 }
@@ -820,7 +865,7 @@ export module TableTeam {
                             Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             //if local player's turn
-                            if(PlayerLocal.GetDisplayName() == this.RegisteredPlayer && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
+                            if(this.RegisteredPlayerID == PlayerLocal.GetUserName() && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
                                 Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_SMALL; 
                                 Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_SMALL; 
                             } 
@@ -924,50 +969,50 @@ export module TableTeam {
         public DrawCard() {
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" is drawing card...");
             //ensure deck exists
-            if(!this.RegisteredDeck) {
+            if(!this.DeckSession) {
                 if(isDebugging) console.log(debugTag+"no player deck found!");
                 return undefined;
             }
             //ensure targeted state collection has cards left
-            if(this.RegisteredDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].size() == 0) {
+            if(this.DeckSession.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].size() == 0) {
                 if(isDebugging) console.log(debugTag+"no cards remaining in targeted collection!");
                 return undefined;
             }
 
             //get top card from deck
-            const card = this.RegisteredDeck.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].getItem(0);
+            const card = this.DeckSession.CardsPerState[PlayCardDeck.DECK_CARD_STATES.DECK].getItem(0);
             //move card to collection
             this.MoveCardBetweenCollections(card, PlayCardDeck.DECK_CARD_STATES.DECK, PlayCardDeck.DECK_CARD_STATES.HAND);
             //create card display object for hand 
             this.AddHandObject(card);
-            //
+            //redraw card locations
             this.UpdateCardObjectDisplay();
             if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" has drawn card="+card.Key+"!");
         }
 
         /** moves a card within the deck from one collection to another */
         public MoveCardBetweenCollections(card:PlayCard.PlayCardDataObject, origin:PlayCardDeck.DECK_CARD_STATES, target:PlayCardDeck.DECK_CARD_STATES) {
-            if(isDebugging) console.log(debugTag+"moving card="+card.Key+" from origin="+origin+" ("+this.RegisteredDeck?.CardsPerState[origin].size()
-                +") to target="+target+"("+this.RegisteredDeck?.CardsPerState[target].size()+")...");
+            if(isDebugging) console.log(debugTag+"moving card="+card.Key+" from origin="+origin+" ("+this.DeckSession?.CardsPerState[origin].size()
+                +") to target="+target+"("+this.DeckSession?.CardsPerState[target].size()+")...");
 
             //ensure deck exists
-            if(!this.RegisteredDeck) {
+            if(!this.DeckSession) {
                 if(isDebugging) console.log(debugTag+"no player deck found!");
                 return undefined;
             }
             //ensure targeted state collection has cards left
-            if(this.RegisteredDeck.CardsPerState[origin].size() == 0) {
+            if(this.DeckSession.CardsPerState[origin].size() == 0) {
                 if(isDebugging) console.log(debugTag+"no cards remaining in targeted collection!");
                 return undefined;
             }
 
             //remove card from origin collection
-            this.RegisteredDeck.CardsPerState[origin].removeItem(card);
+            this.DeckSession.CardsPerState[origin].removeItem(card);
             //add card to target collection
-            this.RegisteredDeck.CardsPerState[target].addItem(card);
+            this.DeckSession.CardsPerState[target].addItem(card);
 
-            if(isDebugging) console.log(debugTag+"moved card="+card.Key+" from origin="+origin+" ("+this.RegisteredDeck?.CardsPerState[origin].size()
-                +") to target="+target+"("+this.RegisteredDeck?.CardsPerState[target].size()+")!");
+            if(isDebugging) console.log(debugTag+"moved card="+card.Key+" from origin="+origin+" ("+this.DeckSession?.CardsPerState[origin].size()
+                +") to target="+target+"("+this.DeckSession?.CardsPerState[target].size()+")!");
         }
 
         /** adds given card's object to hand */
@@ -1072,6 +1117,86 @@ export module TableTeam {
 
             //destroy game object
             engine.removeEntity(this.entityParent);
+        }
+
+        /** serializeds the team into transferable data */
+        public SerializeData():TeamSerialData {
+            //if(isDebugging) 
+            console.log(debugTag+"serializing team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            let serial:TeamSerialData = {
+                playerID: this.RegisteredPlayerID??"",
+                playerName: this.RegisteredPlayerName??"",
+                readyState: this.ReadyState,
+                healthCur:this.healthCur,
+                energyCur:this.energyCur,
+                energyGain:this.energyGain,
+                deckRegistered:"",
+                deckSession:[],
+                slotCards:[],
+                terrainCard:this.TerrainCard??""
+            }
+
+            //process card decks
+            if(this.DeckRegistered) serial.deckRegistered = this.DeckRegistered.Serialize();
+            if(this.DeckSession) {
+                for (let i = 0; i < this.DeckSession.CardsPerState.length; i++) {
+                    serial.deckSession[i] = [];
+                    for (let j = 0; j < this.DeckSession.CardsPerState[i].size(); j++) {
+                        const card = this.DeckSession.CardsPerState[i].getItem(j).SerializeData();
+                        serial.deckSession[i].push(card);
+                    }
+                }
+            }
+            //process card slots
+            serial.slotCards = [];
+            for (let i = 0; i < this.cardSlotObjects.length; i++) {
+                serial.slotCards.push(this.cardSlotObjects[i].SlottedCard?.Key??"");
+            }
+
+            console.log(debugTag+"serialized team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            //provide serial
+            return serial;
+        }
+
+        /** initializes the team based on the provided serial string */
+        public DeserializeData(serial:TeamSerialData) {
+            console.log(debugTag+"deserializing team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            //slot player
+            if(serial.playerID != "") this.RegisteredPlayerID = serial.playerID;
+            else this.RegisteredPlayerID = undefined;
+            if(serial.playerName != "") this.RegisteredPlayerName = serial.playerName;
+            else this.RegisteredPlayerName = undefined;
+            this.readyState = serial.readyState;
+            this.healthCur = serial.healthCur;
+            this.energyCur = serial.energyCur;
+            this.energyGain = serial.energyGain;
+
+            //populate all cards
+            //  set decks
+            if(this.DeckRegistered) this.DeckRegistered.Deserial(serial.deckRegistered);
+            if(this.DeckSession) {
+                this.DeckSession.Clean();
+                for (let i = 0; i < serial.deckSession.length; i++) {
+                    for (let j = 0; j < serial.deckSession[i].length; j++) {
+                        const cardSerial = serial.deckSession[i][j];
+                        this.DeckSession.AddCardBySerial(i, cardSerial);
+                    }
+                }
+            }
+            //  set slots
+            for (let i = 0; i < serial.slotCards.length; i++) {
+                const card = PlayCard.GetByKey(serial.slotCards[i]);
+                if(card) this.cardSlotObjects[i].ApplyCard(card);
+            }
+            //  set terrain
+            this.SetTerrainCard(PlayCard.GetByKey(serial.terrainCard));
+            console.log("terrain card key="+serial.terrainCard);
+
+            //redraw display
+            this.UpdateButtonStates();
+            this.UpdateCardObjectDisplay();
+
+            console.log(debugTag+"deserialized team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
         }
     }
     

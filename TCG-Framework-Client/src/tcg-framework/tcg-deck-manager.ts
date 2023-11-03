@@ -769,6 +769,9 @@ export module DeckManager {
             return;
         }
         
+        //verify player owns all the cards required to create deck
+
+
         //save local deck to target deck
         deckTargetContainer.Clone(deckLocalContainer);
         TextShape.getMutable(deckInfoButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityText).text = "DECK "+PlayerLocal.GetPlayerDeckIndex()+" - ("+deckTargetContainer.CardsAll.size()+")";
@@ -777,6 +780,9 @@ export module DeckManager {
         //update count text
         RedrawCardView();
         UpdateCardCount();
+        
+        //attempt to save deck to server
+        PlayerLocal.SavePlayerDeckToServer(PlayerLocal.GetPlayerDeckIndex());
     }
 
     /** called when player interacts with counter buttons */

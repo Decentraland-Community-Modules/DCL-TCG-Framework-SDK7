@@ -1,10 +1,12 @@
 import { getUserData } from "~system/UserIdentity"
 import { PlayCardDeck } from "../tcg-play-card-deck";
 import { CARD_DATA_ID } from "../data/tcg-card-data";
-import { PLAYER_ACCOUNT_TYPE, PLAYER_ACCOUNT_TYPE_STRINGS, PLAYER_CONNECTIVITY_STATE } from "./tcg-config";
-import { NFTLinkageRegistry } from "../data/tcg-nft-linkage-registry";
+import { ContractUnlockRegistry } from "../data/tcg-contract-unlocks-registry";
 import { MenuElementManager2D } from "../../utilities/menu-group-2D.ui";
 import { Color4 } from "@dcl/sdk/math";
+import { Networking } from "./tcg-networking";
+import { signedFetch } from "~system/SignedFetch";
+import { LevelManager } from "../tcg-level-manager";
 /*      TRADING CARD GAME - LOCAL PLAYER
     contains properties and configurations regarding the local player's
     instance, such as if they are logged in via web3, their display name, and wallet.
@@ -19,35 +21,35 @@ export module PlayerLocal {
     const debugTag:string = "Player Local: ";
 
     /** local player's connectivity state */
-    var connectivityState:PLAYER_CONNECTIVITY_STATE = PLAYER_CONNECTIVITY_STATE.UNINITIALIZED;
-    export function GetConnectivityState():PLAYER_CONNECTIVITY_STATE { return connectivityState; }
+    var connectivityState:Networking.PLAYER_CONNECTIVITY_STATE = Networking.PLAYER_CONNECTIVITY_STATE.UNINITIALIZED;
+    export function GetConnectivityState():Networking.PLAYER_CONNECTIVITY_STATE { return connectivityState; }
 
     /** local player's account type */
-    var accountType:PLAYER_ACCOUNT_TYPE = PLAYER_ACCOUNT_TYPE.UNINITIALIZED;
-    export function GetAccountType():PLAYER_ACCOUNT_TYPE { return accountType; }
-    export function SetAccountType(value:PLAYER_ACCOUNT_TYPE) {
+    var accountType:Networking.PLAYER_ACCOUNT_TYPE = Networking.PLAYER_ACCOUNT_TYPE.UNINITIALIZED;
+    export function GetAccountType():Networking.PLAYER_ACCOUNT_TYPE { return accountType; }
+    export function SetAccountType(value:Networking.PLAYER_ACCOUNT_TYPE) {
         //set value
         accountType = value;
         //update display
-        uiTextLoginValue.TextValue = PLAYER_ACCOUNT_TYPE_STRINGS[accountType];
+        uiTextLoginValue.TextValue = Networking.PLAYER_ACCOUNT_TYPE_STRINGS[accountType];
     }
 
     /** local player's web3 state */
     var isWeb3:boolean = false;
-    export function IsWeb3():boolean { return isWeb3;}
+    export function IsWeb3():boolean { return isWeb3; }
 
     /** local player's uid */
     var userID:string;
-    export function GetUserID():string { return userID;}
+    export function GetUserID():string { return userID; }
 
     /** local player's display name */
-    var displayName:string;
-    export function GetDisplayName():string { return displayName;}
+    var userName:string;
+    export function GetUserName():string { return userName; }
 
     /** id of local player's current table */
-    export var CurTableID:undefined|number;
+    export var CurTableID:undefined|number = undefined;
     /** id of local player's current team */
-    export var CurTeamID:undefined|number;
+    export var CurTeamID:undefined|number = undefined;
 
     /** player's currently selected deck (used for playing at card tables) */
     var curDeck:number = 3;
@@ -86,6 +88,38 @@ export module PlayerLocal {
         PlayerDecks[4].AddCard(CARD_DATA_ID.TERRAIN_VOID);
     }
 
+    /** attempts to save the a player deck to the server */
+    export async function SavePlayerDeckToServer(index:number) {
+        try {
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !IsWeb3() 
+                || (GetAccountType() != Networking.PLAYER_ACCOUNT_TYPE.STANDARD && GetAccountType() != Networking.PLAYER_ACCOUNT_TYPE.ADMIN)) return;
+            
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.DECK_SET;
+            if(isDebugging) console.log(debugTag+"attempting to set player deck...");
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url, 
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "playerID": userID,
+                        "deckID": index,
+                        "deckSerial": PlayerDecks[index].Serialize()
+                    })
+                }
+            });
+
+            //send response
+            console.log("response: "+response.statusText);
+        } catch(error) {
+            console.log(error);
+        }
+    }
+
     /** deck used for pve enemy */
     export const DeckPVE:PlayCardDeck.PlayCardDeckObject = PlayCardDeck.Create({key:"PvE", type:PlayCardDeck.DECK_TYPE.PLAYER_LOCAL});
     
@@ -98,87 +132,140 @@ export module PlayerLocal {
         //  add fire terrain
         for(let i:number = 0; i<1; i++) { DeckPVE.AddCard(CARD_DATA_ID.TERRAIN_FIRE); }
     }
-    
 
     /** attempts to load the local player's data, processes their owned contracts, and */
     export async function LoadPlayerData() {
-        if(isDebugging) console.log(debugTag+"loading player data...");
+        if(isDebugging) console.log(debugTag+"loading player data {connectivity="+Networking.PROFILE_CONNECTIVITY+"}...");
+        //setup pve deck
+        PopulateDeckPvE();
 
-        //ensure this is the first connection attempt
-        if(connectivityState != PLAYER_CONNECTIVITY_STATE.UNINITIALIZED) {
+        //halt if this is not the first attempt (if connectivity fails, player will need to reload scene to start again)
+        //TODO: add a reconnect button in-scene
+        if(connectivityState != Networking.PLAYER_CONNECTIVITY_STATE.UNINITIALIZED) {
             if(isDebugging) console.log(debugTag+"player data has already been loaded!");
             return;
         }
         
-        connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTING;
+        //update connectivity state
+        connectivityState = Networking.PLAYER_CONNECTIVITY_STATE.CONNECTING;
 
-        //attempt to get player data
+        //attempt to get player's decentraland profile data
         let userData = await getUserData({});
-        
-        //ensure user data exists
+        //halt if player has no decentraland profile data
         if(!userData || !userData.data) {
-            if(isDebugging) console.log(debugTag+"failed to load player data");
-            connectivityState = PLAYER_CONNECTIVITY_STATE.FAILED;
+            if(isDebugging) console.log(debugTag+"failed to load player's decentraland profile data");
+            connectivityState = Networking.PLAYER_CONNECTIVITY_STATE.FAILED;
             return;
-        }    
+        }
         
-        //public key is not found, player is not logged in
-        if(!userData.data.publicKey) {
-            if(isDebugging) console.log(debugTag+"player is a guest account (no web3 key)");
-            SetAccountType(PLAYER_ACCOUNT_TYPE.GUEST);
+        //if player's public key is not found, player is not logged in using web3
+        if(userData.data.publicKey) {
+            if(isDebugging) console.log(debugTag+"player is a logged account (has web3 key)");
+            SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.STANDARD);
         } 
         //public key is found, player logged in through web3 wallet 
         else {
-            if(isDebugging) console.log(debugTag+"player is a logged account (has web3 key)");
-            SetAccountType(PLAYER_ACCOUNT_TYPE.STANDARD);
+            if(isDebugging) console.log(debugTag+"player is a guest account (no web3 key)");
+            SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.GUEST);
         } 
 
-        //determined to be at least standard account
         //populate user data
         isWeb3 = userData.data.hasConnectedWeb3;
         userID = userData.data.userId;
-        displayName = userData.data.displayName;
+        userName = userData.data.displayName;
 
-        //local: recalculate what cards the player owns/has access to
-        NFTLinkageRegistry.Instance.userID = userID;
-        await NFTLinkageRegistry.Instance.CalculateCardProvisionCounts();
+        //provide the player with default deck configuration
+        PopulateDeckPlayer();
+        //initialize leveling system (controls card provisions based from levels)
+        LevelManager.Initialize(0);
+        //recalculate what cards the player owns/has access to based on contracts
+        ContractUnlockRegistry.Instance.GetUserID = PlayerLocal.GetUserID;
+        await ContractUnlockRegistry.Instance.CalculateCardProvisionCounts();
 
-        //if player is web3 account
-        if(isWeb3) {
-            //get player's core stats
-            const playerStats = "";
-            //zero-out 
-            SetExperience(0);
+        //attempt server interactions based on connectivity type
+        //  if networking override or sandbox (test mode)
+        if(Networking.DEBUG_OVERRIDE || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SANDBOX) {
+            //spoof connectivity
+            isWeb3 = true;
+            SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.ADMIN);
+            //set demo credentials
+            userID = "0x0DEMO";
+            userName = "DEMO_USER";//+Math.round(Math.random()*10000);
+        }
+        //  if profile is server-based
+        else if(Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SERVER_STRICT 
+            || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SERVER_LOAD) {
 
-            //if stats were found, load player's account
-            if(playerStats == "") {
+            //ensure player is connected with web3 (only real players can interact with the server)
+            if(isWeb3) {
+                const url:string = Networking.SERVER_URL+Networking.SERVER_API.PROFILE_GET+userID;
+                if(isDebugging) console.log(debugTag+"attempting to get player account...\n\t"+url);
 
-            }
-            //if no stats, populate player's account with defaults
+                //processing variable, used as flag to ensure we can complete the process of loading the player's account
+                let fail:boolean = false;
+
+                //attempt to get player's profile from server via url
+                const playerProfile = await fetch(url);
+                if(!playerProfile) {
+                    if(isDebugging) console.log(debugTag+"<ERROR> failed to get player's account");
+                    fail = true;
+                }
+
+                //attempt to convert url's data to json
+                let playerProfileJSON = undefined;
+                if(!fail) {
+                    playerProfileJSON = await playerProfile.json();
+                    if(!playerProfileJSON) {
+                        if(isDebugging) console.log(debugTag+"<ERROR> failed to process fetch into json output");
+                        fail = true;
+                    }
+                }
+
+                //if recieved player profile, load player's account
+                if(!fail && playerProfileJSON) {
+                    if(isDebugging) console.log(debugTag+"successfully found player profile!");
+                    //update player's account state
+                    SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.STANDARD);
+                    
+                    //load player's profile
+                    //  experience
+                    LevelManager.AddExperience(playerProfileJSON["Experience"]);
+                    //  decks
+                    for(let i:number=0; i<5; i++) {
+                        //if a deck was found/previously saved, load deck
+                        if(playerProfileJSON["Deck"+i] !== "") PlayerDecks[i].Deserial(playerProfileJSON["Deck"+i]);
+                    }
+                }
+                //if no profile recieved, populate player's account with defaults
+                else {
+                    if(isDebugging) console.log(debugTag+"failed to find player profile, setting to guest");
+                    //update player's account state
+                    SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.GUEST);
+                }
+            } 
+            //if player is guest account
             else {
-                //provide the player with default deck configuration
-                PopulateDeckPlayer();
+                if(isDebugging) console.log(debugTag+"failed to find player profile, setting to guest");
+                //update player's account state
+                SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.GUEST);
             }
-        } 
-        //if player is guest account
-        else {
-            //zero-out 
-            SetExperience(0);
-
-            //provide the player with default deck configuration
-            PopulateDeckPlayer();
+        }
+        //  if profile is local guest
+        else if(Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.GUEST) {
+            //update player's account state
+            SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.GUEST);
         }
 
-        //setup pve deck
-        PopulateDeckPvE();
+        //update user name
+        uiTextNameValue.TextValue = userName;
 
         //update the player's connectivity state
-        connectivityState = PLAYER_CONNECTIVITY_STATE.CONNECTED;
+        connectivityState = Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED;
         if(isDebugging) console.log(debugTag+"loaded player data!"+
-            "\n\taccountType="+PLAYER_ACCOUNT_TYPE_STRINGS[accountType]+
+            "\n\taccountType="+Networking.PLAYER_ACCOUNT_TYPE_STRINGS[accountType]+
             "\n\tisWeb3="+isWeb3+
             "\n\tuserID="+userID+
-            "\n\tdisplayName="+displayName
+            "\n\tdisplayName="+userName
         );
     };
 
@@ -186,17 +273,35 @@ export module PlayerLocal {
     //  parent container
     const uiParent = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pd");
     uiParent.PosTop = 2;
-    uiParent.Width = 130; uiParent.Heigth = 70;
+    uiParent.Width = 165; uiParent.Heigth = 90;
     uiParent.BackgroundColour = Color4.create(0.3, 0.3, 0.3, 1);
     //  parent background
     const uiParentBackground = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pdb", ["pd"]);
     uiParentBackground.PosTop = '2.5%';
     uiParentBackground.Width = '97.5%'; uiParentBackground.Heigth = '95%';
     uiParentBackground.BackgroundColour = Color4.create(0.45, 0.45, 0.45, 1);
+    //  player name display
+    //      display background
+    const uiTextNameBackground = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-0-b", ["pd","pdb"]);
+    uiTextNameBackground.PosTop = 5; uiTextNameBackground.PosLeft = 5;
+    uiTextNameBackground.Width = 0; uiTextNameBackground.Heigth = 0;
+    uiTextNameBackground.BackgroundColour = Color4.create(0.65, 0.0, 0.0, 1);
+    uiTextNameBackground.PosType = 'absolute';
+    //      ui text for player's name label
+    const uiTextNameLabel = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-0-l", ["pd","pdb","pi-0-b"]);
+    uiTextNameLabel.Width = 0; uiTextNameLabel.Heigth = 0;
+    uiTextNameLabel.TextValue = "PLAYER:";
+    uiTextNameLabel.TextAlign = "middle-left";
+    //      ui text for player's name value
+    const uiTextNameValue = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-0-v", ["pd","pdb","pi-0-b"]);
+    uiTextNameValue.PosLeft = 50;
+    uiTextNameValue.Width = 0; uiTextNameValue.Heigth = 0;
+    uiTextNameValue.TextValue = "[PLAYER_NAME]";
+    uiTextNameValue.TextAlign = "middle-left";
     //  login state display
     //      display background
     const uiTextLoginBackground = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-0-b", ["pd","pdb"]);
-    uiTextLoginBackground.PosTop = 5; uiTextLoginBackground.PosLeft = 5;
+    uiTextLoginBackground.PosTop = 25; uiTextLoginBackground.PosLeft = 5;
     uiTextLoginBackground.Width = 0; uiTextLoginBackground.Heigth = 0;
     uiTextLoginBackground.BackgroundColour = Color4.create(0.65, 0.0, 0.0, 1);
     uiTextLoginBackground.PosType = 'absolute';
@@ -209,12 +314,12 @@ export module PlayerLocal {
     const uiTextLoginValue = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-0-v", ["pd","pdb","pi-0-b"]);
     uiTextLoginValue.PosLeft = 43;
     uiTextLoginValue.Width = 0; uiTextLoginValue.Heigth = 0;
-    uiTextLoginValue.TextValue = PLAYER_ACCOUNT_TYPE_STRINGS[0];
+    uiTextLoginValue.TextValue = Networking.PLAYER_ACCOUNT_TYPE_STRINGS[0];
     uiTextLoginValue.TextAlign = "middle-left";
     //  level display
     //      display background
     const uiTextLevelBackground = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-1-b", ["pd","pdb"]);
-    uiTextLevelBackground.PosTop = 25; uiTextLevelBackground.PosLeft = 5;
+    uiTextLevelBackground.PosTop = 45; uiTextLevelBackground.PosLeft = 5;
     uiTextLevelBackground.Width = 0; uiTextLevelBackground.Heigth = 0;
     uiTextLevelBackground.BackgroundColour = Color4.create(0.0, 0.65, 0.0, 1);
     uiTextLevelBackground.PosType = 'absolute';
@@ -225,6 +330,7 @@ export module PlayerLocal {
     uiTextLevelLabel.TextAlign = "middle-left";
     //      ui text for level value
     const uiTextLevelValue = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-1-v", ["pd","pdb","pi-1-b",]);
+    LevelManager.LevelText = uiTextLevelValue;
     uiTextLevelValue.PosLeft = 42;
     uiTextLevelValue.Width = 0; uiTextLevelValue.Heigth = 0;
     uiTextLevelValue.TextValue = "LOADING...";
@@ -232,7 +338,7 @@ export module PlayerLocal {
     //  experience display
     //      display background
     const uiTextExperienceBackground = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-2-b", ["pd","pdb"]);
-    uiTextExperienceBackground.PosTop = 45; uiTextExperienceBackground.PosLeft = 5;
+    uiTextExperienceBackground.PosTop = 65; uiTextExperienceBackground.PosLeft = 5;
     uiTextExperienceBackground.Width = 0; uiTextExperienceBackground.Heigth = 0;
     uiTextExperienceBackground.BackgroundColour = Color4.create(0.0, 0.65, 0.0, 1);
     uiTextExperienceBackground.PosType = 'absolute';
@@ -243,31 +349,9 @@ export module PlayerLocal {
     uiTextExperienceLabel.TextAlign = "middle-left";
     //      ui text for experience value
     const uiTextExperienceValue = MenuElementManager2D.AddMenuObject(MenuElementManager2D.MENU_ELEMENT_TYPE.MENU_ENTITY, "pi-2-v", ["pd","pdb","pi-2-b"]);
+    LevelManager.ExperienceText = uiTextExperienceValue;
     uiTextExperienceValue.PosLeft = 28;
     uiTextExperienceValue.Width = 0; uiTextExperienceValue.Heigth = 0;
     uiTextExperienceValue.TextValue = "LOADING...";
     uiTextExperienceValue.TextAlign = "middle-left";
-
-
-    //TODO: split to seperate module (vroomway open-sourced some stuff that )
-    /** player's current experience */
-    let experience:number = 0;
-    export function GetExperience():number { return experience; }
-    export function SetExperience(val:number) {
-        //set value
-        experience = val;
-        //update ui draw
-        uiTextExperienceValue.TextValue = (experience%1000).toString();
-        //calculate new level
-        SetLevel(experience/1000);
-    }
-    /** player's current level */
-    let level:number = 0;
-    export function GetLevel():number { return level; }
-    export function SetLevel(val:number) {
-        //set value
-        level = val;
-        //update ui draw
-        uiTextLevelValue.TextValue = level.toString();
-    }
 }

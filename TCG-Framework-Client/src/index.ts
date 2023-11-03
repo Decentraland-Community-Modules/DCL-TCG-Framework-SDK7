@@ -1,8 +1,8 @@
-import { Entity, GltfContainer, Transform, engine, executeTask } from "@dcl/sdk/ecs";
+import { Entity, GltfContainer, TextShape, Transform, engine, executeTask } from "@dcl/sdk/ecs";
 import { TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
 import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { CardDataRegistry } from "./tcg-framework/data/tcg-card-registry";
-import { NFTLinkageRegistry } from "./tcg-framework/data/tcg-nft-linkage-registry";
+import { ContractUnlockRegistry } from "./tcg-framework/data/tcg-contract-unlocks-registry";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
@@ -10,6 +10,8 @@ import { InfoPanel } from "./tcg-framework/tcg-info-display-panel";
 import { TableCardSlot } from "./tcg-framework/tcg-table-card-slot";
 import { PlayCard } from "./tcg-framework/tcg-play-card";
 import { CardSubjectDisplayPanel } from "./tcg-framework/tcg-card-subject-display";
+import { Networking } from "./tcg-framework/config/tcg-networking";
+import { Color4 } from "@dcl/sdk/math";
 
 /**
 	TODO:
@@ -50,25 +52,85 @@ async function tcgSetUp() {
 		DeckManager.Create({ 
 			key:"dm-1",
 			parent: undefined,
-			position: { x:46, y:0, z:6 },
+			position: { x:66, y:0, z:6 },
 			rotation: { x:0, y:90, z:0 } 
 		});
 	
-		//create card tables
-		//	peer to peer
+		//PVE TABLES
+		//	pve local table
+		const preview_0 = engine.addEntity();
+		Transform.create(preview_0, { position: {x:14,y:2,z:12}, scale: {x:0.25,y:0.25,z:0.25}, });
+		TextShape.create(preview_0, { text:"LOCAL TABLE (PVE)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
 		Table.Create({
-			tableID:0,
-			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
+			//indexing
+			tableID: 0,
+			//config
+			networkingType: Networking.TABLE_CONNECTIVITY_TYPE.LOCAL,
+			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
+			//transform
 			parent: undefined,
 			position: { x:14, y:0, z:24 },
 			rotation: { x:0, y:90, z:0 }
 		});
-		//	ai
+		//	pve peer-to-peer table
+		const preview_1 = engine.addEntity();
+		Transform.create(preview_1, { position: {x:34,y:2,z:12}, scale: {x:0.25,y:0.25,z:0.25}, });
+		TextShape.create(preview_1, { text:"PEER TABLE (PVE)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
 		Table.Create({
-			tableID:1,
+			//indexing
+			tableID: 1,
+			//config
+			networkingType: Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER,
 			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
+			//transform
 			parent: undefined,
 			position: { x:34, y:0, z:24 },
+			rotation: { x:0, y:90, z:0 }
+		});
+		//	pve server table
+		/*const preview_2 = engine.addEntity();
+		Transform.create(preview_2, { position: {x:54,y:2,z:12}, scale: {x:0.25,y:0.25,z:0.25}, });
+		TextShape.create(preview_2, { text:"SERVER TABLE (PVE)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
+		Table.Create({
+			//indexing
+			tableID: 2,
+			//config
+			networkingType: Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER,
+			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
+			//transform
+			parent: undefined,
+			position: { x:54, y:0, z:24 },
+			rotation: { x:0, y:90, z:0 }
+		});*/
+		//PVP TABLES
+		//	pvp peer-to-peer table
+		const preview_3 = engine.addEntity();
+		Transform.create(preview_3, { position: {x:34,y:2,z:42}, scale: {x:0.25,y:0.25,z:0.25}, });
+		TextShape.create(preview_3, { text:"PEER TABLE (PVP)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
+		Table.Create({
+			//indexing
+			tableID: 3,
+			//config
+			networkingType: Networking.TABLE_CONNECTIVITY_TYPE.PEER_TO_PEER,
+			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
+			//transform
+			parent: undefined,
+			position: { x:34, y:0, z:54 },
+			rotation: { x:0, y:90, z:0 }
+		});
+		//	pvp server table
+		const preview_4 = engine.addEntity();
+		Transform.create(preview_4, { position: {x:54,y:2,z:42}, scale: {x:0.25,y:0.25,z:0.25}, });
+		TextShape.create(preview_4, { text:"SERVER TABLE (PVP)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
+		Table.Create({
+			//indexing
+			tableID: 4,
+			//config
+			networkingType: Networking.TABLE_CONNECTIVITY_TYPE.SERVER_STRICT,
+			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
+			//transform
+			parent: undefined,
+			position: { x:54, y:0, z:54 },
 			rotation: { x:0, y:90, z:0 }
 		});
 	
