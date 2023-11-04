@@ -345,7 +345,7 @@ export module PlayCardDeck {
 
         /** initializes this deck based on the given serial string */
         public Deserial(serial:string) {
-            if(isDebugging) console.log(debugTag+"deserializing deck="+this.Key+", serial="+serial);
+            if(isDebugging) console.log(debugTag+"deserializing deckID="+this.Key+", serial="+serial);
             //remove all previous cards
             this.Clean();
 
@@ -357,7 +357,7 @@ export module PlayCardDeck {
                     this.AddCard(parseInt(entrySplit[0]));
                 }
             }
-            if(isDebugging) console.log(debugTag+"deserialized deck="+this.Key+", size="+this.CardsAll.size());
+            if(isDebugging) console.log(debugTag+"deserialized deckID="+this.Key+", size="+this.CardsAll.size());
         }
     }
     

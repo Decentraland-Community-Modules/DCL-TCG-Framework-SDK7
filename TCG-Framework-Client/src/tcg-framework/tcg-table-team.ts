@@ -859,13 +859,12 @@ export module TableTeam {
                         break;
                         //game is on-going
                         case TABLE_GAME_STATE.ACTIVE:
-                            //if team has a player
                             Transform.getMutable(this.entityJoinTeam).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityLeaveTeam).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityReadyGame).scale = BUTTON_SCALE_OFF;
                             Transform.getMutable(this.entityUnreadyGame).scale = BUTTON_SCALE_OFF;
                             //if local player's turn
-                            if(this.RegisteredPlayerID == PlayerLocal.GetUserName() && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
+                            if(this.RegisteredPlayerID == PlayerLocal.GetUserID() && this.TurnState == TABLE_TURN_TYPE.ACTIVE) {
                                 Transform.getMutable(this.entityEndTurn).scale = BUTTON_SCALE_SMALL; 
                                 Transform.getMutable(this.entityForfeit).scale = BUTTON_SCALE_SMALL; 
                             } 

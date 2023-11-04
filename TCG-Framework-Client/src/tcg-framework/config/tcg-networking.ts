@@ -16,13 +16,14 @@ export module Networking {
         EXPERIENCE_GET = "api/get-exp/",
         DECK_SET = "api/set-deck",
         //table calls
-        TABLE_GET = "api/get-table",
-        TABLE_JOIN = "api/join-table",
-        TABLE_LEAVE = "api/leave-table",
+        TABLE_GET_DATA = "api/get-table",
+        TABLE_SET_DATA = "api/set-table",
+        TABLE_JOIN_GAME = "api/join-table",
+        TABLE_LEAVE_GAME = "api/leave-table",
         TABLE_READY_STATE = "api/set-ready-state",
-        TABLE_START = "api/start-game",
-        TABLE_END = "api/end-game",
-        TABLE_END_TURN = "api/end-turn",
+        TABLE_START_GAME = "api/start-game",
+        TABLE_END_TURN = "api/next-turn",
+        TABLE_END_GAME = "api/end-game",
     }
 
     //### PLAYER PROFILE ###
@@ -44,7 +45,7 @@ export module Networking {
         SANDBOX,
     }
     /** determines the connectivity type of the local player's profile */
-    export const PROFILE_CONNECTIVITY:PROFILE_CONNECTIVITY_TYPE = PROFILE_CONNECTIVITY_TYPE.SANDBOX;
+    export const PROFILE_CONNECTIVITY:PROFILE_CONNECTIVITY_TYPE = PROFILE_CONNECTIVITY_TYPE.SERVER_STRICT;
 
     /** all possible connectivity/load states for a player */
     export enum PLAYER_CONNECTIVITY_STATE {

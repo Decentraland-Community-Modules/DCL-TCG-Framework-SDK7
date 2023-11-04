@@ -313,7 +313,7 @@ export module Table {
         public RepositionTeamDisplays() {
             //set team display object states
             //  player belongs to team 1
-            if(this.teamObjects[0].RegisteredPlayerID == PlayerLocal.GetUserName()) {
+            if(this.teamObjects[0].RegisteredPlayerID == PlayerLocal.GetUserID()) {
                 //hand displays
                 this.teamObjects[0].SetHandState(true);
                 this.teamObjects[1].SetHandState(false);
@@ -328,7 +328,7 @@ export module Table {
                 this.entityStateDisplays[1].SetRotation({x:0,y:340,z:0});
             }
             //  player belongs to team 2
-            else if(this.teamObjects[1].RegisteredPlayerID == PlayerLocal.GetUserName()) {
+            else if(this.teamObjects[1].RegisteredPlayerID == PlayerLocal.GetUserID()) {
                 //hand displays
                 this.teamObjects[1].SetHandState(true);
                 this.teamObjects[0].SetHandState(false);
@@ -548,7 +548,7 @@ export module Table {
             this.teamObjects[team].RegisteredPlayerName = playerName;
             
             //if player is local player
-            if(PlayerLocal.GetUserID() == playerID) {
+            if(playerID == PlayerLocal.GetUserID()) {
                 //link this table to local player's data
                 PlayerLocal.CurTableID = this.tableID;
                 PlayerLocal.CurTeamID = team;
@@ -649,7 +649,7 @@ export module Table {
         }
         /** remote call from a connected player, sets the given team's ready state */
         public RemoteSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) {
-            if(isDebugging) console.log(debugTag+"<REMOTE> setting ready state table="+this.TableID+" team="+team+" to "+state+"...");
+            if(isDebugging) console.log(debugTag+"<REMOTE> setting ready state table="+this.TableID+" team="+team+" to "+state+", with deck="+deckSerial+"...");
             
             //update team's state
             this.teamObjects[team].ReadyState = state;
@@ -661,7 +661,9 @@ export module Table {
                 console.log("<ERROR>: table="+this.tableID+", team="+team+" does not have a valid deck, likely mismanaged table states");
                 return;
             }
+            if(isDebugging) console.log(debugTag+"<REMOTE> TEST 1");
             deck.Deserial(deckSerial);
+            if(isDebugging) console.log(debugTag+"<REMOTE> TEST 2");
 
             //if local player is table owner
             if(this.TableOwnerID == PlayerLocal.GetUserID()) {
@@ -675,7 +677,7 @@ export module Table {
         }
 
         //## START GAME
-        public EmitStartGame:(table:string) => void = this.RemoteStartGame;
+        public EmitStartGame:(table:string, localized:boolean) => void = this.RemoteStartGame;
         /** local call from interaction made to all connected players, starts game */
         public LocalStartGame() {
             if(isDebugging) console.log(debugTag+"<LOCAL> starting game on table="+this.TableID+"...");
@@ -687,10 +689,10 @@ export module Table {
             }
 
             //send networking call
-            this.EmitStartGame(this.TableID);
+            this.EmitStartGame(this.TableID, false);
         }
         /** remote call from a connected player, starts game */
-        public RemoteStartGame(table:string) {
+        public RemoteStartGame(table:string, localized:boolean) {
             if(isDebugging) console.log(debugTag+"<REMOTE> starting game on table="+this.TableID+"...");
 
             //set entry table state
@@ -710,8 +712,8 @@ export module Table {
                 }
             }
 
-            //if player is table owner
-            if(PlayerLocal.GetUserName() == this.TableOwnerID) {
+            //if player is table owner & not localized call
+            if(this.TableOwnerID == PlayerLocal.GetUserID() && localized == false) {
                 //start next turn
                 this.LocalNextTurn();
             }
@@ -726,7 +728,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<LOCAL> ending game on table="+this.TableID+"...");
 
             //ensure local player is current turn owner
-            if(PlayerLocal.GetUserName() != this.TableOwnerID) return;
+            if(this.TableOwnerID != PlayerLocal.GetUserID()) return;
             
             //send networking call
             this.EmitEndGame(this.TableID, defeated);
@@ -736,7 +738,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<LOCAL> ending game on table="+this.TableID+"...");
 
             //ensure local player is current turn owner
-            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID) return;
+            if(this.teamObjects[this.curTurn].RegisteredPlayerID != PlayerLocal.GetUserID()) return;
             
             //send networking call
             this.EmitEndGame(this.TableID, this.curTurn);
@@ -802,7 +804,7 @@ export module Table {
             TextShape.getMutable(this.entityLobbyTurn).text = this.teamObjects[this.curTurn].RegisteredPlayerID +"'S TURN (ROUND: "+this.curRound+")";
 
             //if table owner and ai's turn, start processing
-            if(PlayerLocal.GetUserName() == this.TableOwnerID && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
+            if(this.TableOwnerID == PlayerLocal.GetUserID() && this.teamObjects[this.curTurn].TeamType == TABLE_TEAM_TYPE.AI) {
                 SetAIState(true, this);
             }
 
@@ -876,7 +878,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && !aiPVE) {
+            if(this.teamObjects[this.curTurn].RegisteredPlayerID != PlayerLocal.GetUserID() && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -979,7 +981,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && !aiPVE) {
+            if(this.teamObjects[this.curTurn].RegisteredPlayerID != PlayerLocal.GetUserID() && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -1148,7 +1150,7 @@ export module Table {
                 return;
             }
             //halt if local player is not the current team owner and not an ai
-            if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && !aiPVE) {
+            if(this.teamObjects[this.curTurn].RegisteredPlayerID != PlayerLocal.GetUserID() && !aiPVE) {
                 if(isDebugging) console.log(debugTag+"<FAILED> current team is not owned by local player, non-ai command");
                 return;
             }
@@ -1193,7 +1195,7 @@ export module Table {
             //preform localized team checks
             const team = this.teamObjects[this.curTurn];
             //  ensure local player is owner of the current team, excluding AI
-            if(PlayerLocal.GetUserName() != team.RegisteredPlayerID && team.TeamType != TABLE_TEAM_TYPE.AI) {
+            if(team.RegisteredPlayerID != PlayerLocal.GetUserID() && team.TeamType != TABLE_TEAM_TYPE.AI) {
                 if(isDebugging) console.log(debugTag+"<FAILED> local player is not the current player");
                 return;
             }
@@ -1423,7 +1425,7 @@ export module Table {
                 var defenderSlot = this.teamObjects[this.selectionTargets[1].team].cardSlotObjects[this.selectionTargets[1].id];
 
                 //ensure call is coming from player of the same team or an ai team 
-                if(PlayerLocal.GetUserName() != this.teamObjects[this.curTurn].RegisteredPlayerID && 
+                if(this.teamObjects[this.curTurn].RegisteredPlayerID != PlayerLocal.GetUserID() && 
                     this.teamObjects[this.curTurn].TeamType != TABLE_TEAM_TYPE.AI) {
                     if(isDebugging) console.log(debugTag+"<FAILED> unit failed to attack on table="+PlayerLocal.CurTableID+
                         " b.c current player is on wrong team="+PlayerLocal.CurTeamID);
@@ -1595,7 +1597,7 @@ export module Table {
                         if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
                         
                         //prepare url
-                        const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_GET;
+                        const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_GET_DATA;
                         if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
 
                         //attempt to get response
@@ -1645,7 +1647,7 @@ export module Table {
                     if(isDebugging) console.log(debugTag+"requesting table data from peers...");
 
                     //send sync request
-                    Networking.MESSAGE_BUS.emit('txTableGetData', {"invoker":PlayerLocal.GetUserName(), "table":this.tableID});
+                    Networking.MESSAGE_BUS.emit('txTableGetData', {"invoker":PlayerLocal.GetUserID(), "table":this.tableID});
 
                     //delay timeout check function
                     const tableKey = this.TableID;
@@ -1887,7 +1889,7 @@ export module Table {
         if(tableObject == undefined) return;
 
         //halt if reciever does not own table
-        if(tableObject.TableOwnerID != PlayerLocal.GetUserName()) return;
+        if(tableObject.TableOwnerID != PlayerLocal.GetUserID()) return;
         if(isDebugging) console.log(debugTag+"<EMIT> table sync request recieved, sending table serial {invoker="+data.invoker+", tableID="+data.table+"}");
 
         //send table serial
@@ -1897,7 +1899,7 @@ export module Table {
     //peer-to-peer recieve (invoker gets table serial data from table owner)
     Networking.MESSAGE_BUS.on('txTableSendData', (data: {invoker:string, table:string, serial:TableSerialData}) => {
         //halt if local player is not player who requested sync
-        if(PlayerLocal.GetUserName() != data.invoker) return;
+        if(data.invoker != PlayerLocal.GetUserID()) return;
 
         //get table
         const tableObject = GetByKey(data.table);
@@ -1906,6 +1908,75 @@ export module Table {
 
         //deserialize table
         tableObject.DeserializeData(data.serial);
+    });
+
+    //## SYNC LOCAL DATA TO SERVER (syncs down to all p2p connectors)
+    //server routine
+    export function CallbackServerSyncDataToServer(table:string, tableSerial:TableSerialData) { Table.ServerSyncDataToServer(table, tableSerial); }
+    export async function ServerSyncDataToServer(table:string, tableSerial:TableSerialData) {
+        //create url
+        try {
+            if(isDebugging) console.log(debugTag+"<SERVER> syncing data for table="+table+" to server...");
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+            
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_JOIN_GAME;
+            if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url, 
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "realmID": "<TEST-REALM>",
+                        "tableID": table,
+                        "tableData": tableSerial
+                    })
+                }
+            });
+            if(!response) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let responseText = await response.body;
+            if(!responseText) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+            if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+            //check result of response
+            let responseJSON = JSON.parse(responseText);
+            if(responseJSON["result"]) {
+                if(isDebugging) console.log(debugTag+"<SERVER> synced data for table="+table+" to server, starting waterfall!");
+                EmitSyncDataToServer(table, tableSerial);
+            } else {
+                if(isDebugging) console.log(debugTag+"<SERVER> failed to sync data for table="+table+" to server");
+            }
+        } catch(error) {
+            console.log(error);
+        }
+    }
+    //peer-to-peer send
+    export function CallbackEmitSyncDataToServer(table:string, tableSerial:TableSerialData) { Table.EmitSyncDataToServer(table, tableSerial); }
+    export function EmitSyncDataToServer(table:string, tableSerial:TableSerialData) {
+        if(isDebugging) console.log(debugTag+"<EMIT> syncing data for table="+table);
+        Networking.MESSAGE_BUS.emit('txTableSetData', {table, tableSerial});
+    }
+    //peer-to-peer recieve
+    Networking.MESSAGE_BUS.on('txTableSetData', (data: {table:string, tableSerial:TableSerialData}) => {
+        //get table
+        const tableObject = GetByKey(data.table);
+        if(tableObject == undefined) return;
+        if(isDebugging) console.log(debugTag+"<EMIT> table serial recieved, deserializing table");
+
+        //deserialize table
+        tableObject.DeserializeData(data.tableSerial);
     });
 
     //## ADD PLAYER TO TABLE
@@ -1920,7 +1991,7 @@ export module Table {
             
 
             //prepare url
-            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_JOIN;
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_JOIN_GAME;
             if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
 
             //attempt to get response
@@ -1987,7 +2058,7 @@ export module Table {
             if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
             
             //prepare url
-            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_LEAVE;
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_LEAVE_GAME;
             if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
 
             //attempt to get response
@@ -2048,7 +2119,7 @@ export module Table {
     export async function ServerSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) {
         //create url
         try {
-            if(isDebugging) console.log(debugTag+"<SERVER> setting player ready state="+state+" for table="+table+", team="+team+"...");
+            if(isDebugging) console.log(debugTag+"<SERVER> setting player ready state="+state+" for table="+table+", team="+team+", deck='"+deckSerial+"'...");
             //ensure scene is using server connection and player is logged in
             if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
             
@@ -2087,7 +2158,7 @@ export module Table {
             //check result of response
             let responseJSON = JSON.parse(responseText);
             if(responseJSON["result"]) {
-                if(isDebugging) console.log(debugTag+"<SERVER> set player ready state="+state+" for table="+table+", team="+team+"!");
+                if(isDebugging) console.log(debugTag+"<SERVER> set player ready state="+state+" for table="+table+", team="+team+", deck='"+deckSerial+"'!");
                 EmitSetPlayerReadyState(table, team, state, deckSerial);
             } else {
                 if(isDebugging) console.log(debugTag+"<SERVER> failed to set player ready state="+state+" for table="+table+", team="+team);
@@ -2100,8 +2171,8 @@ export module Table {
     //peer-to-peer send
     export function CallbackEmitSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) { Table.EmitSetPlayerReadyState(table, team, state, deckSerial); }
     export function EmitSetPlayerReadyState(table:string, team:number, state:boolean, deckSerial:string) {
-        if(isDebugging) console.log(debugTag+"<EMIT> setting player ready state for table="+table+", team="+team+" to state="+state);
-        Networking.MESSAGE_BUS.emit('txSetPlayerReadyState', {table, team, state, serial: deckSerial});
+        if(isDebugging) console.log(debugTag+"<EMIT> setting player ready state for table="+table+", team="+team+" to state="+state+", deck='"+deckSerial+"'");
+        Networking.MESSAGE_BUS.emit('txSetPlayerReadyState', {table, team, state, deckSerial});
     }
     //peer-to-peer recieve
     Networking.MESSAGE_BUS.on('txSetPlayerReadyState', (data: {table:string, team:number, state:boolean, deckSerial:string}) => {
@@ -2111,6 +2182,11 @@ export module Table {
     });
 
     //## START GAME ON TABLE
+    //process:
+    //  1 attmept to start game on server table
+    //  2 generate all new components based on owner's local card settings
+    //  (this lets us have a dynamic management system where users can have multiple rule varients)
+    //  3 send sync data at server -> upon success, waterfall that through peer-to-peer to show new table state
     //server routine
     export function CallbackServerStartGame(table:string) { Table.ServerStartGame(table); }
     export async function ServerStartGame(table:string) {
@@ -2120,8 +2196,15 @@ export module Table {
             //ensure scene is using server connection and player is logged in
             if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
             
+            //halt if table does not exist
+            const tableObject = GetByKey(table);
+            if(tableObject == undefined) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no table of id="+table);
+                return;
+            }
+            
             //prepare url
-            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_READY_STATE;
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_START_GAME;
             if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
 
             //attempt to get response
@@ -2152,12 +2235,15 @@ export module Table {
             //check result of response
             let responseJSON = JSON.parse(responseText);
             if(responseJSON["result"]) {
-                if(isDebugging) console.log(debugTag+"<SERVER> started game on table="+table+"!");
-                EmitStartGame(table);
+                if(isDebugging) console.log(debugTag+"<SERVER> started game on table="+table+", generating localized data...");
+                //initialize table's data using local card defs
+                tableObject.RemoteStartGame(table, true);
+
+                //push generated table data to server
+                await ServerSyncDataToServer(table, tableObject.SerializeData());
             } else {
                 if(isDebugging) console.log(debugTag+"<SERVER> failed to start game on table="+table);
             }
-
         } catch(error) {
             console.log(error);
         }
@@ -2172,26 +2258,7 @@ export module Table {
     Networking.MESSAGE_BUS.on('txStartGame', (data: {table:string}) => {
         //get table
         const tableObject = GetByKey(data.table);
-        if(tableObject != undefined) tableObject.RemoteStartGame(data.table);
-    });
-
-    //## END GAME ON TABLE
-    //server routine
-    export function CallbackServerEndGame(table:string) { Table.ServerEndGame(table); }
-    export async function ServerEndGame(table:string) {
-
-    }
-    //peer-to-peer send
-    export function CallbackEmitEndGame(table:string, defeated:number) { Table.EmitEndGame(table, defeated); }
-    export function EmitEndGame(table:string, defeated:number) {
-        if(isDebugging) console.log(debugTag+"<EMIT> ending game for table="+table+", defeatedTeam="+defeated);
-        Networking.MESSAGE_BUS.emit('txEndGame', {table, defeated});
-    }
-    //peer-to-peer recieve
-    Networking.MESSAGE_BUS.on('txEndGame', (data: {table:string, defeated:number}) => {
-        //get table
-        const tableObject = GetByKey(data.table);
-        if(tableObject != undefined) tableObject.RemoteEndGame(data.table, data.defeated);
+        if(tableObject != undefined) tableObject.RemoteStartGame(data.table, false);
     });
 
     //## START NEXT TURN FOR TABLE
@@ -2213,11 +2280,30 @@ export module Table {
         if(tableObject != undefined) tableObject.RemoteNextTurn(data.table);
     });
 
+    //## END GAME ON TABLE
+    //server routine
+    export function CallbackServerEndGame(table:string, defeated:number) { Table.ServerEndGame(table, defeated); }
+    export async function ServerEndGame(table:string, defeated:number) {
+        EmitEndGame(table, defeated);
+    }
+    //peer-to-peer send
+    export function CallbackEmitEndGame(table:string, defeated:number) { Table.EmitEndGame(table, defeated); }
+    export function EmitEndGame(table:string, defeated:number) {
+        if(isDebugging) console.log(debugTag+"<EMIT> ending game for table="+table+", defeatedTeam="+defeated);
+        Networking.MESSAGE_BUS.emit('txEndGame', {table, defeated});
+    }
+    //peer-to-peer recieve
+    Networking.MESSAGE_BUS.on('txEndGame', (data: {table:string, defeated:number}) => {
+        //get table
+        const tableObject = GetByKey(data.table);
+        if(tableObject != undefined) tableObject.RemoteEndGame(data.table, data.defeated);
+    });
+
     //## PLAY CARD
     //server routine
-    export function CallbackServerPlayCard(table:string) { Table.ServerPlayCard(table); }
-    export async function ServerPlayCard(table:string) {
-
+    export function CallbackServerPlayCard(table:string, key:string, targets:TableSelectionTarget[]) { Table.ServerPlayCard(table, key, targets); }
+    export async function ServerPlayCard(table:string, key:string, targets:TableSelectionTarget[]) {
+        EmitPlayCard(table, key, targets);
     }
     //peer-to-peer send
     export function CallbackEmitPlayCard(table:string, key:string, targets:TableSelectionTarget[]) { Table.EmitPlayCard(table, key, targets); }
@@ -2234,9 +2320,9 @@ export module Table {
 
     //## UNIT ATTACK
     //server routine
-    export function CallbackServerUnitAttack(table:string) { Table.ServerUnitAttack(table); }
-    export async function ServerUnitAttack(table:string) {
-
+    export function CallbackServerUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) { Table.ServerUnitAttack(table, attacker, defender); }
+    export async function ServerUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) {
+        EmitUnitAttack(table, attacker, defender);
     }
     //peer-to-peer send
     export function CallbackEmitUnitAttack(table:string, attacker:TableSelectionTarget, defender:TableSelectionTarget) { Table.EmitUnitAttack(table, attacker, defender); }

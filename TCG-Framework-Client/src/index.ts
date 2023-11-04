@@ -121,7 +121,7 @@ async function tcgSetUp() {
 		//	pvp server table
 		const preview_4 = engine.addEntity();
 		Transform.create(preview_4, { position: {x:54,y:2,z:42}, scale: {x:0.25,y:0.25,z:0.25}, });
-		TextShape.create(preview_4, { text:"SERVER TABLE (PVP)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
+		TextShape.create(preview_4, { text:"SERVER TABLE (PVP [WORKING ON RE-SYNC ATM])", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
 		Table.Create({
 			//indexing
 			tableID: 4,

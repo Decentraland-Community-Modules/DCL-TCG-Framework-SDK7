@@ -142,7 +142,7 @@ app.get("/api/get-profile/:playerID", (req, res) => {
 
       // update last login to current time
       await documentRef.update({
-        LastLogin: new Date(),
+        LastLogin: new Date().getTime(),
       });
 
       // if nothing failed, return a successful response
@@ -232,7 +232,7 @@ app.post("/api/set-deck", (req, res) => {
 
 // ### CONSTANTS - CARD TABLE ###
 // how long a table can remain inactive before it resets (conversion from milliseconds to minutes)
-const TABLE_INTERACTION_TIMEOUT:number = 1 * 60;
+const TABLE_INTERACTION_TIMEOUT:number = 5 * 60000;
 
 // ### INTERFACES - CARD TABLE ###
 
@@ -255,7 +255,7 @@ function generateDefaultTableTeam():TableTeam.TableTeamData {
 // returns capsule with table defaults
 function generateDefaultTable():Table.TableData {
   const tableData:Table.TableData = {
-    lastInteraction: new Date().getUTCSeconds(),
+    lastInteraction: new Date().getTime(),
     // indexing
     id: 0,
     // live data
@@ -295,14 +295,17 @@ async function getTable(realmID:string, tableID:string):Promise<Table.TableData>
     }
 
     // check for interaction time-out
-    const timeDifference = new Date().getUTCSeconds() - documentJSON.lastInteraction;
+    const curTime = new Date().getTime();
+    const lastTime = documentJSON.lastInteraction;
+    const timeDifference = curTime - lastTime;
+    // console.log("expiry check: curTime="+curTime+", lastTime="+documentJSON.lastInteraction+", testTime="+timeDifference);
     if (timeDifference > TABLE_INTERACTION_TIMEOUT) {
       // populate default table
       documentJSON = generateDefaultTable();
       // set table id
       documentJSON.id = Number.parseInt(tableID);
       // write player defaults to store
-      await documentRef.create(documentJSON);
+      await documentRef.update(documentJSON as { [key: string]: any });
     }
 
     // if nothing failed, we'll return a successful response
@@ -351,6 +354,39 @@ app.post("/api/get-table", (req, res) => {
   })();
 });
 
+// ### ROUTE - SET GAME TABLE ###
+// send: realmID, tableID, tableData
+// sets table's data (used for localized/customized rule sets)
+app.post("/api/set-table", (req, res) => {
+  (async () => {
+    // interactions calls can fail/throw errors, so try-catch is required
+    try {
+      // get table data
+      const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
+
+      // update interaction time-out
+      tableData.lastInteraction = new Date().getTime();
+      // take new values in from provided table serial
+      tableData.id = req.body.tableData.id;
+      tableData.owner = req.body.tableData.owner;
+      tableData.state = req.body.tableData.state;
+      tableData.turn = req.body.tableData.turn;
+      tableData.round = req.body.tableData.round;
+      tableData.teams = req.body.tableData.teams;
+      
+      // attempt to update document with new table
+      await updateTable(req.body.realmID, req.body.tableID, tableData);
+
+      // return successful response
+      return res.status(200).send({ result:true });
+    } catch (error) {
+      // if failure, record error and return fail status
+      console.log(error);
+      return res.status(500).send({ result:false });
+    }
+  })();
+});
+
 // ### ROUTE - JOIN GAME TABLE ###
 // send: realmID, tableID, teamID, playerID
 // attempts to add player to target team on table
@@ -370,7 +406,7 @@ app.post("/api/join-table", (req, res) => {
       }
 
       // update interaction time-out
-      tableData.lastInteraction = new Date().getUTCSeconds();
+      tableData.lastInteraction = new Date().getTime();
       // place player into team
       teamData.playerID = req.body.playerID;
       teamData.playerName = req.body.playerName;
@@ -407,7 +443,7 @@ app.post("/api/leave-table", (req, res) => {
       }
 
       // update interaction time-out
-      tableData.lastInteraction = new Date().getUTCSeconds();
+      tableData.lastInteraction = new Date().getTime();
       // place player into team
       teamData.playerID = "";
       teamData.playerName = "";
@@ -447,7 +483,7 @@ app.post("/api/set-ready-state", (req, res) => {
       }
 
       // update interaction time-out
-      tableData.lastInteraction = new Date().getMilliseconds();
+      tableData.lastInteraction = new Date().getTime();
       // set ready stats
       teamData.readyState = req.body.state;
       teamData.deckRegistered = req.body.deckSerial;
@@ -490,7 +526,49 @@ app.post("/api/start-game", (req, res) => {
       }
 
       // update interaction time-out
-      tableData.lastInteraction = new Date().getUTCSeconds();
+      tableData.lastInteraction = new Date().getTime();
+      
+      // start game on table
+      Table.StartGame(tableData);
+
+      // attempt to update document with new table
+      await updateTable(req.body.realmID, req.body.tableID, tableData);
+      
+      // return successful response
+      return res.status(200).send({ result:true });
+    } catch (error) {
+      // if failure, record error and return fail status
+      console.log(error);
+      return res.status(500).send({ result:false });
+    }
+  })();
+});
+
+// ### ROUTE - NEXT TURN ###
+// send playerID, tableID -> attempts to end game on target table
+app.post("/api/next-turn", (req, res) => {
+  (async () => {
+    // interactions calls can fail/throw errors, so try-catch is required
+    try {
+      // get table data
+      const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
+
+      // halt if table is not idle
+      if(tableData.state != 0) {
+        // return failed response
+        return res.status(200).send({ result:false });
+      }
+
+      // halt if either team is empty or not ready
+      for(let i=0; i<tableData.teams.length; i++) {
+        if(tableData.teams[i].playerID == "" || tableData.teams[i].readyState == false) {
+          // return failed response
+          return res.status(200).send({ result:false });
+        }
+      }
+
+      // update interaction time-out
+      tableData.lastInteraction = new Date().getTime();
       
       // start game on table
       Table.StartGame(tableData);
@@ -509,10 +587,46 @@ app.post("/api/start-game", (req, res) => {
 });
 
 // ### ROUTE - END GAME TABLE ###
-// send playerID, tableID -> attempts to end game on target table
-
-// ### ROUTE - END GAME TABLE TURN ###
 // send playerID, tableID -> attempts to end the current turn on target table
+app.post("/api/end-game", (req, res) => {
+  (async () => {
+    // interactions calls can fail/throw errors, so try-catch is required
+    try {
+      // get table data
+      const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
+
+      // halt if table is not idle
+      if(tableData.state != 0) {
+        // return failed response
+        return res.status(200).send({ result:false });
+      }
+
+      // halt if either team is empty or not ready
+      for(let i=0; i<tableData.teams.length; i++) {
+        if(tableData.teams[i].playerID == "" || tableData.teams[i].readyState == false) {
+          // return failed response
+          return res.status(200).send({ result:false });
+        }
+      }
+
+      // update interaction time-out
+      tableData.lastInteraction = new Date().getTime();
+      
+      // start game on table
+      Table.StartGame(tableData);
+
+      // attempt to update document with new table
+      await updateTable(req.body.realmID, req.body.tableID, tableData);
+      
+      // return successful response
+      return res.status(200).send({ result:true });
+    } catch (error) {
+      // if failure, record error and return fail status
+      console.log(error);
+      return res.status(500).send({ result:false });
+    }
+  })();
+});
 
 // export api to cloud functions, executes upon new request
 exports.app = functions.https.onRequest(app);

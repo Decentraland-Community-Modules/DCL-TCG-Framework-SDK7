@@ -150,7 +150,7 @@ export enum CARD_DATA_ID {
     SPELL_HEAL,
     //## FIRE SPELLS
     SPELL_FIREBOLT,
-    SPELL_HEALING_FLAME,
+    //SPELL_HEALING_FLAME,
     //## ICE SPELLS
     SPELL_ICEBOLT,
     //## ELECTRIC SPELLS
@@ -244,7 +244,7 @@ export const CardData:CardDataObject[] = [
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
         }
-    },
+    },/*
     {   //heals target unit, but also applies burning
         //indexing
         type:CARD_TYPE.SPELL,
@@ -273,7 +273,7 @@ export const CardData:CardDataObject[] = [
             targetType:CARD_TARGETING_TYPE.SLOT_OCCUPIED,
             targetCount:1,
         }
-    },
+    },*/
     //## ICE SPELLS
     {   //deal damage and bleeds an enemy unit
         //indexing
