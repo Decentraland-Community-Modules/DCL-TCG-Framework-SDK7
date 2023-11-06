@@ -3,6 +3,7 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
 import { PlayCard } from "./tcg-play-card";
 import { CardSubjectObject } from "./tcg-card-subject-object";
+import { CardSubjectDisplayPanel } from "./tcg-card-subject-display";
 
 /*      TRADING CARD GAME - TABLE CARD SLOT
     represents a single card slot on a team's side of a table
@@ -128,7 +129,9 @@ export module TableCardSlot {
         private entitySelection:Entity;
         /** active character display object (actual character in this slot) */
         public entityCharacter:undefined|CardSubjectObject.CardSubjectObject;
-
+        /** active character stat display object */
+        public entityCharacterStatDisplay:undefined|CardSubjectDisplayPanel.StatDisplayObject;
+      
         //character stats display portions
         /** character display pivot point */
         private statsParent:Entity;
@@ -295,9 +298,21 @@ export module TableCardSlot {
                 scale: DISAPLAY_SCALE,
                 rotation: Quaternion.fromEulerDegrees(DISAPLAY_ROTATION.x, DISAPLAY_ROTATION.y, DISAPLAY_ROTATION.z)
             });
+
+            //test plate for card subject display
+            this.entityCharacterStatDisplay = CardSubjectDisplayPanel.Create({
+                tableID:this.TableID,
+                teamID: this.TeamID,
+                slotID: this.SlotID,
+                parent: this.entityParent,
+                position: { x:0, y:1, z:0 },
+                scale: { x:0.5, y:0.5, z:0.5 },
+                rotation: { x: 0, y: 0, z: 0 },
+            })
             //show character stats
             Transform.getMutable(this.statsParent).scale = STATS_SCALE;
             this.UpdateStatDisplay();
+
         }
 
         /** redraws stats */
@@ -309,7 +324,12 @@ export module TableCardSlot {
             TextShape.getMutable(this.statsHealth).text = "HP: "+this.slottedCard.HealthCur.toString();
             TextShape.getMutable(this.statsAttack).text = "ATK: "+this.slottedCard.Attack.toString();
             TextShape.getMutable(this.statsArmour).text = "DEF: "+this.slottedCard.Armour.toString();
-        }
+            
+            /**card subject display TEST */
+            const subjectDisplay = CardSubjectDisplayPanel.GetByKey("0-0-0");
+            subjectDisplay?.UpdateStats(this.slottedCard)
+            this.entityCharacterStatDisplay?.UpdateStats(this.slottedCard);
+            }
 
         /** clears an existing card from this card slot */
         public ClearCard() {

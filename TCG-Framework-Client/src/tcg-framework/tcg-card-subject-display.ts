@@ -1,11 +1,17 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, MeshRenderer, Schemas, TextShape, Transform, engine } from "@dcl/sdk/ecs";
-import { Quaternion, Vector3 } from "@dcl/sdk/math";
+import { Animator, Billboard, ColliderLayer, Entity, GltfContainer, Material, MaterialTransparencyMode, MeshRenderer, Schemas, TextShape, TextureWrapMode, Transform, engine } from "@dcl/sdk/ecs";
+import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardDataRegistry } from "./data/tcg-card-registry";
-import { CARD_TYPE, CardDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
 import { CARD_OBJECT_OWNER_TYPE } from "./config/tcg-config";
 import Dictionary, { List } from "../utilities/collections";
 import { CardKeywordDisplayObject } from "./tcg-card-keyword-object";
 import { PlayCard } from "./tcg-play-card";
+import { CardKeywordEffectDataObject } from "./data/tcg-keyword-data";
+import { SatusEffectRegistry, StatusEffectEntry } from "./data/tcg-status-effect-registry";
+import { CardKeywordTextureDataObject } from "./data/tcg-keyword-texture-data";
+import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
+import { GetCardDrawVectors } from "../utilities/texture-sheet-splicing";
+import { StatusEffectDataObject } from "./data/tcg-status-effect-data";
 
 /*      TRADING CARD GAME FRAMEWORK - CARD SUBJECT DISPLAY PANEL
 
@@ -17,12 +23,19 @@ import { PlayCard } from "./tcg-play-card";
 
 export module CardSubjectDisplayPanel {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = false;
+    const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "TCG unit status Object: ";
     
     /** core display object model location */
     const MODEL_CORE:string = 'models/tcg-framework/card-table/card-subject-display.glb';
+    
+    /** animation keys for card display obj object */
+    const ANIM_KEYS_UNIT_STATE:string[] = [
+        "state_inactive",
+        "anim_activate",
+        "anim_deactivate"
+    ];
     
     /** determines all possible card interaction types */
     export enum STAT_DISPLAY_INTERACTION_TYPE {
@@ -33,16 +46,18 @@ export module CardSubjectDisplayPanel {
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
     const PARENT_ROTATION:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_EFFECT_SCALE_ON:Vector3 = { x:0.37, y:0.37, z:1 };
+    const PARENT_EFFECT_SCALE_OFF:Vector3 = { x:0.0, y:0, z:0 };
 
     /** animation key tags (FOR CHARACTER) */
-    const ANIM_KEYS_CARD:string[] = [
+    const ANIM_KEYS_DISPLAY:string[] = [
         "anim_state_on", //character state on
         "anim_state_off", //character state off
     ];
-
-    /** default frame object size */
-    const CARD_CORE_SCALE = {x:0.25, y:0.25, z:0.25};
-    const CARD_CORE_POS = {x:0.0, y:0.0, z:0.0};
+    
+    /** object background text transform */
+    const StatDisplayObjectPos = { x:0, y:0, z:-2,};
+    const StatDisplayObjectScale = {x:1, y:1, z:1};
     /** health text transform */
     const characterStatTextHealthPos = { x:0, y:-0.04, z:-0.1,};
     const characterStatTextHealthScale = {x:0.3, y:0.3, z:0.3};
@@ -52,10 +67,13 @@ export module CardSubjectDisplayPanel {
     /** armour text transform */
     const characterStatTextArmourPos = { x:1, y:-0.04, z:-0.1};
     const characterStatTextArmourScale = {x:0.25, y:0.25, z:0.25};
+    /** status effect count */
+    const keywordDisplayCount:number = 6;
+
     
     /** indexing key */
     export function GetKeyFromObject(data:StatDisplayObject):string { return data.OwnerType+"-"+(data.TableID??"0")+"-"+(data.TeamID??"0")+"-"+data.SlotID; };
-    export function GetKeyFromData(data:StatDisplayObjectCreationData):string { return data.ownerType+"-"+(data.tableID??"0")+"-"+(data.teamID??"0")+"-"+data.slotID; };
+    export function GetKeyFromData(data:StatDisplayObjectCreationData):string { return (data.tableID??"0")+"-"+(data.teamID??"0")+"-"+data.slotID; };
 
     /** pool of ALL existing objects */
     var pooledObjectsAll:List<StatDisplayObject> = new List<StatDisplayObject>();
@@ -94,14 +112,12 @@ export module CardSubjectDisplayPanel {
     //TODO: migrate to creation data system (pass all details to create a card in a single data object)
 	/** object interface used to define all data required to create a new object */
 	export interface StatDisplayObjectCreationData {
-        //display type
-        ownerType: CARD_OBJECT_OWNER_TYPE,
         //indexing
-        tableID?: string,
-        teamID?: string,
+        tableID: string,
+        teamID: string,
         slotID: string,
         //details
-        def: CardDataObject,
+        def?: CardDataObject,
         hasInteractions?:boolean
         hasCounter?: boolean,
         //position
@@ -158,6 +174,8 @@ export module CardSubjectDisplayPanel {
 
         /** card effect/keyword pieces */
         private keywordObjects:CardKeywordDisplayObject.CardKeywordDisplayObject[] = [];
+        /** status effect icons */
+        private entityEffectIcons:Entity[] = [];
 
         
         /** builds out the display panel, ensuring all required components exist and positioned correctly */
@@ -167,17 +185,28 @@ export module CardSubjectDisplayPanel {
             Transform.create(this.entityParent, {
                 scale: PARENT_SCALE_ON
             });
+            Billboard.create(this.entityParent);
 
             /** card subjet stat display background */
             this.StatDisplayPanel = engine.addEntity();
             Transform.create(this.StatDisplayPanel,{
-                parent:undefined,
-                scale: { x:0.3, y:0.3, z:0.3,},
+                parent:this.entityParent,
+                position: StatDisplayObjectPos,
+                scale: StatDisplayObjectScale,
             });
             GltfContainer.create(this.StatDisplayPanel, {
                 src: MODEL_CORE,
                 visibleMeshesCollisionMask: undefined,
                 invisibleMeshesCollisionMask: undefined
+            });
+            
+            //  add animations
+            Animator.create(this.StatDisplayPanel, {
+                states:[
+                    { clip: ANIM_KEYS_UNIT_STATE[0], playing: true, loop: false },
+                    { clip: ANIM_KEYS_UNIT_STATE[1], playing: false, loop: false },
+                    { clip: ANIM_KEYS_UNIT_STATE[2], playing: false, loop: false },
+                ]
             });
             
             /** info attack display*/
@@ -216,17 +245,15 @@ export module CardSubjectDisplayPanel {
                 fontSize: 16,
             })
 
-            /** status effect icons */
-            const entityEffectIcons:Entity[] = [];
-            for(let i = 0; i < 6; i++)
+            for(let i = 0; i < keywordDisplayCount; i++)
             {
-                entityEffectIcons[i] = engine.addEntity();
-                Transform.create(entityEffectIcons[i],{
+                this.entityEffectIcons[i] = engine.addEntity();
+                Transform.create(this.entityEffectIcons[i],{
                     parent:this.entityParent,
                     position: { x:-1.02+(i*0.41), y:-0.7, z:-0.1,},
-                    scale: { x:0.37, y:0.37, z:0.3,},
+                    scale:PARENT_EFFECT_SCALE_ON,
                 });
-                MeshRenderer.setPlane(entityEffectIcons[i])
+                MeshRenderer.setPlane(this.entityEffectIcons[i])
                 
             }
         }
@@ -237,7 +264,6 @@ export module CardSubjectDisplayPanel {
             this.isActive = true;
             this.IsInteractable = false;
             //indexing
-            this.ownerType = data.ownerType;
             this.tableID = data.tableID??"0";
             this.teamID = data.teamID??"0";
             this.slotID = data.slotID;
@@ -248,10 +274,9 @@ export module CardSubjectDisplayPanel {
             const rot = data.rotation??PARENT_ROTATION;
             transform.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
             //core background
-            Transform.getOrCreateMutable(this.StatDisplayPanel).scale = data.scale??CARD_CORE_SCALE;
+            Transform.getOrCreateMutable(this.StatDisplayPanel).scale = data.scale??StatDisplayObjectScale;
             //core component
             CardObjectComponent.createOrReplace(this.StatDisplayPanel, {
-                ownerType:data.ownerType,
                 tableID:data.tableID??"0",
                 teamID:data.teamID??"0",
                 slotID:data.slotID,
@@ -259,26 +284,81 @@ export module CardSubjectDisplayPanel {
             });
         }
 
-        public UpdateStats(def:PlayCard.PlayCardDataObject, hasInteractions:boolean=true) {
-            //enable object
+        public UpdateStats(card:PlayCard.PlayCardDataObject) {
+
+            if(isDebugging) console.log(debugTag+"updating card="+card.DefData.name+"...");
+            //updates displayed unit stats 
             Transform.getOrCreateMutable(this.entityParent).scale = PARENT_SCALE_ON;
-            TextShape.getMutable(this.attackPowerText).text = def.Attack.toString();
-            TextShape.getMutable(this.healthText).text = def.HealthCur.toString();
-            TextShape.getMutable(this.armorText).text = def.Armour.toString();
-            
-            /** status effect icons */
-            const entityEffectIcons:Entity[] = [];
-            for(let i = 0; i < 6; i++)
+            TextShape.getMutable(this.attackPowerText).text = card.Attack.toString();
+            TextShape.getMutable(this.healthText).text = card.HealthCur.toString();
+            TextShape.getMutable(this.armorText).text = card.Armour.toString();
+            //updates the displayed status effect tiles 
+            for(let i = 0; i < keywordDisplayCount; i++)
             {
-                entityEffectIcons[i] = engine.addEntity();
-                Transform.create(entityEffectIcons[i],{
-                    parent:this.entityParent,
-                    position: { x:-1.02+(i*0.41), y:-0.7, z:-0.1,},
-                    scale: { x:0.37, y:0.37, z:0.3,},
-                });
-                MeshRenderer.setPlane(entityEffectIcons[i])
+                if(i < card.ActiveEffectList.size()){
+                    this.SetKeyword(card.ActiveEffectList.getItem(i), i);
+                    //enable object
+                    Transform.getOrCreateMutable(this.entityEffectIcons[i]).scale = PARENT_EFFECT_SCALE_ON;
+                }
+                else{
+                    //enable object
+                    Transform.getOrCreateMutable(this.entityEffectIcons[i]).scale = PARENT_EFFECT_SCALE_OFF;
+                }
             } 
         }
+
+        /**  */
+        public SetKeyword(keyword:PlayCard.ActiveStatusEffectData, keywordDisplayIndex:number) {
+
+            if(isDebugging) console.log(debugTag+"updating keyword="+keyword.ID+"...");
+                        
+            //get keyword definition
+            const defData:StatusEffectDataObject = SatusEffectRegistry.Instance.GetEntryByID(keyword.ID).DataDef;
+            //set keyword icon image
+            //  get required def references
+            const keywordSheet: CardKeywordTextureDataObject = CardKeywordRegistry.Instance.GetKeywordTextureBySheetID(defData.sheetData.id);
+            //  background image
+            
+            MeshRenderer.setPlane(this.entityEffectIcons[keywordDisplayIndex], GetCardDrawVectors(
+                keywordSheet.sheetDetails.totalSizeX, 
+                keywordSheet.sheetDetails.totalSizeY, 
+                keywordSheet.sheetDetails.elementSizeX, 
+                keywordSheet.sheetDetails.elementSizeY, 
+                defData.sheetData.posX, 
+                defData.sheetData.posY
+            ));
+            Material.setPbrMaterial(this.entityEffectIcons[keywordDisplayIndex], {
+                texture: Material.Texture.Common({
+                    src: keywordSheet.path,
+                    wrapMode: TextureWrapMode.TWM_REPEAT,
+                }),
+                albedoColor: defData.iconColour,
+                emissiveColor: defData.iconColour,
+                emissiveIntensity: 3,
+                transparencyMode: MaterialTransparencyMode.MTM_ALPHA_TEST
+            }); 
+            if(isDebugging) console.log(debugTag+"icon y="+defData.sheetData.posY+", icon x="+defData.sheetData.posX);
+
+            //update text
+            /*
+            var displayString:string = "";
+            if(keyword.strength != -1) displayString += "P:"+keyword.strength;
+            if(keyword.duration != undefined && keyword.duration != -1) displayString += "\nT:"+keyword.duration;
+
+            TextShape.getMutable(this.entityDisplayText).text = displayString;
+            */
+        }
+
+        /** sets the given animation */
+        public SetAnimation(value:number) {
+            //turn off animations
+            for(let i = 0; i < ANIM_KEYS_DISPLAY.length; i++) {
+                Animator.getClip(this.StatDisplayPanel, ANIM_KEYS_DISPLAY[i]).playing = false;
+            }
+            //turn on animation
+            Animator.getClip(this.StatDisplayPanel, ANIM_KEYS_DISPLAY[value]).playing = true;
+        }
+
             
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {

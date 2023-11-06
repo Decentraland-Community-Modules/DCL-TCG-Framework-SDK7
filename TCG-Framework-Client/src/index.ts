@@ -10,6 +10,7 @@ import { InfoPanel } from "./tcg-framework/tcg-info-display-panel";
 import { TableCardSlot } from "./tcg-framework/tcg-table-card-slot";
 import { PlayCard } from "./tcg-framework/tcg-play-card";
 import { CardSubjectDisplayPanel } from "./tcg-framework/tcg-card-subject-display";
+import { CardData } from "./tcg-framework/data/tcg-card-data";
 
 /**
 	TODO:
@@ -37,6 +38,31 @@ async function tcgSetUp() {
 
 		//create info panel
 		InfoPanel.SetPosition({ x:24, y:2, z:8 });
+
+		//test plate for card subject display
+		CardSubjectDisplayPanel.Create({
+			tableID:"0",
+			teamID: "0",
+			slotID: "0",
+			parent: undefined,
+			position: { x:21, y:2, z:8 },
+			rotation: { x: 0, y: 0, z: 0 },
+		})
+
+		//test plate for card subject display
+		CardSubjectDisplayPanel.Create({
+			tableID:"0",
+			teamID: "0",
+			slotID: "1",
+			parent: undefined,
+			position: { x:21, y:4, z:8 },
+			rotation: { x: 0, y: 0, z: 0 },
+		})
+        /**card subject display TEST */
+		const card = PlayerLocal.DeckPVE.CardsAll.getItem(5);
+		card.UnitPlayedToField();
+        const subjectDisplay = CardSubjectDisplayPanel.GetByKey("0-0-0");
+        subjectDisplay?.UpdateStats(card)
 
 		//create deck managers
 		//	left

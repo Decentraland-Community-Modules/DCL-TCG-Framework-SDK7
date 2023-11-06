@@ -182,7 +182,7 @@
             displayDesc: "Inflicts @P damage, reduced by armour",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //repeating damage
             id: STATUS_EFFECT_ID.DAMAGE_RECOILING,
@@ -193,7 +193,7 @@
             displayDesc: "Inflicts @P damage for @T rounds, reduced by armour",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
     
         //### HEALTH
@@ -207,7 +207,7 @@
             displayDesc: "Restores @P health",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //mending
             id: STATUS_EFFECT_ID.HEALTH_MENDING,
@@ -218,7 +218,7 @@
             displayDesc: "Restores @P health for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  decreases current health (skips armour calc)
         {   //puncture
@@ -230,7 +230,7 @@
             displayDesc: "Inflicts @P damage to the unit, ignores armour",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //bleeding
             id: STATUS_EFFECT_ID.HEALTH_BLEEDING,
@@ -241,7 +241,7 @@
             displayDesc: "Inflicts @P damage for @T rounds, ignores armour",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  increases max health (current health also increases by amount)
         {   //gigantazie
@@ -253,7 +253,7 @@
             displayDesc: "Increases max health by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //growing
             id: STATUS_EFFECT_ID.HEALTH_GROWING,
@@ -264,7 +264,7 @@
             displayDesc: "Increases max health by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  decreases max health (current health is not reduced by amount, but is leashed to max health)
         {   //shrink
@@ -276,7 +276,7 @@
             displayDesc: "Reduces max health by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //decay
             id: STATUS_EFFECT_ID.HEALTH_DECAY,
@@ -287,7 +287,7 @@
             displayDesc: "Reduces max health by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //burning
             id: STATUS_EFFECT_ID.HEALTH_BURNING,
@@ -298,7 +298,7 @@
             displayDesc: "Reduces max health by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //withering
             id: STATUS_EFFECT_ID.HEALTH_WITHERING,
@@ -309,7 +309,7 @@
             displayDesc: "Reduces max health by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         
         //### ATTACK
@@ -323,7 +323,7 @@
             displayDesc: "Increases attack damage by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //ascending
             id: STATUS_EFFECT_ID.ATTACK_ASCENDING,
@@ -334,7 +334,7 @@
             displayDesc: "Increases attack damage by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  decreases attack
         {   //blunt
@@ -346,7 +346,7 @@
             displayDesc: "Reduces attack damage by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //weakening
             id: STATUS_EFFECT_ID.ATTACK_WEAKENING,
@@ -357,7 +357,7 @@
             displayDesc: "Reduces attack damage by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
 
         //### ARMOUR
@@ -371,7 +371,7 @@
             displayDesc: "Increases armour by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //foritying
             id: STATUS_EFFECT_ID.ARMOUR_FORTIFYING,
@@ -382,7 +382,7 @@
             displayDesc: "Increases armour by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  decreases armour
         {   //shear
@@ -394,7 +394,7 @@
             displayDesc: "Reduces armour by @P",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         {   //melting
             id: STATUS_EFFECT_ID.ARMOUR_MELTING,
@@ -405,7 +405,7 @@
             displayDesc: "Reduces armour by @P for @T rounds",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
 
         //### ACTIVITY MODIFIERS
@@ -419,7 +419,7 @@
             displayDesc: "Restores an action to the unit",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  disables the action for the targeted unit (stops them from attacking)
         {   //exhaust
@@ -431,7 +431,7 @@
             displayDesc: "Removes an action from the unit",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         
         //### TARGETING MODIFIERS
@@ -448,7 +448,7 @@
             displayDesc: "Makes the unit a higher priority target",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  sets unit to lowest targeting layer (hides)
         {   //stealth
@@ -460,7 +460,7 @@
             displayDesc: "Makes the unit a lower priority target",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
 
         //### DEATH MODIFIERS
@@ -474,7 +474,7 @@
             displayDesc: "On death this card will be reset and added back to the player's hand",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  when the unit is defeated its card is added back to the player's deck
         {   //death to deck 
@@ -486,7 +486,7 @@
             displayDesc: "On death this card will be reset and added back to the player's deck",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
         //  when the unit is defeated its card is removed from the game
         {   //death to destroy
@@ -498,6 +498,6 @@
             displayDesc: "On death this card will be removed from the game",
             //display 2D
             iconColour: Color4.White(),
-            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:0 },
+            sheetData:{ id:TEXTURE_SHEET_CARD_KEYWORD.KEYWORD_SHEET_DEMO, posX:0, posY:7 },
         },
     ];

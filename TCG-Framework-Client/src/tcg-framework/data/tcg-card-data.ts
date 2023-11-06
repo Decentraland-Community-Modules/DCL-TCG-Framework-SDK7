@@ -409,6 +409,7 @@ export const CardData:CardDataObject[] = [
         cardKeywordEffects:[
             { id:CARD_KEYWORD_ID.HEALTH_ENFLAME, strength:1, duration:2 },
             { id:CARD_KEYWORD_ID.HEALTH_FLAME_WARD, strength:1, duration:2 },
+            { id:CARD_KEYWORD_ID.HEALTH_IGNITE, strength:1, duration:5 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -466,6 +467,7 @@ export const CardData:CardDataObject[] = [
         cardCost:2,
         //effects
         cardKeywordEffects:[
+            { id:CARD_KEYWORD_ID.HEALTH_HEAL, strength:1, duration:5 },
 
         ],
         //type-specific cards

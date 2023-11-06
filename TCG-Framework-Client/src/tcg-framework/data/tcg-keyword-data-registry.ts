@@ -7,7 +7,7 @@
 
 import Dictionary, { List } from "../../utilities/collections";
 import { CARD_KEYWORD_ID, CardKeywordData, CardKeywordDataObject } from "./tcg-keyword-data";
-import { CardKeywordTextureData, CardKeywordTextureDataObject } from "./tcg-keyword-texture-data";
+import { CardKeywordTextureData, CardKeywordTextureDataObject, TEXTURE_SHEET_CARD_KEYWORD } from "./tcg-keyword-texture-data";
 
 
 /** defines a keyword */
@@ -89,6 +89,8 @@ export class CardKeywordRegistry {
     public CallbackGetKeywordTexture(keyword:CARD_KEYWORD_ID): CardKeywordTextureDataObject { return CardKeywordRegistry.Instance.GetKeywordTexture(keyword); }
     public GetKeywordTexture(keyword:CARD_KEYWORD_ID): CardKeywordTextureDataObject { return this.textureRegistry.getItem(this.GetDefByID(keyword).sheetData.id.toString()); }
     
+    public CallbackGetKeywordTextureBySheetID(sheet:TEXTURE_SHEET_CARD_KEYWORD): CardKeywordTextureDataObject { return CardKeywordRegistry.Instance.GetKeywordTextureBySheetID(sheet); }
+    public GetKeywordTextureBySheetID(sheet:TEXTURE_SHEET_CARD_KEYWORD): CardKeywordTextureDataObject { return this.textureRegistry.getItem(sheet.toString()); }
     /** returns entry at given position */
     public CallbackGetEntryByPos(index: number): CardKeywordEntry { return CardKeywordRegistry.Instance.GetEntryByPos(index); }
     public GetEntryByPos(index: number): CardKeywordEntry { return this.entryRegistry.getItem(index); }
