@@ -16,7 +16,7 @@ import { LevelManager } from "../tcg-level-manager";
 */
 export module PlayerLocal {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = true;
+    const isDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "Player Local: ";
 

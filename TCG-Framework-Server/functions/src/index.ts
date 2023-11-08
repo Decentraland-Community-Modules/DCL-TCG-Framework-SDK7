@@ -42,67 +42,9 @@ const db = admin.firestore();
 const app = express();
 app.use(cors({origin: true}));
 
-// ### ROUTE - EXAMPLES ###
-// you can either keep these or remove them,
-// they are provided purely for reference/examples
-
-// get -> requests a single information piece
-// pings the server, returns a simple piece of text
-app.get("/hello-world", (req, res) => {
-  return res.status(200).send("Hello World UwU");
-});
-
-// post -> send data that should be added to the database
-// creates a single entry in a collection, using attributes from provided data
-app.post("/api/create", (req, res) => {
-  // interactions with the database are timed/can time-out, so async is required
-  (async () => {
-    // interactions calls can fail/throw errors, so try-catch is required
-    try {
-      // get required document
-      const document = db.collection("cards").doc("/"+req.body.cardID+"/");
-      //  process document to derive player's stats
-      const documentData = await document.get();
-      // load values into player data
-      const documentJSON = documentData.data();
-
-      // if document exists
-      if(documentJSON) {
-        // update document data
-        await document.update({
-          name: req.body.name,
-          desc: req.body.desc,
-        });
-      } else {
-        // create document data
-        await document.create({
-          name: req.body.name,
-          desc: req.body.desc,
-        });
-      }
-
-      // if nothing failed, we'll return a successful response
-      return res.status(200).send();
-    } catch (error) {
-      // if failure, record error and return fail status
-      console.log(error);
-      return res.sendStatus(500);
-    }
-  })();
-});
-
-// get -> send request to get entry from database
-// read
-
-// put ->
-// update
-
-// delete ->
-// 
-
 // ### FUNCTION - CREATE DEFAULT PROFILE ###
 // returns capsule with profile defaults
-function GenerateDefaultProfile() {
+function generateDefaultProfile() {
   return {
     // last time player was logged in
     LastLogin: -1,
@@ -135,7 +77,7 @@ app.get("/api/get-profile/:playerID", (req, res) => {
       // check for profile existance
       if (!documentJSON) {
         // populate default profile
-        documentJSON = GenerateDefaultProfile();
+        documentJSON = generateDefaultProfile();
         // write player defaults to store
         await documentRef.create(documentJSON);
       }
@@ -172,7 +114,7 @@ app.get("/api/get-exp/:playerID", (req, res) => {
       // check for profile existance
       if (!documentJSON) {
         // populate default profile
-        documentJSON = GenerateDefaultProfile();
+        documentJSON = generateDefaultProfile();
         // write player defaults to store
         await documentRef.create(documentJSON);
       }
@@ -210,7 +152,7 @@ app.post("/api/set-deck", (req, res) => {
       // check for profile existance
       if (!documentJSON) {
         // populate default profile
-        documentJSON = GenerateDefaultProfile();
+        documentJSON = generateDefaultProfile();
         // write player defaults to store
         await documentRef.create(documentJSON);
       }
@@ -233,9 +175,6 @@ app.post("/api/set-deck", (req, res) => {
 // ### CONSTANTS - CARD TABLE ###
 // how long a table can remain inactive before it resets (conversion from milliseconds to minutes)
 const TABLE_INTERACTION_TIMEOUT:number = 5 * 60000;
-
-// ### INTERFACES - CARD TABLE ###
-
 
 // ### FUNCTIONS - CARD TABLE ###
 // returns capsule with table defaults
@@ -345,7 +284,7 @@ app.post("/api/get-table", (req, res) => {
       const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
 
       // if nothing failed, we'll return a successful response
-      return res.status(200).send(tableData);
+      return res.status(200).send(JSON.stringify(tableData));
     } catch (error) {
       // if failure, record error and return fail status
       console.log(error);
@@ -361,19 +300,8 @@ app.post("/api/set-table", (req, res) => {
   (async () => {
     // interactions calls can fail/throw errors, so try-catch is required
     try {
-      // get table data
-      const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
-
-      // update interaction time-out
-      tableData.lastInteraction = new Date().getTime();
-      // take new values in from provided table serial
-      tableData.id = req.body.tableData.id;
-      tableData.owner = req.body.tableData.owner;
-      tableData.state = req.body.tableData.state;
-      tableData.turn = req.body.tableData.turn;
-      tableData.round = req.body.tableData.round;
-      tableData.teams = req.body.tableData.teams;
-      
+      // generate new table data object based on provided data
+      const tableData:Table.TableData = Table.DeserializeData(req.body.tableData);
       // attempt to update document with new table
       await updateTable(req.body.realmID, req.body.tableID, tableData);
 
@@ -527,9 +455,15 @@ app.post("/api/start-game", (req, res) => {
 
       // update interaction time-out
       tableData.lastInteraction = new Date().getTime();
+      // [dyn] set new table state
+      tableData.state = 1;
       
       // start game on table
-      Table.StartGame(tableData);
+      // TODO: re-enable for non-dynamic server processing/strict rules
+      /* const result = Table.StartGame(tableData);
+      if(result == false) {
+        return res.status(200).send({ result:false });
+      }*/
 
       // attempt to update document with new table
       await updateTable(req.body.realmID, req.body.tableID, tableData);
@@ -554,7 +488,7 @@ app.post("/api/next-turn", (req, res) => {
       const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
 
       // halt if table is not idle
-      if(tableData.state != 0) {
+      if(tableData.state != 1) {
         // return failed response
         return res.status(200).send({ result:false });
       }
@@ -567,14 +501,12 @@ app.post("/api/next-turn", (req, res) => {
         }
       }
 
-      // update interaction time-out
-      tableData.lastInteraction = new Date().getTime();
-      
-      // start game on table
-      Table.StartGame(tableData);
+      // [dyn] update interaction time-out
+      // tableData.lastInteraction = new Date().getTime();
+      const tableUpdate:Table.TableData = Table.DeserializeData(JSON.parse(req.body.tableData));
 
       // attempt to update document with new table
-      await updateTable(req.body.realmID, req.body.tableID, tableData);
+      await updateTable(req.body.realmID, req.body.tableID, tableUpdate);
       
       // return successful response
       return res.status(200).send({ result:true });
@@ -596,7 +528,7 @@ app.post("/api/end-game", (req, res) => {
       const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
 
       // halt if table is not idle
-      if(tableData.state != 0) {
+      if(tableData.state != 1) {
         // return failed response
         return res.status(200).send({ result:false });
       }
@@ -611,13 +543,43 @@ app.post("/api/end-game", (req, res) => {
 
       // update interaction time-out
       tableData.lastInteraction = new Date().getTime();
+      // [dyn] set new table state
+      tableData.state = 0;
       
-      // start game on table
-      Table.StartGame(tableData);
+      // end game on table
+      // TODO: re-enable for non-dynamic server processing/strict rules
+      /* const result = Table.EndGame(tableData);
+      if(result == false) {
+        return res.status(200).send({ result:false });
+      }*/
 
       // attempt to update document with new table
       await updateTable(req.body.realmID, req.body.tableID, tableData);
       
+      //provide experience to players
+      for(let i=0; i<tableData.teams.length; i++) {
+        // skip non-existant player (could be AI)
+        // define document reference for profile
+        const playerRef = db.collection("player-profiles").doc("/"+tableData.teams[i].playerID+"/");
+        if(!playerRef) continue;
+        // get document instance from reference
+        const playerData = await playerRef.get();
+        if(!playerData) continue;
+        // get document data
+        let playerJSON = playerData.data();
+        if(!playerJSON) continue;
+
+        // provide experience (defeated team gets less)
+        if(tableData.teams[i].healthCur > 0) {
+          playerJSON.Experience += 100
+        } else {
+          playerJSON.Experience += 50
+        }
+
+        // attempt to update document
+        await playerRef.update(playerJSON);
+      }
+
       // return successful response
       return res.status(200).send({ result:true });
     } catch (error) {

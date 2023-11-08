@@ -2,14 +2,10 @@ import { Entity, GltfContainer, TextShape, Transform, engine, executeTask } from
 import { TABLE_TEAM_TYPE } from "./tcg-framework/config/tcg-config";
 import { PlayerLocal } from "./tcg-framework/config/tcg-player-local";
 import { CardDataRegistry } from "./tcg-framework/data/tcg-card-registry";
-import { ContractUnlockRegistry } from "./tcg-framework/data/tcg-contract-unlocks-registry";
 import { DeckManager } from "./tcg-framework/tcg-deck-manager";
 import { InteractionManager } from "./tcg-framework/tcg-interaction-manager";
 import { Table } from "./tcg-framework/tcg-table";
 import { InfoPanel } from "./tcg-framework/tcg-info-display-panel";
-import { TableCardSlot } from "./tcg-framework/tcg-table-card-slot";
-import { PlayCard } from "./tcg-framework/tcg-play-card";
-import { CardSubjectDisplayPanel } from "./tcg-framework/tcg-card-subject-display";
 import { Networking } from "./tcg-framework/config/tcg-networking";
 import { Color4 } from "@dcl/sdk/math";
 
@@ -37,8 +33,8 @@ async function tcgSetUp() {
 		//load player
 		await PlayerLocal.LoadPlayerData();
 
-		//create info panel
-		InfoPanel.SetPosition({ x:24, y:2, z:8 });
+		//info panel
+		InfoPanel.SetPosition({ x:24, y:-8, z:8 });
 
 		//create deck managers
 		//	left
@@ -121,7 +117,7 @@ async function tcgSetUp() {
 		//	pvp server table
 		const preview_4 = engine.addEntity();
 		Transform.create(preview_4, { position: {x:54,y:2,z:42}, scale: {x:0.25,y:0.25,z:0.25}, });
-		TextShape.create(preview_4, { text:"SERVER TABLE (PVP [WORKING ON RE-SYNC ATM])", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
+		TextShape.create(preview_4, { text:"SERVER TABLE (PVP)", fontSize: 18, outlineWidth:0.1, outlineColor:Color4.Black(), textColor:Color4.Red() });
 		Table.Create({
 			//indexing
 			tableID: 4,

@@ -130,7 +130,7 @@ export module TableTeam {
         //defines starting deck state
         deckRegistered:string;
         //defines the location of all cards owned by this team
-        deckSession:PlayCard.CardSerialData[][];
+        deckSession:PlayCard.CardSerialDataSet[];
         slotCards:string[];
         terrainCard:string;
     }
@@ -266,7 +266,7 @@ export module TableTeam {
 
         /** callback to get game state of table */
         private getGameState(key:string) {
-            if(isDebugging) console.log(debugTag+"<WARNING> using default callback");
+            console.log(debugTag+"<WARNING> using default callback");
             return TABLE_GAME_STATE.IDLE;
         }
         public callbackGetGameState:(key:string) => TABLE_GAME_STATE = this.getGameState;
@@ -814,12 +814,15 @@ export module TableTeam {
 
         /** updates buttons display based on the current state */
         public UpdateButtonStates() {
+            //get table's current state
+            const tableState = this.callbackGetGameState(this.TableID);
+            //console.log(debugTag+"updating button states {playerType="+this.TeamType+", tableState="+tableState+"}");
             //process based on operator of this team
             switch(this.TeamType) {
                 //human player
                 case TABLE_TEAM_TYPE.HUMAN:
                     //process based on current state of table 
-                    switch(this.callbackGetGameState(this.TableID)) {
+                    switch(tableState) {
                         //game is not started
                         case TABLE_GAME_STATE.IDLE:
                             //if a player is registered to this team
@@ -1118,13 +1121,16 @@ export module TableTeam {
             engine.removeEntity(this.entityParent);
         }
 
-        /** serializeds the team into transferable data */
+        /** serializes the team into transferable data */
         public SerializeData():TeamSerialData {
             //if(isDebugging) 
-            console.log(debugTag+"serializing team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            console.log(debugTag+"serializing team {tableID="+this.TableID+", team="+this.TeamID+
+                ", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
             let serial:TeamSerialData = {
+                // indexing
                 playerID: this.RegisteredPlayerID??"",
                 playerName: this.RegisteredPlayerName??"",
+                // live data
                 readyState: this.ReadyState,
                 healthCur:this.healthCur,
                 energyCur:this.energyCur,
@@ -1136,14 +1142,16 @@ export module TableTeam {
             }
 
             //process card decks
-            if(this.DeckRegistered) serial.deckRegistered = this.DeckRegistered.Serialize();
-            if(this.DeckSession) {
+            if(this.DeckRegistered != undefined) serial.deckRegistered = this.DeckRegistered.Serialize();
+            if(this.DeckSession != undefined) {
                 for (let i = 0; i < this.DeckSession.CardsPerState.length; i++) {
-                    serial.deckSession[i] = [];
+                    const elementSet:PlayCard.CardSerialDataSet = { v:[] };
                     for (let j = 0; j < this.DeckSession.CardsPerState[i].size(); j++) {
                         const card = this.DeckSession.CardsPerState[i].getItem(j).SerializeData();
-                        serial.deckSession[i].push(card);
+                        //console.log(debugTag+"card index="+card.index+", serial="+card.defIndex);
+                        elementSet.v.push(card);
                     }
+                    serial.deckSession.push(elementSet)
                 }
             }
             //process card slots
@@ -1152,14 +1160,16 @@ export module TableTeam {
                 serial.slotCards.push(this.cardSlotObjects[i].SlottedCard?.Key??"");
             }
 
-            console.log(debugTag+"serialized team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            console.log(debugTag+"serialized team {tableID="+this.TableID+", team="+this.TeamID+
+                ", playerID="+serial.playerID+", playerName="+serial.playerName+"}");
             //provide serial
             return serial;
         }
 
         /** initializes the team based on the provided serial string */
         public DeserializeData(serial:TeamSerialData) {
-            console.log(debugTag+"deserializing team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            console.log(debugTag+"deserializing team {tableID="+this.TableID+", team="+this.TeamID+
+                ", playerID="+serial.playerID+", playerName="+serial.playerName+"}");
             //slot player
             if(serial.playerID != "") this.RegisteredPlayerID = serial.playerID;
             else this.RegisteredPlayerID = undefined;
@@ -1176,8 +1186,9 @@ export module TableTeam {
             if(this.DeckSession) {
                 this.DeckSession.Clean();
                 for (let i = 0; i < serial.deckSession.length; i++) {
-                    for (let j = 0; j < serial.deckSession[i].length; j++) {
-                        const cardSerial = serial.deckSession[i][j];
+                    for (let j = 0; j < serial.deckSession[i].v.length; j++) {
+                        const cardSerial = serial.deckSession[i].v[j];
+                        //console.log(debugTag+"card index="+cardSerial.index+", serial="+cardSerial.defIndex);
                         this.DeckSession.AddCardBySerial(i, cardSerial);
                     }
                 }
@@ -1189,13 +1200,13 @@ export module TableTeam {
             }
             //  set terrain
             this.SetTerrainCard(PlayCard.GetByKey(serial.terrainCard));
-            console.log("terrain card key="+serial.terrainCard);
 
             //redraw display
             this.UpdateButtonStates();
             this.UpdateCardObjectDisplay();
 
-            console.log(debugTag+"deserialized team {tableID="+this.TableID+", team="+this.TeamID+", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
+            console.log(debugTag+"deserialized team {tableID="+this.TableID+", team="+this.TeamID+
+                ", playerID="+this.RegisteredPlayerID+", playerName="+this.RegisteredPlayerName+"}");
         }
     }
     

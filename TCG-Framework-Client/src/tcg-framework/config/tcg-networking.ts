@@ -6,7 +6,7 @@ export module Networking {
 
     //### SERVER ###
     /** when true will interact with the server using debug credentials */
-    export const DEBUG_OVERRIDE:boolean = false;
+    export const DEBUG_OVERRIDE:boolean = true;
     /** server url base for remote calls */
     export const SERVER_URL:string = "https://us-central1-decentraland-tcg-server.cloudfunctions.net/app/"
     /** server url api pieces for remote calls */
@@ -22,7 +22,7 @@ export module Networking {
         TABLE_LEAVE_GAME = "api/leave-table",
         TABLE_READY_STATE = "api/set-ready-state",
         TABLE_START_GAME = "api/start-game",
-        TABLE_END_TURN = "api/next-turn",
+        TABLE_NEXT_TURN = "api/next-turn",
         TABLE_END_GAME = "api/end-game",
     }
 

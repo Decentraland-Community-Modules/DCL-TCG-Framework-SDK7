@@ -550,7 +550,7 @@ export module CardDisplayObject
         }
 
         /** updates the cards inc/dec counter object's display state (controls both the overhead object & the inc/dec objects) */
-        public SetCounterState(state:boolean, arrowStates:boolean=true) {
+        public SetCounterState(state:boolean, arrowStates:boolean=false) {
             //set state for main counter object
             if(state) Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_ON;
             else Transform.getMutable(this.entityCounterFrame).scale = PARENT_SCALE_OFF;

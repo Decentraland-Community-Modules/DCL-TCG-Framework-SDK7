@@ -40,7 +40,7 @@ export module LevelManager {
     export function GetLevel() { return level; }
     export function SetLevel(value:number) {
         level = value;
-        if(LevelText) LevelText.TextValue = level.toString(); 
+        if(LevelText) LevelText.TextValue = (level+1).toString(); 
     }
     export function CallbackGetLevel() { return LevelManager.GetLevel(); }
     

@@ -76,6 +76,11 @@ export module PlayCard
         /** duration/number of rounds an effect is applied for */
         Duration:number;
     }
+    // serial data for keyword sets
+    // NOTE: firebase does not allow for multi-layered arrays, this is work around
+    export interface CardKeywordSerialDataSet {
+      v:CardKeywordEffectsDataObject[];
+    }
     
     //TODO: migrate to creation data system (pass all details to create a card in a single data object)
 	/** object interface used to define all data required to create a new object */
@@ -101,8 +106,13 @@ export module PlayCard
         healthMax:number;
         attack:number;
         armour:number;
-        keywords:CardKeywordEffectsDataObject[][];
+        keywords:CardKeywordSerialDataSet[];
         effects:ActiveStatusEffectData[];
+    }
+    // serial data for card sets
+    // NOTE: firebase does not allow for multi-layered arrays, this is work around
+    export interface CardSerialDataSet {
+      v:CardSerialData[];
     }
 
     /** contains all pieces that make up a card's playing data */
@@ -457,6 +467,7 @@ export module PlayCard
 
         /** initializes the card based on the provided serial data */
         public SerializeData():CardSerialData {
+            //create data object
             let serial:CardSerialData = {
                 //indexing
                 index:this.index,
@@ -470,9 +481,10 @@ export module PlayCard
                 keywords:[],
                 effects:[],
             };
+
             //add keywords
             for (let i = 0; i < this.ActiveKeywords.length; i++) {
-                const keywords = [];
+                const keywords:CardKeywordSerialDataSet = { v:[] };
                 for (let j = 0; j < this.ActiveKeywords[i].size(); j++) {
                     const keywordRef = this.ActiveKeywords[i].getItem(j);
                     const keywordData = {
@@ -480,10 +492,11 @@ export module PlayCard
                         strength:keywordRef.strength,
                         duration:keywordRef.duration,
                     }; 
-                    keywords.push(keywordData);
+                    keywords.v.push(keywordData);
                 }
                 serial.keywords.push(keywords);
             }
+
             //add effects
             for (let i = 0; i < this.ActiveEffectList.size(); i++) {
                 const effectRef = this.ActiveEffectList.getItem(i);
@@ -494,7 +507,7 @@ export module PlayCard
                     Duration:effectRef.Duration,
                 });
             }
-            //provide serial
+            
             return serial;
         }
 
@@ -514,8 +527,8 @@ export module PlayCard
             this.ActiveKeywords = [];
             for (let i = 0; i < serial.keywords.length; i++) {
                 this.ActiveKeywords.push(new List<CardKeywordEffectsDataObject>());
-                for (let j = 0; j < this.ActiveKeywords[i].size(); j++) {
-                    const keywordRef = serial.keywords[i][j];
+                for (let j = 0; j < serial.keywords[i].v.length; j++) {
+                    const keywordRef = serial.keywords[i].v[j];
                     const keywordData = {
                         id:keywordRef.id,
                         strength:keywordRef.strength,
@@ -524,6 +537,7 @@ export module PlayCard
                     this.ActiveKeywords[i].addItem(keywordData);
                 }
             }
+
             //add effects
             this.ActiveEffectList = new List<ActiveStatusEffectData>();
             this.ActiveEffectDict = new Dictionary<ActiveStatusEffectData>();

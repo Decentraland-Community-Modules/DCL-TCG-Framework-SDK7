@@ -376,12 +376,15 @@ export module DeckManager {
             //set animation
             curDisplayObject.SetAnimation(1);
             Transform.getMutable(viewParent).parent = curDisplayObject.entity;
+            Transform.getMutable(viewParent).position = PARENT_POSITION_ON;
 
             //update display
             utils.timers.setTimeout(
                 function() {
                     //ensure player is still inside zone
                     if(!playerInZone) return;
+                    //show display
+                    Transform.getMutable(viewParent).scale = Vector3.One();
                     
                     //update all deck selection text pieces (card counts might change when manager is hidden due to player's data loading)
                     for(let i:number=0; i<CardFactionData.length; i++) {
@@ -395,9 +398,6 @@ export module DeckManager {
                     DeckInteractionLoad();
                     //select first card from display
                     InteractionCard("0");
-                    //show display
-                    Transform.getMutable(viewParent).position = PARENT_POSITION_ON;
-                    Transform.getMutable(viewParent).scale = Vector3.One(); 
                 },
                 1000
             );
@@ -750,7 +750,7 @@ export module DeckManager {
     
     /** selects a new deck, loading it in for modification */
     export function DeckInteractionSelect(index:number) {
-        if(isDebugging) console.log(debugTag+"selecting deck, key="+index); 
+        if(isDebugging) console.log(debugTag+"selecting deckID="+index); 
 
         Material.setPbrMaterial(deckInfoButtonSelectors[PlayerLocal.GetPlayerDeckIndex()].entityInteraction, { albedoColor: Color4.White(), });
         //set reference
@@ -761,7 +761,7 @@ export module DeckManager {
 
     /** called when player interacts with counter buttons */
     export function DeckInteractionSave() {
-        if(isDebugging) console.log(debugTag+"saving deck, key="+PlayerLocal.GetPlayerDeckIndex()); 
+        if(isDebugging) console.log(debugTag+"saving deckID="+PlayerLocal.GetPlayerDeckIndex()); 
         //ensure deck has correct number of cards
         if(deckLocalContainer.CardsAll.size() < PlayCardDeck.DECK_SIZE_MIN || deckLocalContainer.CardsAll.size() > PlayCardDeck.DECK_SIZE_MAX) {
             if(isDebugging) console.log(debugTag+"deck not withing card limits, card count="+deckLocalContainer.CardsAll.size()); 
@@ -787,7 +787,7 @@ export module DeckManager {
 
     /** called when player interacts with counter buttons */
     export function DeckInteractionLoad() {
-        if(isDebugging) console.log(debugTag+"loading deck, key="+PlayerLocal.GetPlayerDeckIndex());
+        if(isDebugging) console.log(debugTag+"loading deckID="+PlayerLocal.GetPlayerDeckIndex());
         //load local deck from target deck
         deckLocalContainer.Clone(deckTargetContainer);
 
@@ -964,9 +964,13 @@ export module DeckManager {
             for(let x = 0; x < DISPLAY_GRID_COUNT_X; x++) {
                 //create new card object
                 const card = CardDisplayObject.Create({
+                    //indexing
                     ownerType: CARD_OBJECT_OWNER_TYPE.DECK_MANAGER,
                     slotID: (x + (y*DISPLAY_GRID_COUNT_X)).toString(),
-                    def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef, 
+                    //display
+                    def: CardDataRegistry.Instance.GetEntryByPos(0).DataDef,
+                    hasInteractions: true,
+                    //transform
                     parent: viewParent,
                     position: {
                         x:CARD_OBJECT_OFFSET.x + (x * CARD_SIZE_X) - (invTotalX / 2), 

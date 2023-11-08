@@ -187,7 +187,7 @@ export module PlayCardDeck {
 
             //add card to deck
             this.CardsAll.addItem(card);
-            this.CardsPerState[DECK_CARD_STATES.DECK].addItem(card);
+            this.CardsPerState[stateIndex].addItem(card);
             
             //update count of registered cards
             if(!this.RegisteredCardCountDict.containsKey(serial.defIndex.toString())) {

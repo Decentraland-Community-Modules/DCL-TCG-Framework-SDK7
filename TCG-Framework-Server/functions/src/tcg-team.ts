@@ -24,7 +24,7 @@ export module TableTeam {
     energyCur:number;
     energyGain:number;
     deckRegistered:string;
-    deckSession:TableCard.CardSerialData[][];
+    deckSession:TableCard.CardDataSet[];
     slotCards:string[];
     terrainCard:string;
   }
@@ -45,14 +45,15 @@ export module TableTeam {
     teamData.energyCur = 3;
     teamData.energyGain = 1;
 
+    //TODO: update for new serialization routine
     // prepare playing deck
     //  copy cards to session deck, breaking them into instances
-    teamData.deckSession = [[],[],[],[],[]];
+    /*teamData.deckSession = [];
     const cards = teamData.deckRegistered.split('-');
     for(let i:number=0; i<cards.length; i++) {
-      // add dummy card
+      // add dummy card (gets set upon game start)
       const card = cards[i].split(':');
-      teamData.deckSession[DECK_CARD_STATES.DECK].push({
+      teamData.deckSession[DECK_CARD_STATES.DECK].v.push({
         // indexing
         index:parseInt(card[0]),
         defIndex:parseInt(card[1]),
@@ -67,7 +68,7 @@ export module TableTeam {
       });
     }
     //  shuffle cards in session deck
-    ShuffleCards(teamData.deckSession[DECK_CARD_STATES.DECK]);
+    ShuffleCards(teamData.deckSession[DECK_CARD_STATES.DECK]);*/
 
     // draw 3 cards from session deck to hand
     DrawCard(teamData);
@@ -78,19 +79,19 @@ export module TableTeam {
     teamData.terrainCard = "";
   }
 
-  //draws the next card from the team's deck and adds it to hand
+  /** draws the next card from the team's deck and adds it to hand */
   export function DrawCard(teamData:TableTeamData) {
-    const card = teamData.deckSession[DECK_CARD_STATES.DECK].pop();
+    const card = teamData.deckSession[DECK_CARD_STATES.DECK].v.pop();
     if(card != undefined) {
-      teamData.deckSession[DECK_CARD_STATES.HAND].push(card);
+      teamData.deckSession[DECK_CARD_STATES.HAND].v.push(card);
       return card.index;
     }
     return -1;
   }
 
   /** shuffles all cards in the deck, randomizing order */
-  export function ShuffleCards(deck:TableCard.CardSerialData[]) {
-    let card:TableCard.CardSerialData;
+  export function ShuffleCards(deck:TableCard.CardData[]) {
+    let card:TableCard.CardData;
     let swap:number;
     let count = deck.length;
     for (let i = 0; i < deck.length; i++) 
@@ -100,5 +101,76 @@ export module TableTeam {
       deck[swap] = deck[0];
       deck[0] = card;
     }
+  }
+
+  /** processes the start of a turn on the given team */
+  export function TurnStart(teamData:TableTeamData) {
+    // add energy to team's pool
+    teamData.energyCur += teamData.energyGain;
+    // add card to team's hand
+    TableTeam.DrawCard(teamData);
+    // new team's start turn effects
+    /** for(let i:number=0; i<this.cardSlotObjects.length; i++) {
+      //if there is a card tied to the slot
+      const slot = this.cardSlotObjects[i];
+      if(slot.SlottedCard != undefined) {
+        //process card's start turn effects
+        slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HELPFUL);
+        //update display
+        slot.UpdateStatDisplay();
+      }
+    }*/
+  }
+
+    /** processes the end of a turn on the given team */
+  export function TurnEnd(teamData:TableTeamData) { 
+    // process previous team's end turn effects
+    /** for(let i:number=0; i<this.cardSlotObjects.length; i++) {
+      // if there is a card tied to the slot
+      const slot = this.cardSlotObjects[i];
+      if(slot.SlottedCard != undefined) {
+        //re-enable card's action (we do this at the end of the turn so enemy has a chance to stun the character)
+        slot.SlottedCard.ActionRemaining = true;
+        //process card's end turn effects
+        slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HARMFUL);
+        //update display
+        slot.UpdateStatDisplay();
+      }
+    }*/
+  }
+
+  /** provides a server team data object based on the provided serial data */
+  export function DeserializeData(data:{ [key: string]: any }):TableTeam.TableTeamData {
+    //create data object
+    let serial:TableTeam.TableTeamData = {
+      // indexing
+      playerID:data.playerID,
+      playerName:data.playerID,
+      // live data
+      readyState:data.readyState,
+      healthCur:data.healthCur,
+      energyCur:data.energyCur,
+      energyGain:data.energyGain,
+      deckRegistered:data.deckRegistered,
+      deckSession:[],
+      slotCards:[],
+      terrainCard:data.terrainCard
+    }
+
+    //populate session cards
+    for (let i = 0; i < data.deckSession.length; i++) {
+      const elementSet:TableCard.CardDataSet = { v:[] };
+      for (let j = 0; j < data.deckSession[i].v.length; j++) {
+        elementSet.v.push(TableCard.DeserializeData(data.deckSession[i].v[j]));
+      }
+      serial.deckSession.push(elementSet);
+    }
+
+    //populate slot cards
+    for (let i = 0; i < data.slotCards.length; i++) {
+      serial.slotCards.push(data.slotCards[i]);
+    }
+
+    return serial;
   }
 }
