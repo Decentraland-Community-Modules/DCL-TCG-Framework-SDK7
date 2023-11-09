@@ -20,13 +20,15 @@ export module TableCardSlot {
     const MODEL_CARD_SLOT:string = 'models/tcg-framework/card-table/card-table-slot-prototype.glb';
     const MODEL_CARD_SLOT_SELECTOR:string = 'models/tcg-framework/card-table/card-table-slot-prototype-selector.glb';
 
-    /** scale for parental view toggles */
+    /** transform - parent defaults */
+    const PARENT_OFFSET_ON:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_OFFSET_OFF:Vector3 = { x:4, y:-10, z:4 };
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_ROTATION_ON:Vector3 = { x:0, y:0, z:0 };
 
     /** transforms for displayed card element */
     const DISAPLAY_OFFSET_ON:Vector3 = { x:0, y:0.425, z:0 };
-    const DISAPLAY_OFFSET_OFF:Vector3 = { x:0, y:-10, z:0 };
     const DISAPLAY_SCALE:Vector3 = { x:0.45, y:0.45, z:0.45 };
     const DISAPLAY_ROTATION:Vector3 = { x:0, y:0, z:0 };
 
@@ -78,16 +80,17 @@ export module TableCardSlot {
 	/** define component, adding it to the engine as a managed behaviour */
     export const TableCardSlotComponent = engine.defineComponent("TableCardSlotComponentData", TableCardSlotComponentData);
 
-	/** object interface used to define all data required to create a team card slot */
+    /** defines all parameters for creating a new table card slot */
 	export interface TableCardSlotCreationData {
         //indexing
         tableID: number,
         teamID: number,
         slotID: number,
         //position
-        parent: undefined|Entity, //entity to parent object under 
-		position: { x:number; y:number; z:number; }; //new position for object
-        scale?: { x:number; y:number; z:number; };
+        parent?: undefined|Entity, //new parent for object
+		position?: { x:number; y:number; z:number; }; //new position
+        scale?: { x:number; y:number; z:number; }; //new scale
+		rotation?: { x:number; y:number; z:number; }; //new rotation (eular degrees)
 	}
 
     /** represents a single card slot within a card field team */
@@ -236,9 +239,10 @@ export module TableCardSlot {
             //transform
             const transformParent = Transform.getMutable(this.entityParent);
             transformParent.parent = data.parent;
-            transformParent.position = data.position;
-            transformParent.scale = data.scale??{x:1,y:1,z:1};
-            //transformParent.rotation = Quaternion.fromEulerDegrees(INTERACTION_ROTATION.x, INTERACTION_ROTATION.y, INTERACTION_ROTATION.z);
+            transformParent.position = data.position??PARENT_OFFSET_ON;
+            transformParent.scale = data.scale??PARENT_SCALE_ON;
+            const rot = data.rotation??PARENT_ROTATION_ON;
+            transformParent.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
             //component
             TableCardSlotComponent.createOrReplace(this.entityInteraction, {
                 tableID:data.tableID,
@@ -329,6 +333,7 @@ export module TableCardSlot {
             this.ClearCard();
             //hide card parent
             const transformParent = Transform.getMutable(this.entityParent);
+            transformParent.position = PARENT_OFFSET_OFF;
             transformParent.scale = PARENT_SCALE_OFF;
         }
 

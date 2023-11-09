@@ -6,7 +6,7 @@ export module Networking {
 
     //### SERVER ###
     /** when true will interact with the server using debug credentials */
-    export const DEBUG_OVERRIDE:boolean = true;
+    export const DEBUG_OVERRIDE:boolean = false;
     /** server url base for remote calls */
     export const SERVER_URL:string = "https://us-central1-decentraland-tcg-server.cloudfunctions.net/app/"
     /** server url api pieces for remote calls */
@@ -29,20 +29,20 @@ export module Networking {
     //### PLAYER PROFILE ###
     /** all connectivity types for player profiles */
     export enum PROFILE_CONNECTIVITY_TYPE {
-        //full interaction with server throughout scene processing
-        //  allows player to make changes and earn progression on their account
-        //  player can modify their decks and winning games provides experience
-        SERVER_STRICT, 
+        //no account or ownership verification
+        //  enables all cards/deck
+        SANDBOX,
+        //no account or ownership verification
+        //  automatically defines all users as guests 
+        GUEST,
         //initial load from server upon scene start
         //  use to get player profile (exp/decks) on scene start
         //  player cannot make any changes or progression on their account
         SERVER_LOAD,
-        //no account or ownership verification
-        //  automatically defines all users as guests 
-        GUEST,
-        //no account or ownership verification
-        //  enables all cards/deck
-        SANDBOX,
+        //full interaction with server throughout scene processing
+        //  allows player to make changes and earn progression on their account
+        //  player can modify their decks and winning games provides experience
+        SERVER_STRICT, 
     }
     /** determines the connectivity type of the local player's profile */
     export const PROFILE_CONNECTIVITY:PROFILE_CONNECTIVITY_TYPE = PROFILE_CONNECTIVITY_TYPE.SERVER_STRICT;
@@ -61,6 +61,7 @@ export module Networking {
         STANDARD, //logged in with a web3 wallet
         ADMIN, //full access to everything, overriding server profile
     }
+    /** display strings for player accounts */
     export const PLAYER_ACCOUNT_TYPE_STRINGS:string[] = [
         "Loading...",
         "Guest",
@@ -71,12 +72,12 @@ export module Networking {
     //### CARD TABLES ###
     /** all connectivity types for card tables */
     export enum TABLE_CONNECTIVITY_TYPE {
-        //table state and processing is handled by server, passed down to players 
-        SERVER_STRICT, 
-        //table state and processing is handled by players in scene
-        PEER_TO_PEER,
         //no server or peer to peer communications
         //  this is only viable for PVE experiences 
         LOCAL,
+        //table state and processing is handled by players in scene
+        PEER_TO_PEER,
+        //table state and processing is handled by server, passed down to players 
+        SERVER_STRICT, 
     }
 }

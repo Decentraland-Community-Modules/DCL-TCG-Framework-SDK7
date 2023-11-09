@@ -42,11 +42,12 @@ export module TableTeam {
     /** model location for this team's terrain */
     const MODEL_DEFAULT_TERRAIN:string = 'models/tcg-framework/card-terrain/terrain-neutral.glb';
 
-    /** transform - parent */
+    /** transform - parent defaults */
     const PARENT_OFFSET_ON:Vector3 = { x:0, y:0, z:0 };
-    const PARENT_OFFSET_OFF:Vector3 = { x:0, y:-10, z:0 };
+    const PARENT_OFFSET_OFF:Vector3 = { x:4, y:-10, z:4 };
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_ROTATION_ON:Vector3 = { x:0, y:0, z:0 };
 
     /** transform - team selector */
     const SELECTOR_SCALE_ON:Vector3 = { x:3, y:3, z:0 };
@@ -105,19 +106,6 @@ export module TableTeam {
 	/** define component, adding it to the engine as a managed behaviour */
     export const TableTeamSlotComponent = engine.defineComponent("TableTeamComponentData", TableTeamComponentData);
 
-	/** object interface used to define all data required to create a team */
-	export interface TableTeamCreationData {
-        //indexing
-        tableID: number,
-        teamID: number,
-        //callbacks
-        callbackTable?: (key:string) => TABLE_GAME_STATE,
-        //position
-        parent: undefined|Entity, //entity to parent object under 
-		position: { x:number; y:number; z:number; }; //new position for object
-		rotation: { x:number; y:number; z:number; }; //new rotation for object
-	}
-
     /** represents a team, packed to be passed over the network */
     export interface TeamSerialData {
         //state
@@ -134,6 +122,20 @@ export module TableTeam {
         slotCards:string[];
         terrainCard:string;
     }
+
+    /** defines all parameters for creating a new table team */
+	export interface TableTeamCreationData {
+        //indexing
+        tableID: number,
+        teamID: number,
+        //callbacks
+        callbackTable?: (key:string) => TABLE_GAME_STATE,
+        //position
+        parent?: Entity, //new parent for object 
+		position?: { x:number; y:number; z:number; }; //new position
+        scale?: { x:number; y:number; z:number; }; //new scale
+		rotation?: { x:number; y:number; z:number; }; //new rotation (eular degrees)
+	}
 
     /** contains all 3D objects required to display a team's current state (name,hp,etc.) */
     export class TeamDisplayObject {
@@ -681,11 +683,20 @@ export module TableTeam {
             //indexing
             this.tableID = data.tableID;
             this.teamID = data.teamID;
+            //transform
+            const transformParent = Transform.getMutable(this.entityParent);
+            transformParent.parent = data.parent;
+            transformParent.position = data.position??PARENT_OFFSET_ON;
+            transformParent.scale = data.scale??PARENT_SCALE_ON;
+            const rot = data.rotation??PARENT_ROTATION_ON;
+            transformParent.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
+
             //player details
             if(data.callbackTable != undefined) this.callbackGetGameState = data.callbackTable;
             this.readyState = false;
             this.RegisteredPlayerID = undefined;
             this.RegisteredPlayerName = undefined;
+
             //prepare required decks
             this.DeckRegistered = PlayCardDeck.Create({
                 key: this.Key+"-r",
@@ -697,12 +708,6 @@ export module TableTeam {
             });
             //hand displays
             this.SetHandState(false);
-            //transform
-            const transformParent = Transform.getMutable(this.entityParent);
-            transformParent.parent = data.parent;
-            transformParent.position = PARENT_OFFSET_ON;
-            transformParent.scale = PARENT_SCALE_ON;
-            transformParent.rotation = Quaternion.fromEulerDegrees(data.rotation.x, data.rotation.y, data.rotation.z);
             
             //disable team selector
             Transform.getMutable(this.entityTeamTargetorInteraction).scale = PARENT_SCALE_OFF;
@@ -1090,6 +1095,26 @@ export module TableTeam {
             }
         }
 
+        /**  */
+        public RedrawHandCards() {
+            //release previous cards
+            this.ReleaseCards();
+
+            //halt if deck is undefined
+            if(this.DeckSession == undefined) return;
+
+            //process all cards in hand
+            const deck = this.DeckSession.CardsPerState[PlayCardDeck.DECK_CARD_STATES.HAND];
+            for(let i=0; i<deck.size(); i++) {
+                //move card to collection
+                const card = deck.getItem(i);
+                //create card display object for hand 
+                this.AddHandObject(card);
+            }
+            //redraw card locations
+            this.UpdateCardObjectDisplay();
+        }
+
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
         public Disable() {
             this.isActive = false;
@@ -1138,11 +1163,15 @@ export module TableTeam {
                 deckRegistered:"",
                 deckSession:[],
                 slotCards:[],
-                terrainCard:this.TerrainCard??""
+                terrainCard:""
             }
 
-            //process card decks
-            if(this.DeckRegistered != undefined) serial.deckRegistered = this.DeckRegistered.Serialize();
+            //process all cards
+            //  registered deck
+            if(this.DeckRegistered != undefined) {
+                serial.deckRegistered = this.DeckRegistered.Serialize();
+            }
+            //  session deck
             if(this.DeckSession != undefined) {
                 for (let i = 0; i < this.DeckSession.CardsPerState.length; i++) {
                     const elementSet:PlayCard.CardSerialDataSet = { v:[] };
@@ -1151,15 +1180,20 @@ export module TableTeam {
                         //console.log(debugTag+"card index="+card.index+", serial="+card.defIndex);
                         elementSet.v.push(card);
                     }
-                    serial.deckSession.push(elementSet)
+                    serial.deckSession.push(elementSet);
                 }
             }
-            //process card slots
+            
+            //  card slots
             serial.slotCards = [];
-            for (let i = 0; i < this.cardSlotObjects.length; i++) {
+            for(let i = 0; i < this.cardSlotObjects.length; i++) {
                 serial.slotCards.push(this.cardSlotObjects[i].SlottedCard?.Key??"");
             }
-
+            //  terrain card
+            if(this.TerrainCard != undefined) {
+                serial.terrainCard = this.TerrainCard;
+            }
+            
             console.log(debugTag+"serialized team {tableID="+this.TableID+", team="+this.TeamID+
                 ", playerID="+serial.playerID+", playerName="+serial.playerName+"}");
             //provide serial
@@ -1180,9 +1214,12 @@ export module TableTeam {
             this.energyCur = serial.energyCur;
             this.energyGain = serial.energyGain;
 
-            //populate all cards
-            //  set decks
-            if(this.DeckRegistered) this.DeckRegistered.Deserial(serial.deckRegistered);
+            //process all cards
+            //  registered deck
+            if(this.DeckRegistered) {
+                this.DeckRegistered.Deserial(serial.deckRegistered);
+            } 
+            //  session deck
             if(this.DeckSession) {
                 this.DeckSession.Clean();
                 for (let i = 0; i < serial.deckSession.length; i++) {
@@ -1193,15 +1230,16 @@ export module TableTeam {
                     }
                 }
             }
-            //  set slots
+            //  slots cards
             for (let i = 0; i < serial.slotCards.length; i++) {
                 const card = PlayCard.GetByKey(serial.slotCards[i]);
                 if(card) this.cardSlotObjects[i].ApplyCard(card);
             }
-            //  set terrain
+            //  terrain cards
             this.SetTerrainCard(PlayCard.GetByKey(serial.terrainCard));
 
             //redraw display
+            this.RedrawHandCards();
             this.UpdateButtonStates();
             this.UpdateCardObjectDisplay();
 

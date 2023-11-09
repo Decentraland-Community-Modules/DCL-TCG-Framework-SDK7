@@ -145,7 +145,7 @@ export module TableTeam {
     let serial:TableTeam.TableTeamData = {
       // indexing
       playerID:data.playerID,
-      playerName:data.playerID,
+      playerName:data.playerName,
       // live data
       readyState:data.readyState,
       healthCur:data.healthCur,

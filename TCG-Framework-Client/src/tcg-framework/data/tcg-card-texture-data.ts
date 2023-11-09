@@ -1,11 +1,11 @@
 /**     TRADING CARD GAME - CARD TEXTURE DATA
- *  desc pending
+ *  contains all details for card textures, used to draw character/spell images
+ *  on 3D card objects.
  */
 
 /** defines splice sheets in an easily changable manner */
 export enum TEXTURE_SHEET_CARDS {
-    SHEET_SPELLS,    
-    SHEET_CHARACTER_DEMO,
+    SHEET_SPELLS,
     SHEET_CHARACTER_GOLEM,
     SHEET_TERRAIN,
 }
@@ -31,12 +31,6 @@ export const CardTextureData: CardTextureDataObject[] = [
         sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 128, elementSizeY: 128, displayScaleX: 1.8, displayScaleY: 1.8, }
     },
 
-    //### DEMO CHARACTER SPLICE
-    {
-        id: TEXTURE_SHEET_CARDS.SHEET_CHARACTER_DEMO,
-        path:"images/tcg-framework/card-characters/character-sheet-example.png",
-        sheetDetails: { totalSizeX: 512, totalSizeY: 512, elementSizeX: 142, elementSizeY: 256, displayScaleX: 1.42, displayScaleY: 2.56, }
-    },
     //### GOLEM CHARACTER SPLICE
     {
         id: TEXTURE_SHEET_CARDS.SHEET_CHARACTER_GOLEM,

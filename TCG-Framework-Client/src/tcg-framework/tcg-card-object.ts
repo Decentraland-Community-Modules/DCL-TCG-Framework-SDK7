@@ -49,11 +49,12 @@ export module CardDisplayObject
         "anim_hover", //mouse-over
     ];
 
-    /** transform - parent */
-    const PARENT_POSITION:Vector3 = { x:0, y:0, z:0 };
+    /** transform - parent defaults */
+    const PARENT_POSITION_ON:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_POSITION_OFF:Vector3 = { x:4, y:-8, z:4 };
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
-    const PARENT_ROTATION:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_ROTATION_ON:Vector3 = { x:0, y:0, z:0 };
 
     /** default frame object size */
     const CARD_CORE_SCALE = {x:0.25, y:0.25, z:0.25};
@@ -66,17 +67,17 @@ export module CardDisplayObject
     /** character object size */
     const CARD_CHARACTER_POSITION = {x:0, y:0, z:-0.013};
     /** cost text transform */
-    const cardTextCostPos = {x:1.08, y:1.45, z:-0.08};
-    const cardTextCostScale = {x:0.25, y:0.25, z:0.25};
+    const CARD_TEXT_COST_POSITION = {x:1.08, y:1.45, z:-0.08};
+    const CARD_TEXT_COST_SCALE = {x:0.25, y:0.25, z:0.25};
     /** health text transform */
-    const cardTextHealthPos = {x:0.01, y:-1.25, z:-0.08};
-    const cardTextHealthScale = {x:0.3, y:0.3, z:0.3};
+    const CARD_TEXT_HEALTH_POSITION = {x:0.01, y:-1.25, z:-0.08};
+    const CARD_TEXT_HEALTH_SCALE = {x:0.3, y:0.3, z:0.3};
     /** attack text transform */
-    const cardTextAttackPos = {x:-0.87, y:-1.32, z:-0.08};
-    const cardTextAttackScale = {x:0.25, y:0.25, z:0.25};
+    const CARD_TEXT_ATTACK_POSITION = {x:-0.87, y:-1.32, z:-0.08};
+    const CARD_TEXT_ATTACK_SCALE = {x:0.25, y:0.25, z:0.25};
     /** armour text transform */
-    const cardTextArmourPos = {x:0.87, y:-1.32, z:-0.08};
-    const cardTextArmourScale = {x:0.25, y:0.25, z:0.25};
+    const CARD_TEXT_ARMOUR_POSITION = {x:0.87, y:-1.32, z:-0.08};
+    const CARD_TEXT_ARMOUR_SCALE = {x:0.25, y:0.25, z:0.25};
 
     /** indexing key */
     export function GetKeyFromObject(data:CardDisplayObject):string { return data.OwnerType+"-"+(data.TableID??"0")+"-"+(data.TeamID??"0")+"-"+data.SlotID; };
@@ -131,10 +132,10 @@ export module CardDisplayObject
         hasInteractions?:boolean
         hasCounter?: boolean,
         //position
-        parent?: Entity, //entity to parent object under 
-		position?: { x:number; y:number; z:number; }; //new position for object
-		scale?: { x:number; y:number; z:number; }; //new scale for object
-		rotation?: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
+        parent?: Entity, //new parent for card object
+		position?: { x:number; y:number; z:number; }; //new position
+		scale?: { x:number; y:number; z:number; }; //new scale
+		rotation?: { x:number; y:number; z:number; }; //new rotation (eular degrees)
 	}
 
     /** contains all pieces that make up a card object  */
@@ -315,7 +316,7 @@ export module CardDisplayObject
             this.entityTextCost = engine.addEntity();
             Transform.create(this.entityTextCost, {
                 parent: this.entityCoreFrameObject,
-                position: cardTextCostPos, scale: cardTextCostScale 
+                position: CARD_TEXT_COST_POSITION, scale: CARD_TEXT_COST_SCALE 
             });
             TextShape.create(this.entityTextCost, { text: "99", 
                 textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
@@ -325,7 +326,7 @@ export module CardDisplayObject
             this.entityTextHealth = engine.addEntity();
             Transform.create(this.entityTextHealth, {
                 parent: this.entityCoreFrameObject,
-                position: cardTextHealthPos, scale: cardTextHealthScale 
+                position: CARD_TEXT_HEALTH_POSITION, scale: CARD_TEXT_HEALTH_SCALE 
             });
             TextShape.create(this.entityTextHealth, { text: "99", 
                 textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
@@ -335,7 +336,7 @@ export module CardDisplayObject
             this.entityTextAttack = engine.addEntity();
             Transform.create(this.entityTextAttack, {
                 parent: this.entityCoreFrameObject,
-                position: cardTextAttackPos, scale: cardTextAttackScale
+                position: CARD_TEXT_ATTACK_POSITION, scale: CARD_TEXT_ATTACK_SCALE
             });
             TextShape.create(this.entityTextAttack, { text: "99", 
                 textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
@@ -345,7 +346,7 @@ export module CardDisplayObject
             this.entityTextArmour = engine.addEntity();
             Transform.create(this.entityTextArmour, {
                 parent: this.entityCoreFrameObject,
-                position: cardTextArmourPos, scale: cardTextArmourScale 
+                position: CARD_TEXT_ARMOUR_POSITION, scale: CARD_TEXT_ARMOUR_SCALE 
             });
             TextShape.create(this.entityTextArmour, { text: "99", 
                 textColor: Color4.White(), textAlign:TextAlignMode.TAM_MIDDLE_CENTER
@@ -364,8 +365,8 @@ export module CardDisplayObject
             //parent 
             const transform = Transform.getOrCreateMutable(this.entityParent);
             transform.parent = data.parent;
-            transform.position = data.position??PARENT_POSITION;
-            const rot = data.rotation??PARENT_ROTATION;
+            transform.position = data.position??PARENT_POSITION_ON;
+            const rot = data.rotation??PARENT_ROTATION_ON;
             transform.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
             //core frame
             Transform.getOrCreateMutable(this.entityCoreFrameObject).scale = data.scale??CARD_CORE_SCALE;
@@ -589,6 +590,7 @@ export module CardDisplayObject
             this.isActive = false;
             //hide card parent
             const transformParent = Transform.getMutable(this.entityParent);
+            transformParent.position = PARENT_POSITION_OFF;
             transformParent.scale = PARENT_SCALE_OFF;
         }
 

@@ -16,7 +16,7 @@ import { LevelManager } from "../tcg-level-manager";
 */
 export module PlayerLocal {
     /** when true debug logs are generated (toggle off when you deploy) */
-    const isDebugging:boolean = false;
+    const isDebugging:boolean = true;
     /** hard-coded tag for module, helps log search functionality */
     const debugTag:string = "Player Local: ";
 
@@ -81,7 +81,7 @@ export module PlayerLocal {
         //  neutral deck
         for(let i:number=0; i<2; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT); }
         for(let i:number=0; i<5; i++) { PlayerDecks[3].AddCard(CARD_DATA_ID.CHARACTER_ELECTRIC_GOLEM); }
-        PlayerDecks[3].AddCard(CARD_DATA_ID.SPELL_LIGHTNINGBOLT);
+        PlayerDecks[3].AddCard(CARD_DATA_ID.TERRAIN_ELECTRIC);
         //  neutral deck
         for(let i:number=0; i<2; i++) { PlayerDecks[4].AddCard(CARD_DATA_ID.SPELL_VOIDBOLT); }
         for(let i:number=0; i<5; i++) { PlayerDecks[4].AddCard(CARD_DATA_ID.CHARACTER_VOID_GOLEM); }

@@ -1,5 +1,6 @@
 /**     TRADING CARD GAME - FACTION TEXTURE DATA
- *  desc pending
+ *  contains all details for faction textures, used to draw faction images
+ *  on 3D card objects.
  */
 
 /** defines splice sheets in an easily changable manner */

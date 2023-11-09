@@ -31,6 +31,11 @@ export const LevelUnlockData:LevelUnlockDataObject[] = [
             //provide electric cards
             { id:CARD_DATA_ID.SPELL_LIGHTNINGBOLT, count:3 },
             { id:CARD_DATA_ID.CHARACTER_ELECTRIC_GOLEM, count:5 },
+            
+            /* DEBUGGING
+            { id:CARD_DATA_ID.TERRAIN_FIRE, count:1 },
+            { id:CARD_DATA_ID.TERRAIN_ICE, count:1 },
+            { id:CARD_DATA_ID.TERRAIN_ELECTRIC, count:1 },*/
         ],
     },
     //## account progression

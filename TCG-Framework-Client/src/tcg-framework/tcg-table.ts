@@ -56,9 +56,12 @@ export module Table {
     /** number of cards players start */
     const STARTING_CARD_COUNT:number = 3;
 
-    /** scale for parental view toggles */
+    /** transform - parent defaults */
+    const PARENT_OFFSET_ON:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_OFFSET_OFF:Vector3 = { x:4, y:-10, z:4 };
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_ROTATION_ON:Vector3 = { x:0, y:0, z:0 };
     
     /** position for card field team objects */
     const FIELD_TEAM_OFFSET:Vector3[] = [
@@ -147,18 +150,19 @@ export module Table {
         teams:TableTeam.TeamSerialData[];
     }
 
-	/** object interface used to define all data required to create a team */
+    /** defines all parameters for creating a new table */
 	export interface TableCreationData {
         //indexing
         tableID:number;
-        //
+        //connection type
         networkingType:Networking.TABLE_CONNECTIVITY_TYPE;
-        //type
+        //player types
         teamTypes:[TABLE_TEAM_TYPE, TABLE_TEAM_TYPE];
         //position
-        parent:undefined|Entity, //entity to parent object under 
-		position: { x:number; y:number; z:number; }; //new position for object
-		rotation: { x:number; y:number; z:number; }; //new rotation for object
+        parent?:Entity, //new parent for object
+		position?: { x:number; y:number; z:number; }; //new position
+        scale?: { x:number; y:number; z:number; }; //new scale
+		rotation?: { x:number; y:number; z:number; }; //new rotation (eular degrees)
 	}
 
     /** represents a team on a card field */
@@ -446,9 +450,10 @@ export module Table {
             //transform
             const transformParent = Transform.getMutable(this.entityParent);
             transformParent.parent = data.parent;
-            transformParent.position = data.position;
-            transformParent.scale = PARENT_SCALE_ON;
-            transformParent.rotation = Quaternion.fromEulerDegrees(data.rotation.x, data.rotation.y, data.rotation.z);
+            transformParent.position = data.position??PARENT_OFFSET_ON;
+            transformParent.scale = data.scale??PARENT_SCALE_ON;
+            const rot = data.rotation??PARENT_ROTATION_ON;
+            transformParent.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
         
             //clear previous team objects
             while(this.teamObjects.length > 0) {
@@ -1578,6 +1583,7 @@ export module Table {
 
             //hide card parent
             const transformParent = Transform.getMutable(this.entityParent);
+            transformParent.position = PARENT_OFFSET_OFF;
             transformParent.scale = PARENT_SCALE_OFF;
         }
 
@@ -1609,8 +1615,11 @@ export module Table {
                     if(isDebugging) console.log(debugTag+"<SERVER> requesting table data from server...");
                     try {
                         //ensure scene is using server connection and player is logged in
-                        if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
-                        
+                        if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) {
+                            TextShape.getMutable(this.entityLobbyState).text = "<SYNC FAILED: NO WEB3>";
+                            return;
+                        }
+
                         //prepare url
                         const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_GET_DATA;
                         if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);

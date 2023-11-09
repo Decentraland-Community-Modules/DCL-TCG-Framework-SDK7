@@ -174,7 +174,7 @@ export module PlayCardDeck {
         }
 
         /** adds a card to the given state listing using the serialized data */
-        public AddCardBySerial(stateIndex:number, serial:PlayCard.CardSerialData) {
+        public AddCardBySerial(stateIndex:number, serial:PlayCard.CardSerialData):PlayCard.PlayCardDataObject {
             if(isDebugging) console.log(debugTag+"adding card to deck="+this.key+", index="+stateIndex+"...");
 
             //create new instance of card
@@ -200,6 +200,7 @@ export module PlayCardDeck {
                 this.RegisteredCardCountDict.getItem(serial.defIndex.toString()).Count += 1;
             } 
             if(isDebugging) console.log(debugTag+"added card to deck="+this.key+", index="+stateIndex+", collectionSize="+this.CardsAll.size()+"!");
+            return card;
         }
 
         //TODO: atm it is assumed the deck will be in a neutral state with all cards set to deck-state (not in-hand ect.)

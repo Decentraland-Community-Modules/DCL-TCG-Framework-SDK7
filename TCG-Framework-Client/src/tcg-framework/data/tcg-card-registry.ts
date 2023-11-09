@@ -1,5 +1,5 @@
 import { Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, engine } from "@dcl/sdk/ecs";
-import Dictionary, { List } from "../../utilities/collections";
+import { Dictionary, List } from "../../utilities/collections";
 import { CARD_DATA_ID, CARD_TYPE, CardData, CardDataObject} from "./tcg-card-data";
 import { CardTextureData, CardTextureDataObject } from "./tcg-card-texture-data";
 import { CARD_FACTION_TYPE, CardFactionData, CardFactionDataObject } from "./tcg-faction-data";
@@ -8,9 +8,6 @@ import { CardFactionTextureData, CardFactionTextureDataObject } from "./tcg-fact
 /*      TRADING CARD GAME - CARD REGISTRY
     contains access to all cards, with a variety of access methods. card entries
     contain the max number of instances each card can have, per source (level/contract).
-    
-    author: Alex Pazder
-    contact: TheCryptoTrader69@gmail.com 
 */
 
 /** defines every unlock type */

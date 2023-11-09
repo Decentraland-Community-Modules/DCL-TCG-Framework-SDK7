@@ -5,17 +5,6 @@ import { CARD_KEYWORD_ID } from "./tcg-keyword-data";
 /**     TRADING CARD GAME - CARD DATA
     all definitions relavent to cards playable in the game; this includes a card's id,
     display details, and keywords.
-   
-    NOTE: some details are held seperately
-        audio (we use an audio manager & play-by-key to reduce overhead) - 
-        types (factions, elements, etc) - tcg-card-type-data.ts
-        collection tokens (ownership) -
-   
-    NOTE: ids are passed over the network, so it is important to keep them small, the
-    currently indexing scheme is as follows:
-        (prefix)    (faction ID)    (type)      (card index)    
-        'tcg-'      '0'             '0'         '00'
-    this effectively gives us 99 card ids per type per factions
 */
 
 /** data interface for defining how many instances of a card can be unlocked */
@@ -132,7 +121,7 @@ export interface CardDataObject {
     name:string; //in-game display name
     desc:string; //in-game display desc
     //display 2D
-    sheetData:CardSheetDataObject; //defines how card's character will be drawn
+    sheetData:CardSheetDataObject; //card image draw details
     //display 3D
     objPath:string; //object location
     //cost for playing card

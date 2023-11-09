@@ -1,9 +1,9 @@
-import { Animator, ColliderLayer, Entity, GltfContainer, Material, MeshRenderer, PBAnimationState, PBAnimator, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Animator, ColliderLayer, Entity, GltfContainer, Material, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { CardDisplayObject } from "./tcg-card-object";
 import * as utils from '@dcl-sdk/utils'
 import { CardDataRegistry, CardEntry } from "./data/tcg-card-registry";
 import { CardSubjectObject } from "./tcg-card-subject-object";
-import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject, CardKeywordEffectsDataObject } from "./data/tcg-card-data";
+import { CARD_TYPE, CARD_TYPE_STRINGS, CardData, CardDataObject } from "./data/tcg-card-data";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { CardFactionData } from "./data/tcg-faction-data";
 import { InteractionObject } from "./tcg-interaction-object";
@@ -74,14 +74,12 @@ export module DeckManager {
         "anim_deactivate"
     ];
     
-    //transform defaults - (used when no pos, scale, or rot is given)
-    //  enabled
-    const PARENT_POSITION_ON:Vector3 = { x:0, y:0, z:0 };
+    /** transform - parent defaults */
+    const PARENT_OFFSET_ON:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_OFFSET_OFF:Vector3 = { x:4, y:-10, z:4 };
     const PARENT_SCALE_ON:Vector3 = { x:1, y:1, z:1 };
-    const PARENT_ROTATION_ON:Vector3 = { x:0, y:0, z:0 };
-    //  disabled
-    const PARENT_POSITION_OFF:Vector3 = { x:8, y:-4, z:8 };
     const PARENT_SCALE_OFF:Vector3 = { x:0, y:0, z:0 };
+    const PARENT_ROTATION_ON:Vector3 = { x:0, y:0, z:0 };
 
     /** core display scale */
     const DISPLAY_CORE_SCALE = { x:1, y:1, z:1 };
@@ -124,15 +122,15 @@ export module DeckManager {
         //object does not exist, send undefined
         return undefined;
     }
-    /** object interface used to define all data required to create a new object */
+    /** defines all parameters for creating a new deck manager */
     export interface DeckManagerCreationData {
-        //targeting
+        //indexing
         key:string;
-        //transform
-        parent?: Entity; //entity to parent object under
-        position?: { x:number; y:number; z:number; }; //new position for object
-        scale?: { x:number; y:number; z:number; }; //new scale for object
-        rotation?: { x:number; y:number; z:number; }; //new rotation for object (in eular degrees)
+        //position
+        parent?: Entity; //new parent for object
+        position?: { x:number; y:number; z:number; }; //new position
+        scale?: { x:number; y:number; z:number; }; //new scale
+        rotation?: { x:number; y:number; z:number; }; //new rotation (eular degrees)
     }
     
     /** contains all pieces that make up a deck manager display object (model & trigger zone for summoning viewer) */
@@ -203,14 +201,15 @@ export module DeckManager {
             utils.perpetualMotions.startRotation(this.previewPoint, Quaternion.fromEulerDegrees(0, -15, 0));
         }
 
-        /** initializes the  */
-        public Initialize(data: DeckManagerCreationData) {
-            this.key = data.key;
+        /** initializes object with given creation data */
+        public Initialize(data:DeckManagerCreationData) {
             this.isActive = true;
-            //parent
+            //indexing
+            this.key = data.key;
+            //position
             const transform = Transform.getMutable(this.entity);
             transform.parent = data.parent;
-            transform.position = data.position??PARENT_POSITION_ON;
+            transform.position = data.position??PARENT_OFFSET_ON;
             transform.scale = data.scale??PARENT_SCALE_ON;
             const rot = data.rotation??PARENT_ROTATION_ON;
             transform.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
@@ -260,7 +259,7 @@ export module DeckManager {
             //hide card parent
             const transformParent = Transform.getMutable(this.entity);
             transformParent.parent = undefined;
-            transformParent.position = PARENT_POSITION_OFF;
+            transformParent.position = PARENT_OFFSET_OFF;
             transformParent.scale = PARENT_SCALE_OFF;
         }
 
@@ -376,7 +375,7 @@ export module DeckManager {
             //set animation
             curDisplayObject.SetAnimation(1);
             Transform.getMutable(viewParent).parent = curDisplayObject.entity;
-            Transform.getMutable(viewParent).position = PARENT_POSITION_ON;
+            Transform.getMutable(viewParent).position = PARENT_OFFSET_ON;
 
             //update display
             utils.timers.setTimeout(
@@ -419,7 +418,7 @@ export module DeckManager {
             ReleaseCardObjects();
             //hide displays
             Transform.getMutable(viewParent).parent = undefined; 
-            Transform.getMutable(viewParent).position = PARENT_POSITION_OFF;
+            Transform.getMutable(viewParent).position = PARENT_OFFSET_OFF;
             Transform.getMutable(viewParent).scale = Vector3.Zero();
         }
     }
@@ -451,7 +450,7 @@ export module DeckManager {
     /** parental object for all view pieces **/
     const viewParent:Entity = engine.addEntity();
     Transform.create(viewParent, {
-        position:PARENT_POSITION_OFF,
+        position:PARENT_OFFSET_OFF,
         scale: PARENT_SCALE_OFF
     });
 

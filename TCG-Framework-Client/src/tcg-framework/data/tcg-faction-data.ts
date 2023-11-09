@@ -1,8 +1,6 @@
 /**     TRADING CARD GAME - CARD FACTION DATA
  *  all definitions relavent to card factions that can be used by cards in the game. these usually
  *  mainly define card backgrounds and what cards can be used in the deck at the same time.
- * 
- *  NOTE: in this demo cards are themed into elemental factions. 
  */
 
 import { TEXTURE_SHEET_CARD_FACTIONS } from "./tcg-faction-texture-data";
@@ -43,7 +41,7 @@ export const CardFactionData:CardFactionDataObject[] = [
         id: CARD_FACTION_TYPE.NEUTRAL,
         //display text 
         name: "Neutral",
-        desc: "Can be used in any deck.",
+        desc: "Neutral themed cards",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_0, posX: 0, posY: 0 },
     },
@@ -53,7 +51,7 @@ export const CardFactionData:CardFactionDataObject[] = [
         id: CARD_FACTION_TYPE.FIRE,
         //display text 
         name: "Fire",
-        desc: "Can only be used in fire decks.",
+        desc: "Fire themed cards",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_1, posX: 0, posY: 0 },
     },
@@ -63,7 +61,7 @@ export const CardFactionData:CardFactionDataObject[] = [
         id: CARD_FACTION_TYPE.VOID,
         //display text 
         name: "Void",
-        desc: "Can only be used in void decks.",
+        desc: "Void themed cards",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_1, posX: 1, posY: 0 },
     },
@@ -73,7 +71,7 @@ export const CardFactionData:CardFactionDataObject[] = [
         id: CARD_FACTION_TYPE.ELECTRIC,
         //display text 
         name: "Electric",
-        desc: "Can only be used in electric decks.",
+        desc: "Electric themed cards",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_2, posX: 0, posY: 0 },
     },
@@ -83,7 +81,7 @@ export const CardFactionData:CardFactionDataObject[] = [
         id: CARD_FACTION_TYPE.ICE,
         //display text 
         name: "Ice",
-        desc: "Can only be used in ice decks.",
+        desc: "Ice themed cards",
         //display 2D
         sheetData: { id:TEXTURE_SHEET_CARD_FACTIONS.TYPE_BACKGROUND_2, posX: 1, posY: 0 },
     },
