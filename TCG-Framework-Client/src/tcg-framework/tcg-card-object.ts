@@ -594,6 +594,11 @@ export module CardDisplayObject
             transformParent.scale = PARENT_SCALE_OFF;
         }
 
+        public SetVisibility(state:boolean) {
+            if(state == true) Transform.getMutable(this.entityParent).scale = PARENT_SCALE_ON;
+            else Transform.getMutable(this.entityParent).scale = PARENT_SCALE_OFF;
+        }
+
         /** removes objects from game scene and engine */
         public Destroy() {
             //destroy game object

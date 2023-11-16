@@ -26,7 +26,6 @@ export module Networking {
         TABLE_END_GAME = "api/end-game",
     }
 
-    //### PLAYER PROFILE ###
     /** all connectivity types for player profiles */
     export enum PROFILE_CONNECTIVITY_TYPE {
         //no account or ownership verification
@@ -69,7 +68,6 @@ export module Networking {
         "Admin",
     ];
 
-    //### CARD TABLES ###
     /** all connectivity types for card tables */
     export enum TABLE_CONNECTIVITY_TYPE {
         //no server or peer to peer communications

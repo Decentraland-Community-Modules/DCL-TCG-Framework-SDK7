@@ -1,4 +1,5 @@
 import { MenuElementManager2D } from "../utilities/menu-group-2D.ui";
+import { Networking } from "./config/tcg-networking";
 import { LevelUnlockRegistry } from "./data/tcg-level-unlocks-registry";
 
 /*      TRADING CARD GAME - LEVELING MANAGER
@@ -18,7 +19,7 @@ export module LevelManager {
     const debugTag:string = "TCG Level Manager: ";
     
     //level calculation settings
-    const experienceConstant: number = 0.0385;
+    const experienceConstant: number = 0.20;//0.0385;
     const experiencePower: number = 2.0;
 
     //experience
@@ -26,10 +27,32 @@ export module LevelManager {
     export let ExperienceText:undefined|MenuElementManager2D.MenuElement2D;
     let experienceMax:number = 0;
     export function GetExperience() { return experience; }
+    /** increases experience by the given value, calculates the new level and provides rewards for newly achieved levels. */
+    export function AddExperience(value:number) { SetExperience(experience + value); }
     export function SetExperience(value:number) {
+        if(IsDebugging) console.log(debugTag+"setting experience=" + value.toString() + "...");
+        
+        //set experience value & leash experience to max
         experience = value
-        if(ExperienceText) ExperienceText.TextValue = experience.toString(); 
-            //+ "/" + CalculateExperienceRequiredForLevel(GetLevel() + 1).toString();
+        if(experience > experienceMax) {
+            if(IsDebugging) console.log(debugTag+"experience exceeds max, leashing exp {cur=" + experience + ",max=" + experienceMax + "}");
+            experience = experienceMax;
+        }
+
+        //get new level & leash new level
+        let targetLevel:number = CalculateLevel(experience);
+        if(targetLevel > levelMax) {
+            if(IsDebugging) console.log(debugTag+"level exceeds max, leashing level {cur=" + targetLevel + ",max=" + levelMax + "}");
+            targetLevel = levelMax;
+        }
+        if(IsDebugging) console.log(debugTag+"experience applied, new level calculated {old=" + level + ", new=" + targetLevel + "}");
+
+        //process change in level
+        SetLevel(targetLevel);
+
+        //set experience gui
+        if(ExperienceText) ExperienceText.TextValue = experience.toString() + ", next level: "+GetExperienceToNextLevel();//+ "/" + CalculateExperienceRequiredForLevel(GetLevel() + 1).toString();
+        if(IsDebugging) console.log(debugTag+"set experience, new total=" + experience);
     }
     export function CallbackGetExperience() { return LevelManager.GetExperience(); }
 
@@ -39,8 +62,14 @@ export module LevelManager {
     let levelMax:number = 50;
     export function GetLevel() { return level; }
     export function SetLevel(value:number) {
-        level = value;
-        if(LevelText) LevelText.TextValue = (level+1).toString(); 
+        //if there is a change in level
+        if(level != value) {
+            //set level value & update gui
+            level = value;
+            if(LevelText) LevelText.TextValue = (level+1).toString();
+            //recalculate card provisions
+            LevelUnlockRegistry.Instance.CalculateCardProvisionCounts(level);
+        }
     }
     export function CallbackGetLevel() { return LevelManager.GetLevel(); }
     
@@ -72,34 +101,5 @@ export module LevelManager {
     /** takes in a level and returns the experience required */
     export function CalculateExperienceRequiredForLevel(level:number):number {
         return Math.floor(Math.pow(level / experienceConstant, experiencePower));
-    }
-
-    /** increases experience by the given value, calculates the new level and provides rewards for newly achieved levels. */
-    export function AddExperience(value:number) {
-        if(IsDebugging) console.log(debugTag+"adding experience=" + value.toString() + "...");
-
-        //add and leash experience
-        let targetExperience:number = experience + value;
-        if(targetExperience > experienceMax) {
-            if(IsDebugging) console.log(debugTag+"experience exceeds max, leashing exp {cur=" + targetExperience + ",max=" + experienceMax + "}");
-            targetExperience = experienceMax;
-        }
-        SetExperience(targetExperience);
-
-        //find and leash new level
-        let targetLevel:number = CalculateLevel(experience);
-        if(targetLevel > levelMax) {
-            if(IsDebugging) console.log(debugTag+"level exceeds max, leashing level {cur=" + targetLevel + ",max=" + levelMax + "}");
-            targetLevel = levelMax;
-        }
-        if(IsDebugging) console.log(debugTag+"experience applied, new level calculated {old=" + level + ", new=" + targetLevel + "}");
-
-        //process change in level
-        if(level != targetLevel) {
-            SetLevel(targetLevel);
-            LevelUnlockRegistry.Instance.CalculateCardProvisionCounts(level);
-        }
-
-        if(IsDebugging) console.log(debugTag+"added experience, new total=" + experience);
     }
 }

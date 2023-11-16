@@ -1,6 +1,6 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import Dictionary, { List } from "../utilities/collections";
-import { Billboard, ColliderLayer, Entity, GltfContainer, InputAction, Material, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Billboard, ColliderLayer, Entity, GltfContainer, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableTeam } from "./tcg-table-team";
 import { CardSubjectObject } from "./tcg-card-subject-object";
 import { PlayerLocal } from "./config/tcg-player-local";
@@ -79,17 +79,6 @@ export module Table {
 
     /** indexing key */
     export function GetKeyFromData(data:TableCreationData):string { return data.tableID.toString(); };
-    /** table state callback */
-    export function CallbackGetTableState(key:string):TABLE_GAME_STATE {
-        const table = Table.GetByKey(key);
-        if(table != undefined) {
-            //console.log(debugTag+"returned table state {tableID="+key+", value="+table.CurState+"}");
-            return table.CurState; 
-        } else {
-            //console.log(debugTag+"<WARNING> could not find table state {tableID="+key+"}");
-            return TABLE_GAME_STATE.IDLE;   
-        }
-    }
 
     /** pool of ALL existing objects */
     var pooledObjectsAll:List<TableObject> = new List<TableObject>();
@@ -132,8 +121,9 @@ export module Table {
 
     /** defines a target that has been selected on the table */
     interface TableSelectionTarget {
-        team:number;
-        id:SLOT_SELECTION_TYPE;
+        source:boolean; //when true, card is the source of a call (ex: a unit selected to attack is a source)
+        team:number; //index of targeted team
+        id:SLOT_SELECTION_TYPE; //index of targeted slot
     }
 
     /** represents a table, packed to be passed over the network */
@@ -374,11 +364,11 @@ export module Table {
                 scale: PARENT_SCALE_ON,
             });
             //  add model
-            GltfContainer.create(this.entityParent, {
+            /*GltfContainer.create(this.entityParent, {
                 src: MODEL_DEFAULT_BORDER,
                 visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
                 invisibleMeshesCollisionMask: undefined
-            });
+            });*/
 
             //lobby objects
             //  parent object
@@ -461,13 +451,12 @@ export module Table {
                 if(teamObject) teamObject.Disable();
             }
             
-
             //create team objects
             for(let i:number=0; i<2; i++) {
                 const teamObject:TableTeam.TableTeamObject = TableTeam.Create({
                     tableID: this.tableID,
                     teamID: i,
-                    callbackTable: Table.CallbackGetTableState,
+                    //callbackTable: Table.CallbackGetTableState,
                     parent: this.entityParent,
                     position: FIELD_TEAM_OFFSET[i],
                     rotation: FIELD_TEAM_ROTATION[i]
@@ -817,6 +806,18 @@ export module Table {
         public RemoteEndGame(table:string, defeated:number) {
             if(isDebugging) console.log(debugTag+"<REMOTE> ending game on table="+this.TableID+", loserTeam="+defeated+"...");
 
+            //if player is connected to server and using a web3 wallet 
+            if(Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED && PlayerLocal.IsWeb3()) {
+                //if player was part of the game
+                let played = false;
+                for(let i:number=0; i<this.teamObjects.length; i++) {
+                    if(this.teamObjects[i].RegisteredPlayerID == PlayerLocal.GetUserID()) played = true;
+                }
+                
+                //update local experience that was earned from match
+                if(played) PlayerLocal.SyncExperienceFromServer();
+            }
+
             //set game state
             this.SetGameState(TABLE_GAME_STATE.IDLE);
 
@@ -881,7 +882,7 @@ export module Table {
             }
             //else select team
             else {
-                this.selectionTargets.push({team:team,id:SLOT_SELECTION_TYPE.TEAM})
+                this.selectionTargets.push({source:false, team:team, id:SLOT_SELECTION_TYPE.TEAM})
                 this.teamObjects[team].SetTeamTargetState(true);
                 if(isDebugging) console.log(debugTag+"team was already selected, deselected team="+team+"!");
             }
@@ -976,17 +977,6 @@ export module Table {
             //clear all previous targets
             this.DeselectAllTargets();
 
-            //remove selected card
-            this.selectedCard = undefined;
-            this.selectedCardLocation = CARD_SELECTION_LOCATION.FIELD_SLOT
-            //remove targeting filters
-            this.targetingCount = 0;
-            this.targetingOwner = undefined;
-            this.targetingType = undefined;
-
-            //update object display
-            this.teamObjects[this.curTurn].UpdateCardObjectDisplay("");
-
             if(isDebugging) console.log(debugTag+"deselected current card!");
         }
         
@@ -1049,6 +1039,7 @@ export module Table {
                         return;
                     }
                 }
+
                 //select target slot
                 this.SelectSlot(team, slotID);
             }
@@ -1104,8 +1095,10 @@ export module Table {
                 break;
             }
 
-            //add slot to data & set display
-            this.selectionTargets.push({team:team, id:slotID});
+            //add slot to data
+            if(this.selectionTargets.length == 0) this.selectionTargets.push({source:true, team:team, id:slotID});
+            else this.selectionTargets.push({source:false, team:team, id:slotID});
+            //set display state
             this.teamObjects[team].cardSlotObjects[slotID].SetSelectionState(true);
 
             if(isDebugging) console.log(debugTag+"selected slot, targetCount="+this.selectionTargets.length+"!");
@@ -1137,6 +1130,11 @@ export module Table {
                     this.teamObjects[target.team].cardSlotObjects[target.id].SetSelectionState(false);
                 break;
             }
+
+            //if last target was removed, reset targeting
+            if(this.selectionTargets.length == 0 || target.source == true) {
+                this.DeselectAllTargets();
+            } 
         }
         /** deselects the currently selected targets */
         public DeselectAllTargets() {
@@ -1155,6 +1153,9 @@ export module Table {
                 //deactivate last target
                 this.DeselectTarget(this.selectionTargets.length-1); 
             }
+
+            //update object display
+            this.teamObjects[this.curTurn].UpdateCardObjectDisplay("");
 
             if(isDebugging) console.log(debugTag+"deselected targets, length="+this.selectionTargets.length+"!");
         }
@@ -1385,7 +1386,7 @@ export module Table {
                         //clear card from slot 
                         targetSlot.ClearCard();
                         //redraw stats
-                        CalldownRedrawTeamDisplays(key);
+                        CallbackRedrawTeamDisplays(key);
                     },
                     1900
                 );
@@ -1486,7 +1487,7 @@ export module Table {
                 //remove action from attacker
                 attackerSlot.SlottedCard.ActionRemaining = false;
 
-                //delay defender animation and ui updates until the attack hits
+                //delay defending team's health update and ui updates until the attack hits
                 utils.timers.setTimeout(
                     function() {
                         //ensure defender and attacker slots are both occupied
@@ -1498,9 +1499,9 @@ export module Table {
                         //if enemy team was defeated
                         if(defenderTeam.HealthCur <= 0) {
                             //end game in defeat
-                            CalldownEndGame(key, defender.team);
+                            CallbackEndGame(key, defender.team);
                             //redraw stats
-                            CalldownRedrawTeamDisplays(key);
+                            CallbackRedrawTeamDisplays(key);
                         }
                         //update card slot's display
                         defenderTeam.UpdateStatsDisplay();
@@ -1527,48 +1528,63 @@ export module Table {
 
                 //delay defender animation and ui updates until the attack hits
                 utils.timers.setTimeout(
-                    function() {
-                        //ensure defender and attacker slots are both occupied
-                        if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) {
-                            return;
-                        }
-                        
-                        //if character was killed
-                        if(defenderSlot.SlottedCard.HealthCur <= 0) {
-                            //play death animation
-                            defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.DEATH, false);
-
-                            //delay cleaning up unit until death animation has played
-                            utils.timers.setTimeout(
-                                function() {
-                                    //ensure defender and attacker slots are both occupied
-                                    if(attackerSlot.SlottedCard == undefined || defenderSlot.SlottedCard == undefined) {
-                                        return;
-                                    }
-
-                                    //move card to discard pile
-                                    defenderTeam.MoveCardBetweenCollections(defenderSlot.SlottedCard,PlayCardDeck.DECK_CARD_STATES.FIELD,PlayCardDeck.DECK_CARD_STATES.DISCARD);
-                                    //clear card from slot 
-                                    defenderSlot.ClearCard();
-                                    //redraw stats
-                                    CalldownRedrawTeamDisplays(key);
-                                },
-                                1950
-                            );
-                        } else {
-                            //play death animation
-                            defenderSlot.entityCharacter?.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
-                        }
-                        //update card slot's display
-                        attackerSlot.UpdateStatDisplay();
-                        defenderSlot.UpdateStatDisplay();
-                    },
+                    function() { Table.CallbackUnitDamaged(key, defender.team, defender.id); },
                     1000
                 );
             }
 
             //deselect slots
             this.DeselectAllTargets();
+        }
+
+        /** called when a unit is damaged */
+        public UnitDamaged(teamIndex:number, slotIndex:number) {
+            if(isDebugging) console.log(debugTag+"damaging unit {team="+teamIndex+", slot="+slotIndex+"}");
+            //get targeted unit slot
+            const key = this.TableID;
+            const team = this.teamObjects[teamIndex];
+            const unitSlot = team.cardSlotObjects[slotIndex];
+            //halt slot has no card slotted
+            if(unitSlot.SlottedCard == undefined) {
+                if(isDebugging) console.log(debugTag+"failed to damage unit, no unit in slot");
+                return;
+            }
+            //halt slot has no character object
+            if(unitSlot.entityCharacter == undefined) {
+                if(isDebugging) console.log(debugTag+"failed to damage unit, no character in slot");
+                return;
+            }
+            
+            //if unit was killed
+            if(unitSlot.SlottedCard.HealthCur <= 0) {
+                //play death animation
+                unitSlot.entityCharacter.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.DEATH, false);
+
+                //delay cleaning up unit until death animation has played
+                utils.timers.setTimeout(
+                    function() {
+                        //halt if slot has no card slotted
+                        if(unitSlot.SlottedCard == undefined) {
+                            if(isDebugging) console.log(debugTag+"failed to kill unit, no card in slot");
+                            return;
+                        }
+
+                        //move card to discard pile
+                        team.MoveCardBetweenCollections(unitSlot.SlottedCard,PlayCardDeck.DECK_CARD_STATES.FIELD, PlayCardDeck.DECK_CARD_STATES.DISCARD);
+                        //clear card from slot 
+                        unitSlot.ClearCard();
+                        //redraw stats
+                        CallbackRedrawTeamDisplays(key);
+                    },
+                    1950
+                );
+            } else {
+                //play death animation
+                unitSlot.entityCharacter.PlaySingleAnimation(CardSubjectObject.ANIM_KEY_CHARACTER.FLINCH, false);
+            }
+
+            //update card slot's display
+            unitSlot.UpdateStatDisplay();
         }
 
         /** disables the given object, hiding it from the scene but retaining it in data & pooling */
@@ -1675,7 +1691,7 @@ export module Table {
 
                     //delay timeout check function
                     const tableKey = this.TableID;
-                    utils.timers.setTimeout(function() { Table.CalldownCompleteNetworkSync(tableKey) }, 5000)
+                    utils.timers.setTimeout(function() { Table.CallbackCompleteNetworkSync(tableKey) }, 5000)
                 break;
                 case Networking.TABLE_CONNECTIVITY_TYPE.LOCAL:
                     if(isDebugging) console.log(debugTag+"table authority is local, skipping sync request");
@@ -1754,19 +1770,45 @@ export module Table {
         }
     }
 
-    export function CalldownRedrawTeamDisplays(key:string) {
+    /** table state callback */
+    export function CallbackGetTableState(key:string):TABLE_GAME_STATE {
+        const table = Table.GetByKey(key);
+        if(table != undefined) {
+            //console.log(debugTag+"returned table state {tableID="+key+", value="+table.CurState+"}");
+            return table.CurState; 
+        } else {
+            //console.log(debugTag+"<WARNING> could not find table state {tableID="+key+"}");
+            return TABLE_GAME_STATE.IDLE;   
+        }
+    }
+    TableTeam.callbackGetGameState = Table.CallbackGetTableState;
+
+    /** calldown to update a newly damaged unit */
+    export function CallbackUnitDamaged(key:string, team:number, unit:number) {
+        const table = GetByKey(key);
+        if(table != undefined) {
+            table.UnitDamaged(team, unit);
+        }
+    }
+    TableTeam.CallbackUnitDamaged = Table.CallbackUnitDamaged;
+
+    /** calldown to redraw the team displays for a given  */
+    export function CallbackRedrawTeamDisplays(key:string) {
         const table = GetByKey(key);
         if(table != undefined) {
             table.RedrawTeamDisplays();
         }
     }
-    export function CalldownCompleteNetworkSync(key:string) {
+
+    /** calldown to complete a network sync attempt on a table */
+    export function CallbackCompleteNetworkSync(key:string) {
         const table = GetByKey(key);
         if(table != undefined) {
             table.CompleteNetworkSync();
         }
     }
-    export function CalldownEndGame(key:string, defeated:number) {
+    /** calldown to the end game on a table */
+    export function CallbackEndGame(key:string, defeated:number) {
         const table = GetByKey(key);
         if(table != undefined) {
             table.LocalEndGame(defeated);
@@ -2296,7 +2338,7 @@ export module Table {
         //create url
         try {
             if(isDebugging) console.log(debugTag+"<SERVER> processing next turn on table="+table+"...");
-            //ensure scene is using server connection and player is logged in
+            //halt if scene is not using server connection or player is not logged in
             if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
             
             //halt if table does not exist
@@ -2305,6 +2347,7 @@ export module Table {
                 if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no table of id="+table);
                 return;
             }
+
             // [dyn] process turn locally
             tableObject.RemoteNextTurn(table);
             // get serial data
@@ -2317,7 +2360,7 @@ export module Table {
             if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
 
             //attempt to get response
-            let response = await signedFetch({ 
+            let response = await signedFetch({
                 url: url,
                 init: {
                     headers: { "Content-Type": "application/json" },
@@ -2325,7 +2368,7 @@ export module Table {
                     body: JSON.stringify({
                         "realmID": "<TEST-REALM>",
                         "tableID": table,
-                        "tableData": tableSerialJSON
+                        "tableData": tableSerial
                     })
                 }
             });
@@ -2372,7 +2415,66 @@ export module Table {
     //server routine
     export function CallbackServerEndGame(table:string, defeated:number) { Table.ServerEndGame(table, defeated); }
     export async function ServerEndGame(table:string, defeated:number) {
-        EmitEndGame(table, defeated);
+        //create url
+        try {
+            if(isDebugging) console.log(debugTag+"<SERVER> ending game on table="+table+"...");
+            //ensure scene is using server connection and player is logged in
+            if(!Networking.PLAYER_CONNECTIVITY_STATE.CONNECTED || !PlayerLocal.IsWeb3()) return;
+            
+            //halt if table does not exist
+            const tableObject = GetByKey(table);
+            if(tableObject == undefined) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no table of id="+table);
+                return;
+            }
+
+            // get serial data
+            const tableSerial = tableObject.SerializeData();
+            const tableSerialJSON = JSON.stringify(tableSerial);
+            if(isDebugging) console.log(debugTag+"<SERVER> produced table serial string:"+tableSerialJSON);
+            
+            //prepare url
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.TABLE_END_GAME;
+            if(isDebugging) console.log(debugTag+"<SERVER> generated request url: "+url);
+
+            //attempt to get response
+            let response = await signedFetch({ 
+                url: url,
+                init: {
+                    headers: { "Content-Type": "application/json" },
+                    method: "POST",
+                    body: JSON.stringify({
+                        "realmID": "<TEST-REALM>",
+                        "tableID": table,
+                        "tableData": tableSerial
+                    })
+                }
+            });
+            if(!response) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let responseText = await response.body;
+            if(!responseText) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ERROR - no response data");
+                return;
+            }
+            if(isDebugging) console.log(debugTag+"<SERVER> got response: "+responseText);
+
+            //check result of response
+            let responseJSON = JSON.parse(responseText);
+            if(responseJSON["result"] == true) {
+                if(isDebugging) console.log(debugTag+"<SERVER> ended game on table="+table+", waterfalling changes");
+                //end game on the table
+                Table.CallbackEmitEndGame(table, defeated);
+            } else {
+                if(isDebugging) console.log(debugTag+"<SERVER> failed to end game on table="+table);
+            }
+        } catch(error) {
+            console.log(error);
+        }
     }
     //peer-to-peer send
     export function CallbackEmitEndGame(table:string, defeated:number) { Table.EmitEndGame(table, defeated); }
@@ -2428,7 +2530,7 @@ export module Table {
     //### AI CARD PLAYER 
     //TODO: move into seperate namespace/provide instancing to allow multiple AI players controlled by same host
     enum AI_PROCESSING_STATES { PLAY_CARD, UNIT_ATTACK, END_TURN }
-    const isDebuggingAI = true;
+    const isDebuggingAI = false;
     /** current display state of ai */
     var aiDisplayState:boolean = false;
     /** current processing state of ai (playing card/attacking) */

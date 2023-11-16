@@ -169,7 +169,7 @@ export enum CARD_DATA_ID {
     //## ELECTRIC
     TERRAIN_ELECTRIC,
     //## VOID
-    TERRAIN_VOID
+    TERRAIN_VOID,
 }
 
 /** listing of all cards included in the game */
@@ -373,7 +373,7 @@ export const CardData:CardDataObject[] = [
         cardCost:2,
         //effects
         cardKeywordEffects:[
-
+            { id:CARD_KEYWORD_ID.DAMAGE_PULVERIZE, strength:1, duration:2 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -432,7 +432,7 @@ export const CardData:CardDataObject[] = [
         cardCost:2,
         //effects
         cardKeywordEffects:[
-
+            { id:CARD_KEYWORD_ID.HEALTH_BLEED, strength:1, duration:2 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -461,7 +461,7 @@ export const CardData:CardDataObject[] = [
         cardCost:2,
         //effects
         cardKeywordEffects:[
-
+            { id:CARD_KEYWORD_ID.ATTACK_WEAKEN, strength:1, duration:2 },
         ],
         //type-specific cards
         cardAttributes:{
@@ -490,7 +490,7 @@ export const CardData:CardDataObject[] = [
         cardCost:2,
         //effects
         cardKeywordEffects:[
-
+            { id:CARD_KEYWORD_ID.HEALTH_WITHER, strength:1, duration:2 },
         ],
         //type-specific cards
         cardAttributes:{

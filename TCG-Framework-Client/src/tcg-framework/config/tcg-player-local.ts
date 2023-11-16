@@ -178,19 +178,18 @@ export module PlayerLocal {
         PopulateDeckPlayer();
         //initialize leveling system (controls card provisions based from levels)
         LevelManager.Initialize(0);
-        //recalculate what cards the player owns/has access to based on contracts
-        ContractUnlockRegistry.Instance.GetUserID = PlayerLocal.GetUserID;
-        await ContractUnlockRegistry.Instance.CalculateCardProvisionCounts();
 
         //attempt server interactions based on connectivity type
         //  if networking override or sandbox (test mode)
-        if(Networking.DEBUG_OVERRIDE || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SANDBOX) {
+        if(Networking.DEBUG_OVERRIDE) {
             //spoof connectivity
             isWeb3 = true;
             SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.ADMIN);
             //set demo credentials
             userID = "0x0DEMO";
             userName = "DEMO_USER";//+Math.round(Math.random()*10000);
+            //attempt to load experience from the server
+            await SyncExperienceFromServer();
         }
         //  if profile is server-based
         else if(Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SERVER_STRICT 
@@ -223,13 +222,13 @@ export module PlayerLocal {
 
                 //if recieved player profile, load player's account
                 if(!fail && playerProfileJSON) {
-                    if(isDebugging) console.log(debugTag+"successfully found player profile!");
+                    if(isDebugging) console.log(debugTag+"successfully found player profile {experience="+playerProfileJSON["Experience"]+"}!");
                     //update player's account state
                     SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.STANDARD);
                     
                     //load player's profile
                     //  experience
-                    LevelManager.AddExperience(playerProfileJSON["Experience"]);
+                    LevelManager.SetExperience(playerProfileJSON["Experience"]);
                     //  decks
                     for(let i:number=0; i<5; i++) {
                         //if a deck was found/previously saved, load deck
@@ -256,6 +255,11 @@ export module PlayerLocal {
             SetAccountType(Networking.PLAYER_ACCOUNT_TYPE.GUEST);
         }
 
+        //recalculate what cards the player owns/has access to based on contracts
+        ContractUnlockRegistry.Instance.IsWeb3 = PlayerLocal.IsWeb3;
+        ContractUnlockRegistry.Instance.GetUserID = PlayerLocal.GetUserID;
+        await ContractUnlockRegistry.Instance.CalculateCardProvisionCounts();
+
         //update user name
         uiTextNameValue.TextValue = userName;
 
@@ -268,6 +272,33 @@ export module PlayerLocal {
             "\n\tdisplayName="+userName
         );
     };
+
+    export async function SyncExperienceFromServer() {
+        try {
+            const url:string = Networking.SERVER_URL+Networking.SERVER_API.EXPERIENCE_GET+userID;
+            if(isDebugging) console.log(debugTag+"attempting to get player experience...\n\t"+url);
+
+            //attempt to get player's profile from server via url
+            const playerProfile = await fetch(url);
+            if(!playerProfile) {
+                if(isDebugging) console.log(debugTag+"<ERROR> failed to get player's experience");
+                return;
+            }
+
+            //attempt to convert url's data to json
+            let playerProfileJSON = await playerProfile.json();
+            if(!playerProfileJSON) {
+                if(isDebugging) console.log(debugTag+"<ERROR> failed to process fetch into json output");
+                return;
+            }
+
+            //set experience value
+            LevelManager.SetExperience(playerProfileJSON["Experience"]);
+            if(isDebugging) console.log(debugTag+"successfully found player profile {experience="+playerProfileJSON["Experience"]+"}!");
+        } catch(error) {
+            console.log(error);
+        }
+    }
 
     //set up ui elements for player display
     //  parent container

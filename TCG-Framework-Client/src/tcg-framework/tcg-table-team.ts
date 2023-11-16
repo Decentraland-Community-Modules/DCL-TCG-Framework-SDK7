@@ -1,6 +1,6 @@
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { Dictionary, List } from "../utilities/collections";
-import { Billboard, ColliderLayer, Entity, Font, GltfContainer, InputAction, MeshCollider, MeshRenderer, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
+import { Billboard, ColliderLayer, Entity, GltfContainer, InputAction, MeshCollider, PointerEventType, PointerEvents, Schemas, TextAlignMode, TextShape, Transform, engine } from "@dcl/sdk/ecs";
 import { TableCardSlot } from "./tcg-table-card-slot";
 import { PlayCardDeck } from "./tcg-play-card-deck";
 import { CardDisplayObject } from "./tcg-card-object";
@@ -9,7 +9,6 @@ import { InteractionObject } from "./tcg-interaction-object";
 import { CARD_OBJECT_OWNER_TYPE, TABLE_GAME_STATE, TABLE_TEAM_TYPE, TABLE_TURN_TYPE } from "./config/tcg-config";
 import { PlayerLocal } from "./config/tcg-player-local";
 import { STATUS_EFFECT_AFFINITY } from "./data/tcg-status-effect-data";
-import { CARD_KEYWORD_EFFECT_EXECUTION } from "./data/tcg-keyword-data";
 
 /*      TRADING CARD GAME - TABLE CARD TEAM
     represents team on a table
@@ -71,6 +70,19 @@ export module TableTeam {
         { x:4, y:0, z:1.5 },
         { x:-4, y:0, z:1.5 },
     ];
+
+    /** callback to get game state of the targeted table */
+    function getGameState(key:string) {
+        console.log(debugTag+"<WARNING> using default game state callback");
+        return TABLE_GAME_STATE.IDLE;
+    }
+    export var callbackGetGameState:(key:string) => TABLE_GAME_STATE = getGameState;
+
+    /** callback to impact a unit when it is damaged */
+    function unitDamaged(key:string) {
+        console.log(debugTag+"<WARNING> using default unit damaged callback");
+    }
+    export var CallbackUnitDamaged:(key:string, team:number, unit:number) => void = unitDamaged;
 
     /** indexing key */
     export function GetKeyFromData(data:TableTeamCreationData):string { return data.tableID+"-"+data.teamID; };
@@ -267,11 +279,11 @@ export module TableTeam {
         public TeamType:TABLE_TEAM_TYPE = TABLE_TEAM_TYPE.HUMAN;
 
         /** callback to get game state of table */
-        private getGameState(key:string) {
+        /*private getGameState(key:string) {
             console.log(debugTag+"<WARNING> using default callback");
             return TABLE_GAME_STATE.IDLE;
         }
-        public callbackGetGameState:(key:string) => TABLE_GAME_STATE = this.getGameState;
+        public callbackGetGameState:(key:string) => TABLE_GAME_STATE = this.getGameState;*/
 
         /** this team's current game state */
         public TurnState:TABLE_TURN_TYPE = TABLE_TURN_TYPE.INACTIVE;
@@ -692,7 +704,7 @@ export module TableTeam {
             transformParent.rotation = Quaternion.fromEulerDegrees(rot.x,rot.y,rot.z);
 
             //player details
-            if(data.callbackTable != undefined) this.callbackGetGameState = data.callbackTable;
+            //if(data.callbackTable != undefined) this.callbackGetGameState = data.callbackTable;
             this.readyState = false;
             this.RegisteredPlayerID = undefined;
             this.RegisteredPlayerName = undefined;
@@ -820,7 +832,7 @@ export module TableTeam {
         /** updates buttons display based on the current state */
         public UpdateButtonStates() {
             //get table's current state
-            const tableState = this.callbackGetGameState(this.TableID);
+            const tableState = TableTeam.callbackGetGameState(this.TableID);
             //console.log(debugTag+"updating button states {playerType="+this.TeamType+", tableState="+tableState+"}");
             //process based on operator of this team
             switch(this.TeamType) {
@@ -908,7 +920,7 @@ export module TableTeam {
 
         /** called when a turn starts */
         public TurnStart() {
-            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn started");
+            if(isDebugging) console.log(debugTag+"starting turn {table="+this.tableID+", team="+this.teamID+"}");
 
             //add energy to team's pool
             this.energyCur += this.energyGain;
@@ -920,16 +932,21 @@ export module TableTeam {
                 const slot = this.cardSlotObjects[i];
                 if(slot.SlottedCard != undefined) {
                     //process card's start turn effects
-                    slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HELPFUL);
+                    const wounded:boolean = slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HELPFUL);
                     //update display
-                    slot.UpdateStatDisplay();
+                    if(wounded == true) {
+                        TableTeam.CallbackUnitDamaged(this.TableID, this.teamID, i);
+                    } else {
+                        slot.UpdateStatDisplay();
+                    }
                 }
             }
+            if(isDebugging) console.log(debugTag+"started turn {table="+this.tableID+", team="+this.teamID+"}");
         }
 
         /** called when a turn ends */
         public TurnEnd() { 
-            if(isDebugging) console.log(debugTag+"table="+this.tableID+", team="+this.teamID+" turn ended");
+            if(isDebugging) console.log(debugTag+"ending turn {table="+this.tableID+", team="+this.teamID+"}");
 
             //process previous team's end turn effects
             for(let i:number=0; i<this.cardSlotObjects.length; i++) {
@@ -939,11 +956,16 @@ export module TableTeam {
                     //re-enable card's action (we do this at the end of the turn so enemy has a chance to stun the character)
                     slot.SlottedCard.ActionRemaining = true;
                     //process card's end turn effects
-                    slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HARMFUL);
+                    const wounded:boolean = slot.SlottedCard.ProcessEffectsByAffinity(STATUS_EFFECT_AFFINITY.HARMFUL);
                     //update display
-                    slot.UpdateStatDisplay();
+                    if(wounded == true) {
+                        TableTeam.CallbackUnitDamaged(this.TableID, this.teamID, i);
+                    } else {
+                        slot.UpdateStatDisplay();
+                    }
                 }
             }
+            if(isDebugging) console.log(debugTag+"ended turn {table="+this.tableID+", team="+this.teamID+"}");
         }
 
         /** updates the positions of all cards in the player's hand */

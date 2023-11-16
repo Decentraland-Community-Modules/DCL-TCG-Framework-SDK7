@@ -12,6 +12,7 @@ import { PlayerLocal } from "./config/tcg-player-local";
 import { Dictionary, List } from "../utilities/collections";
 import { CARD_OBJECT_OWNER_TYPE, MAX_CARD_COUNT_PER_TYPE } from "./config/tcg-config";
 import { CardKeywordRegistry } from "./data/tcg-keyword-data-registry";
+import { Networking } from "./config/tcg-networking";
 /*      TRADING CARD GAME FRAMEWORK - DECK MANAGER
     all utilities for viewing cards and managing card decks; this includes viewing all cards (with 
     filtering options), adding/removing cards to/from a deck, and saving/loading decks. 
@@ -1027,10 +1028,11 @@ export module DeckManager {
             //if card data was found, populate display object based on data 
             var cardObject:CardDisplayObject.CardDisplayObject = entityGridCards[indexDisplay];
             if(cardEntry != undefined) {
+                cardObject.SetVisibility(true);
                 //set card object's def
                 cardObject.SetCard(cardEntry.DataDef);
                 //if player is allowed to add cards to their inventory
-                if(cardEntry.CountAllowed > 0) {
+                if(cardEntry.CountAllowed > 0 || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SANDBOX) {
                     //show counter & update counter text
                     cardObject.SetCounterState(true, true);
                 } else {
@@ -1041,7 +1043,7 @@ export module DeckManager {
             }
             //if no card data, hide card object
             else {
-                cardObject.Disable();
+                cardObject.SetVisibility(false);
             }
 
             //push to next card objects

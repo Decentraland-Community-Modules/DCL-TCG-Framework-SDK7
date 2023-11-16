@@ -19,6 +19,8 @@ export interface ContractUnlockDataObject {
     id:CONTRACT_DATA_ID; //unique id
     type:CONTRACT_ACTIVATION_TYPE, //activation type
     urn:string; //targeted nft address
+    //display
+    name:string,
     //added cards
     providedCards:CardProvisionDataObject[];
 }
@@ -39,6 +41,8 @@ export const ContractUnlockData:ContractUnlockDataObject[] = [
         id:CONTRACT_DATA_ID.UNLOCK_VOID_CARDS,
         type:CONTRACT_ACTIVATION_TYPE.WEAR,
         urn:"urn:decentraland:off-chain:base-avatars:piratepatch",
+        //display
+        name:"Pirate Patch",
         //added cards
         providedCards:[
             { id:CARD_DATA_ID.SPELL_VOIDBOLT, count:3 },
@@ -52,6 +56,8 @@ export const ContractUnlockData:ContractUnlockDataObject[] = [
         id:CONTRACT_DATA_ID.UNLOCK_NEUTRAL_CARDS,
         type:CONTRACT_ACTIVATION_TYPE.OWN,
         urn:"urn:decentraland:matic:collections-v2:0xa7f7f6eac7057f0a3b616637289b9947bbcefbcc:2",
+        //display
+        name:"Shoes Of Speed",
         //added cards
         providedCards:[
             { id:CARD_DATA_ID.SPELL_HEAL, count:3 },

@@ -38,6 +38,21 @@ export module TableTeam {
     DISCARD,
   };
 
+  // returns capsule with table defaults
+  export function GenerateDefaultTableTeam():TableTeamData {
+    const tableTeamData:TableTeamData = { 
+      playerID: "", playerName: "",
+      readyState: false,
+      healthCur: 0,
+      energyCur: 0, energyGain: 0,
+      deckRegistered: "",
+      deckSession: [],
+      slotCards: [],
+      terrainCard: "",
+    }
+    return tableTeamData;
+  }
+
   /** resets the given team data */
   export function ResetTeam(teamData:TableTeamData) {
     // reset values

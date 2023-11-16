@@ -1,8 +1,8 @@
 import { CONTRACT_DATA_ID, ContractUnlockData, ContractUnlockDataObject, CONTRACT_ACTIVATION_TYPE } from './tcg-contract-unlocks-data';
 import { Dictionary, List } from '../../utilities/collections';
 import { CARD_UNLOCK_TYPE, CardDataRegistry } from './tcg-card-registry';
-import { Entity, TextAlignMode, TextShape, Transform, engine } from '@dcl/sdk/ecs';
-import { Quaternion } from '@dcl/sdk/math';
+import { ColliderLayer, Entity, GltfContainer, TextAlignMode, TextShape, Transform, engine } from '@dcl/sdk/ecs';
+import { Color4, Quaternion, Vector3 } from '@dcl/sdk/math';
 import { onProfileChanged } from '@dcl/sdk/observables';
 import * as utils from '@dcl-sdk/utils';
 
@@ -40,13 +40,13 @@ export class ContractUnlockRegistry {
     static IsDebugging:boolean = false;
     /** hard-coded tag for module, helps log search functionality */
     static debugTag:string = "TCG Contract Unlock Registry: ";
-    //debugging entity (b.c dcl sucks at displaying logs when deployed)
-    private dLogEntity:Entity = engine.addEntity();
 
     /** represents the current load-state of the module, when true system is still processing */
     private isLoading:boolean = false;
     public get IsLoading() { return this.isLoading; }
 
+    /** returns player's web3 state */
+    public IsWeb3 = ():boolean => { return false; }
     /** returns the user's id */
     public GetUserID = ():string => { return ""; }
 
@@ -61,6 +61,11 @@ export class ContractUnlockRegistry {
         return ContractUnlockRegistry.instance;
     }
 
+    /** display panel for unlock details */
+    public DisplayPanelParent:Entity = engine.addEntity();
+    private displayLogHeaderText:Entity = engine.addEntity();
+    private displayLogContentText:Entity = engine.addEntity();
+
     //data registries
     //  to ALL registered data (unsorted)
     private registryAll: List<ContractUnlockEntry>;
@@ -71,18 +76,51 @@ export class ContractUnlockRegistry {
     
     /** prepares instanced registry for use */
     public constructor() {
-        //setup 3D debug log 
-        Transform.create(this.dLogEntity, {
-            position: {x:0.1, y:1.8, z:10},
-            rotation: Quaternion.fromEulerDegrees(0,-90,0),
+        //setup 3D unlock display
+        //  parent
+        Transform.create(this.DisplayPanelParent, {
+            position: {x:8, y:-4, z:8},
+            rotation: Quaternion.fromEulerDegrees(0,0,0),
+            scale: {x:1, y:1, z:1}
+        });
+        GltfContainer.create(this.DisplayPanelParent, {
+            src: "models/utilities/Menu3D_Panel_Ornate_Square.glb",
+            visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+            invisibleMeshesCollisionMask: undefined
+        });
+        //  header
+        Transform.create(this.displayLogHeaderText, {
+            parent: this.DisplayPanelParent,
+            position: {x:0, y:1.04, z:-0.01},
+            rotation: Quaternion.fromEulerDegrees(0,0,0),
             scale: {x:0.1, y:0.1, z:0.1}
         });
-        TextShape.create(this.dLogEntity, {
-            text: "<LOG TEXT>",
-            fontSize: 4,
-            textAlign: TextAlignMode.TAM_MIDDLE_LEFT,
+        TextShape.create(this.displayLogHeaderText, {
+            text: "CARD UNLOCKS - NFTS",
+            textColor: Color4.create(1, 1, 1, 1),
+            outlineColor: Color4.Black(),
+            outlineWidth: 0.1,
+            fontSize: 11.5,
+            textAlign: TextAlignMode.TAM_MIDDLE_CENTER,
             textWrapping: false,
-            width: 24, height:8
+            width: 0, height:0
+        });
+        //  content
+        Transform.create(this.displayLogContentText, {
+            parent: this.DisplayPanelParent,
+            position: {x:-0.85, y:0.85, z:-0.01},
+            rotation: Quaternion.fromEulerDegrees(0,0,0),
+            scale: {x:0.1, y:0.1, z:0.1}
+        });
+        TextShape.create(this.displayLogContentText, {
+            text: "LOADING CARD UNLOCKS FROM PLAYER LEVELS...",
+            textColor: Color4.create(1, 1, 1, 1),
+            outlineColor: Color4.Black(),
+            outlineWidth: 0.1,
+            fontSize: 7,
+            textAlign: TextAlignMode.TAM_TOP_LEFT,
+            textWrapping: false,
+            width: 0, height:0
         });
 
         if (ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"initializing...");
@@ -102,23 +140,63 @@ export class ContractUnlockRegistry {
         //  process every def
         for (var i: number = 0; i < ContractUnlockData.length; i++) {
             //prepare entry
-            const entry = new ContractUnlockEntry(i, ContractUnlockData[i].id);
-            if (ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"creating entry {index=" + i + ", id=" + ContractUnlockData[i].id.toString()
-                +", type="+ContractUnlockData[i].type.toString()+"}");
+            const def = ContractUnlockData[i];
+            const entry = new ContractUnlockEntry(i, def.id);
+            if (ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"creating entry {index=" + i + ", id=" + def.id.toString()
+                +", type="+def.type.toString()+"}");
             //add to registry
             this.registryAll.addItem(entry);
-            this.registryViaID.addItem(ContractUnlockData[i].id.toString(), entry);
-            this.registryViaType.getItem(ContractUnlockData[i].type.toString()).addItem(entry);
+            this.registryViaID.addItem(def.id.toString(), entry);
+            this.registryViaType.getItem(def.type.toString()).addItem(entry);
         }
+        
+        //update display
+        this.UpdateDisplayPanel();
 
         if (ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"initialized, total count=" + this.registryAll.size());
 
         //assign event => refresh card ownership whenever player changes their equipped items 
         onProfileChanged.add((profileData) => {
             utils.timers.setTimeout(function () {
-                ContractUnlockRegistry.Instance.CalculateCardProvisionCounts();   
+                ContractUnlockRegistry.Instance.CalculateCardProvisionCounts();
             }, 10000);
         });
+    }
+
+    /** sets the position of the display frame */
+    public SetPosition(position:Vector3){
+        Transform.getMutable(this.DisplayPanelParent).position = position;
+    }
+
+    /** sets the rotation of the display frame */
+    public SetRotation(rotation:Vector3){
+        Transform.getMutable(this.DisplayPanelParent).rotation = Quaternion.fromEulerDegrees(rotation.x, rotation.y, rotation.z);
+    }
+
+    /** updates the text on the display panel */
+    public UpdateDisplayPanel() {
+        //  process every def
+        let contentLog:string = "";
+        for (var i: number = 0; i < this.registryAll.size(); i++) {
+            //prepare entry
+            const entry = this.registryAll.getItem(i);
+            //update display
+            //  unlocked
+            if(entry.IsOwned) contentLog += "[UNLOCKED] ";
+            else contentLog += "[LOCKED] ";
+            //  type
+            if(entry.DataDef.type == CONTRACT_ACTIVATION_TYPE.OWN) contentLog += "Owning ";
+            else contentLog += "Wearing ";
+            //  core
+            contentLog += entry.DataDef.name+" provides:";
+            for(var j: number = 0; j < entry.DataDef.providedCards.length; j++) {
+                const cardDef = CardDataRegistry.Instance.GetEntryByID(entry.DataDef.providedCards[j].id).DataDef;
+                contentLog += "\n\t(x"+entry.DataDef.providedCards[j].count+") "+cardDef.name;
+            }
+            contentLog += "\n\n";
+        }
+        //  update panel content text
+        TextShape.getMutable(this.displayLogContentText).text = contentLog;
     }
 
     /** recalculates how many cards the player is allowed to add to their decks */
@@ -151,14 +229,20 @@ export class ContractUnlockRegistry {
         } catch (error) {
             console.log(ContractUnlockRegistry.debugTag+"an error occurred while recalculating player card provisions:\n"+error);
         }
+
+        //update display
+        ContractUnlockRegistry.Instance.UpdateDisplayPanel();
     }
 
     /** attempts reassert what nft contracts the local player owns */
     public async assertOwnedNFTs() {
+        //halt if player is not connected to server
+        if(!this.IsWeb3()) return;
+
         //attempt to process json
         try {
             if(ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"reasserting owned NFT sets...");
-            TextShape.getMutable(this.dLogEntity).text = "THIS LOG DISPLAYS THE LATEST LOAD ATTMEPT FOR CHECKING PLAYER-OWNED NFTS & WEARABLES"
+            TextShape.getMutable(this.displayLogContentText).text = "THIS LOG DISPLAYS THE LATEST LOAD ATTMEPT FOR CHECKING PLAYER-OWNED NFTS & WEARABLES"
                 +"\n\tcalculating cards for userID="+this.GetUserID();
 
             //reset nft ownership (all entries to false)
@@ -171,10 +255,10 @@ export class ContractUnlockRegistry {
             //process all contracts worn by the player
             await this.ProcessContractRewardsWorn();
 
-            TextShape.getMutable(this.dLogEntity).text += "\nNFT CARDSET PROCESSING COMPLETED!";
+            TextShape.getMutable(this.displayLogContentText).text += "\nNFT CARDSET PROCESSING COMPLETED!";
         } catch (error) {
             console.log(ContractUnlockRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
-            TextShape.getMutable(this.dLogEntity).text += "\nfailed, error:\n"+error;
+            TextShape.getMutable(this.displayLogContentText).text += "\nfailed, error:\n"+error;
         }
     }
     
@@ -183,14 +267,14 @@ export class ContractUnlockRegistry {
         //attempt to process json
         try {
             //process ownership of all contracts based on whether the player owns the required NFT
-            TextShape.getMutable(this.dLogEntity).text += "\n\n\tprocessing player's owned NFTs: (current test, unlock neutral cards by owning: shoes of speed)";
+            TextShape.getMutable(this.displayLogContentText).text += "\n\n\tprocessing player's owned NFTs: (current test, unlock neutral cards by owning: shoes of speed)";
             const listOwned = this.registryViaType.getItem(CONTRACT_ACTIVATION_TYPE.OWN.toString());
             if(listOwned) {
                 //create url 
                 const urlOwn = "https://peer.decentraland.org/lambdas/collections/wearables-by-owner/"+this.GetUserID()//+"?includeDefinitions";
                 //DEBUGGING URL => const urlOwn = "https://peer.decentraland.org/lambdas/collections/wearables-by-owner/0xC24789C6f165329290Ddd3fBEac3b6842a294003?includeDefinitions";
                 if(ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"making call using url: "+urlOwn);
-                TextShape.getMutable(this.dLogEntity).text += "\n\tgetting currently worn through url="+urlOwn;
+                TextShape.getMutable(this.displayLogContentText).text += "\n\tgetting currently worn through url="+urlOwn;
                 
                 //get player's inventory
                 let resultOwn = await fetch(urlOwn);
@@ -213,7 +297,7 @@ export class ContractUnlockRegistry {
                         const entry = listOwned.getItem(j);
                         if (entry.DataDef.urn === dclNFT["urn"]) {
                             if(ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"contract="+entry.ID+" required player to wear NFT="+dclNFT["urn"]);
-                            TextShape.getMutable(this.dLogEntity).text += "\n\t\tunlocked cardset="+entry.ID+" by owning NFT="+dclNFT["urn"];
+                            TextShape.getMutable(this.displayLogContentText).text += "\n\t\tunlocked cardset="+entry.ID+" by owning NFT="+dclNFT["urn"];
                             entry.IsOwned = true;
                             break;
                         }
@@ -226,7 +310,7 @@ export class ContractUnlockRegistry {
             }
         } catch (error) {
             console.log(ContractUnlockRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
-            TextShape.getMutable(this.dLogEntity).text += "\nfailed, error:\n"+error;
+            TextShape.getMutable(this.displayLogContentText).text += "\nfailed, error:\n"+error;
         }
     }
 
@@ -234,7 +318,7 @@ export class ContractUnlockRegistry {
     public async ProcessContractRewardsWorn() {
         //attempt to process json
         try {
-            TextShape.getMutable(this.dLogEntity).text += "\n\n\tprocessing player's worn NFTs: (current test, unlock void cards by wearing: eye-patch)";
+            TextShape.getMutable(this.displayLogContentText).text += "\n\n\tprocessing player's worn NFTs: (current test, unlock void cards by wearing: eye-patch)";
             //## process all items player is wearing
             const listWorn = this.registryViaType.getItem(CONTRACT_ACTIVATION_TYPE.WEAR.toString());
             if(listWorn) {
@@ -242,7 +326,7 @@ export class ContractUnlockRegistry {
                 const urlWear = "https://peer.decentraland.org/lambdas/profiles/"+this.GetUserID();
                 //DEBUGGING URL => const urlWear = "https://peer.decentraland.org/lambdas/profiles/0xC24789C6f165329290Ddd3fBEac3b6842a294003";
                 if(ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"making call using url: "+urlWear);
-                TextShape.getMutable(this.dLogEntity).text += "\n\tgetting currently worn through url="+urlWear;
+                TextShape.getMutable(this.displayLogContentText).text += "\n\tgetting currently worn through url="+urlWear;
                 
                 //get player's inventory via url
                 let resultWear = await fetch(urlWear);
@@ -267,7 +351,7 @@ export class ContractUnlockRegistry {
                         const entry = listWorn.getItem(j);
                         if (entry.DataDef.urn === dclNFT) {
                             if(ContractUnlockRegistry.IsDebugging) console.log(ContractUnlockRegistry.debugTag+"contract="+entry.ID+" unlocked cards by wearing NFT="+dclNFT);
-                            TextShape.getMutable(this.dLogEntity).text += "\n\t\tunlocked cardset="+entry.ID+" by wearing NFT="+dclNFT;
+                            TextShape.getMutable(this.displayLogContentText).text += "\n\t\tunlocked cardset="+entry.ID+" by wearing NFT="+dclNFT;
                             entry.IsOwned = true;
                             break;
                         }
@@ -280,7 +364,7 @@ export class ContractUnlockRegistry {
             }
         } catch (error) {
             console.log(ContractUnlockRegistry.debugTag+"an error occurred while processing contracts:\n"+error);
-            TextShape.getMutable(this.dLogEntity).text += "\nfailed, error:\n"+error;
+            TextShape.getMutable(this.displayLogContentText).text += "\nfailed, error:\n"+error;
         }
     }
 

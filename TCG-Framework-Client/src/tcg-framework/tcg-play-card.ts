@@ -351,13 +351,15 @@ export module PlayCard
         }
 
         /** processes an effect against this card */
-        public ProcessEffect(id:STATUS_EFFECT_PROCESSING_TYPE, power:number) {
+        public ProcessEffect(id:STATUS_EFFECT_PROCESSING_TYPE, power:number):boolean {
             if(isDebugging) console.log(debugTag+"processing effect {id="+id+", power="+power+"} on card="+this.Key+"...");
+            let damaging = false;
 
             //deternime how keyword should be processed based on effect type (what keyword is being applied)
             switch(id) {
                 //inflicts damage to character (reduced by armour)
                 case STATUS_EFFECT_PROCESSING_TYPE.DAMAGE:
+                    damaging = true;
                     const damage = power - this.Armour;
                     if(damage > 0) this.HealthCur -= damage;
                 break;
@@ -369,6 +371,7 @@ export module PlayCard
                 break;
                 //inflicts direct damage to character (no reduced by armour)
                 case STATUS_EFFECT_PROCESSING_TYPE.HEALTH_DAMAGE:
+                    damaging = true;
                     this.HealthMax -= power;
                 break;
                 //increases max & cur health of character
@@ -378,6 +381,7 @@ export module PlayCard
                 break;
                 //decreases max health of character
                 case STATUS_EFFECT_PROCESSING_TYPE.HEALTH_DECREASE:
+                    damaging = true;
                     this.HealthMax -= power;
                     //leash cur health below max
                     if(this.HealthCur > this.HealthMax) this.HealthCur = this.HealthMax;
@@ -436,11 +440,14 @@ export module PlayCard
             }
 
             if(isDebugging) console.log(debugTag+"processed effect {id="+id+", power="+power+"} on card="+this.Key+"!");
+            return damaging;
         }
 
         /** processes all effects that are applicable at the start of the owning player's turn */
-        public ProcessEffectsByAffinity(affinity:STATUS_EFFECT_AFFINITY) {
+        public ProcessEffectsByAffinity(affinity:STATUS_EFFECT_AFFINITY):boolean {
+            if(isDebugging) console.log(debugTag+"processing effects by affinity="+affinity+", health="+this.HealthCur);
             //process all timed effects
+            let wounded = false;
             let index:number = 0;
             while (index < this.ActiveEffectList.size()) {
                 //get effect
@@ -449,7 +456,8 @@ export module PlayCard
                 //if effect is of targeted affinity
                 if(effectDef.affinity == affinity) {
                     //process against card
-                    this.ProcessEffect(effectDef.type, effectData.Strength);
+                    let test = this.ProcessEffect(effectDef.type, effectData.Strength);
+                    if(test == true) wounded = true;
                     //reduce duration
                     effectData.Duration -= 1;
                     //check for removal
@@ -463,6 +471,8 @@ export module PlayCard
                 }
                 index++;
             }
+            if(isDebugging) console.log(debugTag+"processed effects by affinity="+affinity+", health="+this.HealthCur);
+            return wounded;
         }
 
         /** initializes the card based on the provided serial data */

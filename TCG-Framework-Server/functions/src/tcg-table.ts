@@ -24,6 +24,28 @@ export module Table {
     teams:TableTeam.TableTeamData[];
   }
 
+  // returns capsule with table defaults
+  export function GenerateDefaultTable():Table.TableData {
+    const tableData:Table.TableData = {
+      lastInteraction: new Date().getTime(),
+      // indexing
+      id: 0,
+      // live data
+      owner: "",
+      state: 0,
+      turn: 0,
+      round: 0,
+      // teams registered to table
+      teams: []
+    }
+  
+    // TODO: maybe gen table teams to allow for modular sizes (ex: 2v2)
+    tableData.teams.push(TableTeam.GenerateDefaultTableTeam());
+    tableData.teams.push(TableTeam.GenerateDefaultTableTeam());
+  
+    return tableData;
+  }
+
   // starts game on the given table data
   export function StartGame(tableData:TableData):boolean {
     // ensure all players registered to game are ready to start

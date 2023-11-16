@@ -19,11 +19,10 @@ import * as admin from "firebase-admin";
 import * as express from "express";
 import * as cors from "cors";
 // tcg imports
+import { Profile } from "./api-profile";
 import { Table } from "./tcg-table";
 import { TableTeam } from "./tcg-team";
 //import { TableCard } from "./tcg-card";
-
-// import * as profile from "./api-profile";
 
 // ### ACCOUNT LOGGING ###
 // service account login details
@@ -41,23 +40,6 @@ const db = admin.firestore();
 // create app instance
 const app = express();
 app.use(cors({origin: true}));
-
-// ### FUNCTION - CREATE DEFAULT PROFILE ###
-// returns capsule with profile defaults
-function generateDefaultProfile() {
-  return {
-    // last time player was logged in
-    LastLogin: -1,
-    // progression
-    Experience: 0,
-    // decks
-    Deck0: "",
-    Deck1: "",
-    Deck2: "",
-    Deck3: "",
-    Deck4: "",
-  };
-}
 
 // ### ROUTE - GET PROFILE ###
 // send playerID -> return player's profile (if none exists, generates new profile)
@@ -77,7 +59,7 @@ app.get("/api/get-profile/:playerID", (req, res) => {
       // check for profile existance
       if (!documentJSON) {
         // populate default profile
-        documentJSON = generateDefaultProfile();
+        documentJSON = Profile.GenerateDefaultProfile();
         // write player defaults to store
         await documentRef.create(documentJSON);
       }
@@ -114,7 +96,7 @@ app.get("/api/get-exp/:playerID", (req, res) => {
       // check for profile existance
       if (!documentJSON) {
         // populate default profile
-        documentJSON = generateDefaultProfile();
+        documentJSON = Profile.GenerateDefaultProfile();
         // write player defaults to store
         await documentRef.create(documentJSON);
       }
@@ -123,7 +105,7 @@ app.get("/api/get-exp/:playerID", (req, res) => {
       if(documentJSON.hasOwnProperty("Experience")) {
         documentJSON = { Experience: documentJSON.Experience };
       } else {
-        documentJSON = { Experience: -1 };
+        documentJSON = { Experience: 0 };
       }
 
       // if nothing failed, return a successful response
@@ -152,7 +134,7 @@ app.post("/api/set-deck", (req, res) => {
       // check for profile existance
       if (!documentJSON) {
         // populate default profile
-        documentJSON = generateDefaultProfile();
+        documentJSON = Profile.GenerateDefaultProfile();
         // write player defaults to store
         await documentRef.create(documentJSON);
       }
@@ -172,46 +154,69 @@ app.post("/api/set-deck", (req, res) => {
   })();
 });
 
+// ### FUNCTIONS - PLAYER PROFILE ###
+// returns the targeted table from the collection
+async function getPlayerProfile(playerID:string):Promise<Profile.ProfileData> {
+  // interactions calls can fail/throw errors, so try-catch is required
+  try {
+    // define document reference for card table
+    const documentRef = db.collection("player-profiles").doc("/"+playerID+"/");
+    // get document instance from reference
+    const documentData = await documentRef.get();
+    // get document data
+    let documentJSON = documentData.data() as Profile.ProfileData;
+
+    // check for table's existance
+    if (!documentJSON) {
+      // populate default table
+      documentJSON = Profile.GenerateDefaultProfile();
+      // write player defaults to store
+      await documentRef.create(documentJSON);
+    }
+
+    // check for interaction time-out
+    const curTime = new Date().getTime();
+    const lastTime = documentJSON.LastLogin;
+    const timeDifference = curTime - lastTime;
+    // console.log("expiry check: curTime="+curTime+", lastTime="+documentJSON.lastInteraction+", testTime="+timeDifference);
+    if (timeDifference > TABLE_INTERACTION_TIMEOUT) {
+      // populate default table
+      documentJSON = Profile.GenerateDefaultProfile();
+      // write player defaults to store
+      await documentRef.update(documentJSON as { [key: string]: any });
+    }
+
+    // if nothing failed, we'll return a successful response
+    return documentJSON;
+  } catch (error) {
+    // if failure, record error and return fail status
+    console.log(error);
+    return Profile.GenerateDefaultProfile();
+  }
+}
+// updates the targeted table with the provided table data
+async function updatePlayerProfile(playerID:string, playerData:Profile.ProfileData) {
+  // interactions calls can fail/throw errors, so try-catch is required
+  try {
+    // define document reference for card table
+    const documentRef = db.collection("player-profiles").doc("/"+playerID+"/");
+    // attempt to update 
+    await documentRef.update(playerData as { [key: string]: any });
+
+    // if nothing failed, we'll return a successful response
+    return;
+  } catch (error) {
+    // if failure, record error and return fail status
+    console.log(error);
+    return;
+  }
+}
+
 // ### CONSTANTS - CARD TABLE ###
 // how long a table can remain inactive before it resets (conversion from milliseconds to minutes)
 const TABLE_INTERACTION_TIMEOUT:number = 5 * 60000;
 
 // ### FUNCTIONS - CARD TABLE ###
-// returns capsule with table defaults
-function generateDefaultTableTeam():TableTeam.TableTeamData {
-  const tableTeamData:TableTeam.TableTeamData = { 
-    playerID: "", playerName: "",
-    readyState: false,
-    healthCur: 0,
-    energyCur: 0, energyGain: 0,
-    deckRegistered: "",
-    deckSession: [],
-    slotCards: [],
-    terrainCard: "",
-  }
-  return tableTeamData;
-}
-// returns capsule with table defaults
-function generateDefaultTable():Table.TableData {
-  const tableData:Table.TableData = {
-    lastInteraction: new Date().getTime(),
-    // indexing
-    id: 0,
-    // live data
-    owner: "",
-    state: 0,
-    turn: 0,
-    round: 0,
-    // teams registered to table
-    teams: []
-  }
-
-  // TODO: maybe gen table teams to allow for modular sizes (ex: 2v2)
-  tableData.teams.push(generateDefaultTableTeam());
-  tableData.teams.push(generateDefaultTableTeam());
-
-  return tableData;
-}
 // returns the targeted table from the collection
 async function getTable(realmID:string, tableID:string):Promise<Table.TableData> {
   // interactions calls can fail/throw errors, so try-catch is required
@@ -226,7 +231,7 @@ async function getTable(realmID:string, tableID:string):Promise<Table.TableData>
     // check for table's existance
     if (!documentJSON) {
       // populate default table
-      documentJSON = generateDefaultTable();
+      documentJSON = Table.GenerateDefaultTable();
       // set table id
       documentJSON.id = Number.parseInt(tableID);
       // write player defaults to store
@@ -240,7 +245,7 @@ async function getTable(realmID:string, tableID:string):Promise<Table.TableData>
     // console.log("expiry check: curTime="+curTime+", lastTime="+documentJSON.lastInteraction+", testTime="+timeDifference);
     if (timeDifference > TABLE_INTERACTION_TIMEOUT) {
       // populate default table
-      documentJSON = generateDefaultTable();
+      documentJSON = Table.GenerateDefaultTable();
       // set table id
       documentJSON.id = Number.parseInt(tableID);
       // write player defaults to store
@@ -252,7 +257,7 @@ async function getTable(realmID:string, tableID:string):Promise<Table.TableData>
   } catch (error) {
     // if failure, record error and return fail status
     console.log(error);
-    return generateDefaultTable();
+    return Table.GenerateDefaultTable();
   }
 }
 // updates the targeted table with the provided table data
@@ -525,11 +530,15 @@ app.post("/api/end-game", (req, res) => {
     // interactions calls can fail/throw errors, so try-catch is required
     try {
       // get table data
-      const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
+      // const tableData:Table.TableData = await getTable(req.body.realmID, req.body.tableID);
+      // generate new table data object based on provided data
+      const tableData:Table.TableData = Table.DeserializeData(req.body.tableData);
+      //console.log("<END GAME> ending game on {realmID="+req.body.realmID+", tableID="+req.body.tableID+"}");
 
       // halt if table is not idle
       if(tableData.state != 1) {
         // return failed response
+        // console.log("<END GAME> failed: table is not in-session {state="+tableData.state+"}");
         return res.status(200).send({ result:false });
       }
 
@@ -537,6 +546,7 @@ app.post("/api/end-game", (req, res) => {
       for(let i=0; i<tableData.teams.length; i++) {
         if(tableData.teams[i].playerID == "" || tableData.teams[i].readyState == false) {
           // return failed response
+          // console.log("<END GAME> failed: players="+i.toString()+" is not ready/team is not occupied");
           return res.status(200).send({ result:false });
         }
       }
@@ -552,34 +562,36 @@ app.post("/api/end-game", (req, res) => {
       if(result == false) {
         return res.status(200).send({ result:false });
       }*/
-
-      // attempt to update document with new table
-      await updateTable(req.body.realmID, req.body.tableID, tableData);
       
       //provide experience to players
       for(let i=0; i<tableData.teams.length; i++) {
-        // skip non-existant player (could be AI)
-        // define document reference for profile
-        const playerRef = db.collection("player-profiles").doc("/"+tableData.teams[i].playerID+"/");
-        if(!playerRef) continue;
-        // get document instance from reference
-        const playerData = await playerRef.get();
-        if(!playerData) continue;
-        // get document data
-        let playerJSON = playerData.data();
-        if(!playerJSON) continue;
+         // console.log("<END GAME> providing experience to player="+tableData.teams[i].playerID);
+        // get player data
+        const playerData = await getPlayerProfile(tableData.teams[i].playerID);
 
+        // increase number of games played
+        playerData.GamesPlayed += 1;
         // provide experience (defeated team gets less)
         if(tableData.teams[i].healthCur > 0) {
-          playerJSON.Experience += 100
+          playerData.Experience += 100;
         } else {
-          playerJSON.Experience += 50
+          playerData.Experience += 50;
         }
 
         // attempt to update document
-        await playerRef.update(playerJSON);
+        await updatePlayerProfile(tableData.teams[i].playerID, playerData);
+        // console.log("<END GAME> provided experience to player="+tableData.teams[i].playerID);
+
+        // remove active player from team
+        //  this will let us display the previous game to other players while allowing new players to register to the game field
+        tableData.teams[i].playerID = "";
+        tableData.teams[i].readyState = false;
       }
 
+      // attempt to update document with new table
+      await updateTable(req.body.realmID, req.body.tableID, tableData);
+
+      // console.log("<END GAME> ended game on {realmID="+req.body.realmID+", tableID="+req.body.tableID+"}");
       // return successful response
       return res.status(200).send({ result:true });
     } catch (error) {
