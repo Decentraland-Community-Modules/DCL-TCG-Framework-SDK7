@@ -1,5 +1,4 @@
 import { MenuElementManager2D } from "../utilities/menu-group-2D.ui";
-import { Networking } from "./config/tcg-networking";
 import { LevelUnlockRegistry } from "./data/tcg-level-unlocks-registry";
 
 /*      TRADING CARD GAME - LEVELING MANAGER

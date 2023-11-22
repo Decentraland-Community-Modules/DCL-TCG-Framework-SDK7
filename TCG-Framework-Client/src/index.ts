@@ -63,15 +63,15 @@ async function tcgSetUp() {
 		DeckManager.Create({ 
 			key:"dm-0",
 			parent: undefined,
-			position: { x:10, y:0, z:28 },
-			rotation: { x:0, y:270, z:0 } 
+			position: { x:21.5, y:0, z:21.5 },
+			rotation: { x:0, y:225, z:0 } 
 		});
 		//	right
 		DeckManager.Create({ 
 			key:"dm-1",
 			parent: undefined,
-			position: { x:46, y:0, z:28 },
-			rotation: { x:0, y:90, z:0 } 
+			position: { x:34.5, y:0, z:21.5 },
+			rotation: { x:0, y:135, z:0 } 
 		});
 	
 		//PVE TABLES
@@ -87,7 +87,7 @@ async function tcgSetUp() {
 			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
 			//transform
 			parent: undefined,
-			position: { x:14, y:0, z:14 },
+			position: { x:14, y:0, z:12 },
 			rotation: { x:0, y:0, z:0 }
 		});
 		//	pve peer-to-peer table
@@ -102,7 +102,7 @@ async function tcgSetUp() {
 			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.AI],
 			//transform
 			parent: undefined,
-			position: { x:42, y:0, z:14 },
+			position: { x:42, y:0, z:12 },
 			rotation: { x:0, y:180, z:0 }
 		});
 		//PVP TABLES
@@ -118,7 +118,7 @@ async function tcgSetUp() {
 			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
 			//transform
 			parent: undefined,
-			position: { x:14, y:0, z:42 },
+			position: { x:14, y:0, z:44 },
 			rotation: { x:0, y:0, z:0 }
 		});
 		//	pvp server table
@@ -133,7 +133,7 @@ async function tcgSetUp() {
 			teamTypes: [TABLE_TEAM_TYPE.HUMAN,TABLE_TEAM_TYPE.HUMAN],
 			//transform
 			parent: undefined,
-			position: { x:42, y:0, z:42 },
+			position: { x:42, y:0, z:44 },
 			rotation: { x:0, y:180, z:0 }
 		});
 	
