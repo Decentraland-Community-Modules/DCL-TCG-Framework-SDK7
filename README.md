@@ -1,7 +1,7 @@
 # SDK7-TCG-Framework
 The Trading Card Game Framework offers a wide array of modules that provide all the utilities required to create your own trading card games in Decentraland!
 
-You can access the written user guide here(PENDING) or a variety of video tutorials here(PENDING)
+If you want to get started using the TCG Framework, you can click the 'Wiki' tab to view the user guide or we have a variety of video tutorials here(PENDING).
 
 ## Feature Overview
 The TCG Framework provides a variety of easy to use interfaces for creating your own trading card games in Decentraland, including the following features:
