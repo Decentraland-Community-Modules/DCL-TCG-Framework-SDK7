@@ -717,9 +717,11 @@ export module Table {
             //if player is table owner & not localized call
             if(this.TableOwnerID == PlayerLocal.GetUserID() && localized == false) {
                 //start next turn
-                this.LocalNextTurn();
+                this.EmitNextTurn(this.TableID);
             }
 
+            //update team display positions
+            this.RepositionTeamDisplays();
             if(isDebugging) console.log(debugTag+"<REMOTE> started game on table="+this.TableID+", curState="+this.CurState+"!");
         }
 

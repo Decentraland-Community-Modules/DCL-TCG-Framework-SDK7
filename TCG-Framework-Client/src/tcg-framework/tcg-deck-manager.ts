@@ -927,8 +927,8 @@ export module DeckManager {
         cardKeywordNameText[i] = engine.addEntity();
         Transform.create(cardKeywordNameText[i],{
         parent:cardkeywordDescBackground[i],
-        position: { x:0, y:-0.025, z:0.0 },
-        scale: { x:0.2, y:0.2, z:0.1, },
+        position: { x:0, y:-0.025, z:-0.025 },
+        scale: { x:0.2, y:0.2, z:0.2, },
         });
         TextShape.create(cardKeywordNameText[i], { text: "<EFFECT NAME>", 
             textColor: Color4.White(), 
@@ -941,8 +941,8 @@ export module DeckManager {
         cardKeywordDescText[i] = engine.addEntity();
         Transform.create(cardKeywordDescText[i],{
         parent:cardkeywordDescBackground[i],
-        position: { x:0, y:-0.09, z:0 },
-        scale: { x:0.2, y:0.2, z:0.1, },
+        position: { x:0, y:-0.09, z:-0.025 },
+        scale: { x:0.2, y:0.2, z:0.2, },
         });
         TextShape.create(cardKeywordDescText[i], { text: "<EFFECT DESC>\n<EFFECT DESC>\n<EFFECT DESC>\n<EFFECT DESC>\n<EFFECT DESC>", 
             textColor: Color4.White(), 

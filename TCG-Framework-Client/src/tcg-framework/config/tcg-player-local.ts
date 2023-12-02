@@ -193,7 +193,8 @@ export module PlayerLocal {
         }
         //  if profile is server-based
         else if(Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SERVER_STRICT 
-            || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SERVER_LOAD) {
+            || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SERVER_LOAD
+            || Networking.PROFILE_CONNECTIVITY == Networking.PROFILE_CONNECTIVITY_TYPE.SANDBOX) {
 
             //ensure player is connected with web3 (only real players can interact with the server)
             if(isWeb3) {

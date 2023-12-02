@@ -391,7 +391,7 @@ export module CardDisplayObject
                 pointerEvents: [
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "INCREASE" }
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Add Card" }
                   },
                 ]
             });
@@ -408,7 +408,7 @@ export module CardDisplayObject
                 pointerEvents: [
                   { //primary key -> select card slot
                     eventType: PointerEventType.PET_DOWN,
-                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "DECREASE" }
+                    eventInfo: { button: InputAction.IA_POINTER, hoverText: "Remove Card" }
                   },
                 ]
             });

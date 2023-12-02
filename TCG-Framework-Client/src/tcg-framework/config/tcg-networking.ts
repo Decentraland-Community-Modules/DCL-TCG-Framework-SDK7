@@ -44,7 +44,7 @@ export module Networking {
         SERVER_STRICT, 
     }
     /** determines the connectivity type of the local player's profile */
-    export const PROFILE_CONNECTIVITY:PROFILE_CONNECTIVITY_TYPE = PROFILE_CONNECTIVITY_TYPE.SANDBOX;
+    export const PROFILE_CONNECTIVITY:PROFILE_CONNECTIVITY_TYPE = PROFILE_CONNECTIVITY_TYPE.SERVER_LOAD;
 
     /** all possible connectivity/load states for a player */
     export enum PLAYER_CONNECTIVITY_STATE {
